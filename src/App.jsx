@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, createContext, useContext } from 'react'
 import { LayoutDashboard, Car, ClipboardList, Bot, CreditCard, Settings, Users, Bell, Moon, Sun, ChevronRight, ChevronLeft, ChevronDown, Plus, X, ShieldCheck, MapPin, Send, LogOut, Sparkles, Filter, Check, FileText, Layers, Calendar, Pencil, Trash2 } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const C = '#5C3EFE'
 const ThemeCtx = createContext(false)
@@ -22,11 +23,11 @@ const INIT_CARS = [
   { id:3, brand:'Tesla Model 3', plate:'AI9111AA', mileage:42000, year:2023, status:'ok' },
 ]
 const INIT_HISTORY = [
-  { id:1, carId:1, date:'2025-03-10', category:'maintenance', title:'Заміна масла та фільтрів', cost:3200, status:'verified', garage:'Офіційний дилер BMW' },
-  { id:2, carId:1, date:'2025-01-15', category:'repair', title:'Заміна гальмівних колодок', cost:5600, status:'verified', garage:'AWT Bavaria' },
-  { id:3, carId:2, date:'2025-02-20', category:'maintenance', title:'Заміна ременя ГРМ', cost:12500, status:'pending', garage:'СТО "Гараж"' },
-  { id:4, carId:2, date:'2024-11-05', category:'tires', title:'Заміна зимових шин', cost:8900, status:'pending', garage:'Шиномонтаж VIP' },
-  { id:5, carId:3, date:'2025-03-01', category:'diagnostic', title:'Оновлення прошивки + діагностика', cost:0, status:'verified', garage:'Tesla Service Center' },
+  { id:1, carId:1, date:'2025-03-10', category:'maintenance', title:'Заміна масла та фільтрів', cost:3200, status:'verified', garage:'Офіційний дилер BMW', mileage: 136400 },
+  { id:2, carId:1, date:'2025-01-15', category:'repair', title:'Заміна гальмівних колодок', cost:5600, status:'verified', garage:'AWT Bavaria', mileage: 134200 },
+  { id:3, carId:2, date:'2025-02-20', category:'maintenance', title:'Заміна ременя ГРМ', cost:12500, status:'pending', garage:'СТО "Гараж"', mileage: 85000 },
+  { id:4, carId:2, date:'2024-11-05', category:'tires', title:'Заміна зимових шин', cost:8900, status:'pending', garage:'Шиномонтаж VIP', mileage: 80100 },
+  { id:5, carId:3, date:'2025-03-01', category:'diagnostic', title:'Оновлення прошивки + діагностика', cost:0, status:'verified', garage:'Tesla Service Center', mileage: 42000 },
 ]
 const MOCK_USERS = [
   { id:1, name:'Іван Петренко', email:'ivan@example.com', role:'Admin', status:'active', plan:'Premium' },
@@ -315,6 +316,37 @@ function CarDetailsModal({ car, onClose, onGoService }) {
 // ─── Service ─────────────────────────────────────────────────────────────────
 const CAT_FILTERS = ['all','maintenance','repair','diagnostic','tires','washing','tuning','insurance']
 
+function MileageChart({ records }) {
+  const data = records.filter(r => r.mileage).sort((a,b) => new Date(a.date)-new Date(b.date)).map(d => ({
+    ...d,
+    dateStr: d.date.split('-').reverse().slice(0,2).join('.') // DD.MM
+  }))
+  if (data.length < 2) return null
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 p-6">
+      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Графік пробігу</h2>
+      <div className="w-full h-[220px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 10, right: 15, left: -25, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" className="dark:opacity-10"/>
+            <XAxis dataKey="dateStr" axisLine={false} tickLine={false} tick={{fill:'#9CA3AF', fontSize: 11}} dy={10}/>
+            <YAxis domain={['dataMin', 'dataMax']} axisLine={false} tickLine={false} tick={{fill:'#9CA3AF', fontSize: 11}} tickFormatter={v => (v/1000).toFixed(0)+'k'}/>
+            <Tooltip 
+              contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', borderRadius: '12px', color: '#fff', fontSize: '12px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)', padding: '12px' }}
+              itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+              labelStyle={{ color: '#9CA3AF', marginBottom: '4px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+              formatter={(val) => [`${fmt(val)} км`, 'Пробіг']}
+              labelFormatter={(label) => `Дата: ${label}`}
+            />
+            <Line type="monotone" dataKey="mileage" stroke="#5C3EFE" strokeWidth={3} dot={{r: 4, fill: '#5C3EFE', strokeWidth: 2, stroke: '#fff'}} activeDot={{r: 6, strokeWidth: 0, fill: '#5C3EFE'}} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
 function ServiceView({ historyList, carList, onAddService, onUpdateService, onDeleteService }) {
   const [catF, setCatF] = useState('all')
   const [carF, setCarF] = useState('all')
@@ -360,6 +392,8 @@ function ServiceView({ historyList, carList, onAddService, onUpdateService, onDe
         </div>
       </div>
 
+      {carF !== 'all' && <MileageChart records={filtered} />}
+
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 overflow-hidden">
         {filtered.length === 0
           ? <div className="py-16 flex flex-col items-center gap-3 text-gray-400"><ClipboardList size={48} strokeWidth={1}/><p className="font-medium">Записів за обраними фільтрами не знайдено</p><p className="text-sm">Змініть фільтри або додайте новий запис</p></div>
@@ -383,6 +417,7 @@ function ServiceView({ historyList, carList, onAddService, onUpdateService, onDe
                     <div className="text-right shrink-0 mr-2">
                       <p className="text-xs text-gray-400 mb-0.5">{h.date}</p>
                       <p className="font-bold text-sm" style={{color:h.cost===0?'#10B981':C}}>{fmtCost(h.cost)}</p>
+                      {h.mileage > 0 && <p className="text-[10px] text-gray-400 mt-0.5">{fmt(h.mileage)} км</p>}
                     </div>
                     {/* Edit / Delete actions */}
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
@@ -422,6 +457,7 @@ function ServiceModal({ onClose, onSave, carList, initialData }) {
     cost: initialData?.cost != null ? String(initialData.cost) : '',
     garage: initialData?.garage || '',
     status: initialData?.status || 'verified',
+    mileage: initialData?.mileage || '',
   })
   const set = k => v => setF(p => ({...p,[k]:v}))
   const submit = e => {
@@ -436,6 +472,7 @@ function ServiceModal({ onClose, onSave, carList, initialData }) {
       cost: f.cost ? parseInt(f.cost) : 0,
       garage: f.garage,
       status: f.status,
+      mileage: f.mileage ? parseInt(f.mileage) : null,
     })
   }
   const ic = inp_cls()
@@ -462,15 +499,20 @@ function ServiceModal({ onClose, onSave, carList, initialData }) {
             <input value={f.title} onChange={e=>set('title')(e.target.value)} placeholder="Напр. Заміна масла" className="flex-1 bg-transparent focus:outline-none text-sm placeholder-gray-400 dark:text-white" required/>
           </div>
         </Field>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Field label="Дата">
             <div className={fieldCls}><Calendar size={16} className="text-gray-400 shrink-0"/>
-              <input type="date" value={f.date} onChange={e=>set('date')(e.target.value)} className="flex-1 bg-transparent focus:outline-none text-sm dark:text-white"/>
+              <input type="date" value={f.date} onChange={e=>set('date')(e.target.value)} className="flex-1 w-full bg-transparent focus:outline-none text-sm dark:text-white"/>
             </div>
           </Field>
           <Field label="Вартість (₴)">
             <div className={fieldCls}><span className="text-gray-400 text-sm">₴</span>
-              <input type="number" value={f.cost} onChange={e=>set('cost')(e.target.value)} placeholder="1500" className="flex-1 bg-transparent focus:outline-none text-sm placeholder-gray-400 dark:text-white"/>
+              <input type="number" value={f.cost} onChange={e=>set('cost')(e.target.value)} placeholder="0" className="flex-1 w-full bg-transparent focus:outline-none text-sm placeholder-gray-400 dark:text-white"/>
+            </div>
+          </Field>
+          <Field label="Пробіг (км)">
+            <div className={fieldCls}><span className="text-gray-400 text-sm">КМ</span>
+              <input type="number" value={f.mileage} onChange={e=>set('mileage')(e.target.value)} placeholder="0" className="flex-1 w-full bg-transparent focus:outline-none text-sm placeholder-gray-400 dark:text-white"/>
             </div>
           </Field>
         </div>
