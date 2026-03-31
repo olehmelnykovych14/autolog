@@ -1,0 +1,123 @@
+
+function AddCarModal({ open, onClose, onAdd }) {
+  const [form, setForm] = useState({ make: '', model: '', year: '2023', plate: '', mileage: '', color: '#4318FF', fuel: 'Бензин', vin: '' })
+  const set = k => v => setForm(f => ({ ...f, [k]: v }))
+  const handle = () => { if (!form.make || !form.plate) return; onAdd({ ...form, id: Date.now(), mileage: parseInt(form.mileage)||0, status:'ok' }); onClose() }
+  return (
+    <Modal open={open} onClose={onClose} title="Додати автомобіль">
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3"><Input label="Марка" value={form.make} onChange={set('make')} placeholder="BMW"/><Input label="Модель" value={form.model} onChange={set('model')} placeholder="5 Series"/></div>
+        <div className="grid grid-cols-2 gap-3"><Input label="Рік" type="number" value={form.year} onChange={set('year')}/><Input label="Номерний знак" value={form.plate} onChange={set('plate')} placeholder="АА1234КА"/></div>
+        <Input label="Пробіг (км)" type="number" value={form.mileage} onChange={set('mileage')}/>
+        <Input label="VIN" value={form.vin} onChange={set('vin')} placeholder="WBAXXXXXXXX"/>
+        <Select label="Тип пального" value={form.fuel} onChange={set('fuel')} options={['Бензин','Дизель','Гібрид','Електро','Газ']}/>
+        <div>
+          <label className="text-xs font-semibold text-[#A3AED0] uppercase tracking-wide">Колір авто</label>
+          <div className="flex items-center gap-3 mt-1.5"><input type="color" value={form.color} onChange={e=>set('color')(e.target.value)} className="w-12 h-10 rounded-xl cursor-pointer border-0"/><span className="text-sm text-[#A3AED0]">{form.color}</span></div>
+        </div>
+        <div className="flex gap-3 pt-2"><Btn onClick={handle} className="flex-1"><Plus size={16}/>Додати</Btn><Btn variant="secondary" onClick={onClose}>Скасувати</Btn></div>
+      </div>
+    </Modal>
+  )
+}
+
+function EditUserModal({ open, onClose, user, onSave }) {
+  const [plan, setPlan] = useState('Free')
+  const [status, setStatus] = useState('Активний')
+  useEffect(() => { if(user){setPlan(user.plan);setStatus(user.status)} }, [user])
+  return (
+    <Modal open={open} onClose={onClose} title={`Редагувати: ${user?.name}`}>
+      <div className="flex flex-col gap-4">
+        <Select label="Тарифний план" value={plan} onChange={setPlan} options={['Free','Premium','Business']}/>
+        <Select label="Статус" value={status} onChange={setStatus} options={['Активний','Заблокований']}/>
+        <Input label="Новий пароль" type="password" value="" onChange={()=>{}} placeholder="••••••••"/>
+        <div className="flex gap-3 pt-2"><Btn onClick={()=>{onSave({...user,plan,status});onClose()}} className="flex-1"><Check size={16}/>Зберегти</Btn><Btn variant="secondary" onClick={onClose}>Скасувати</Btn></div>
+      </div>
+    </Modal>
+  )
+}
+
+function InboxModal({ open, onClose, notifications, onAccept, onReject }) {
+  const unread = notifications.filter(n=>!n.read)
+  return (
+    <Modal open={open} onClose={onClose} title="Запити від СТО" wide>
+      {unread.length===0 ? <div className="text-center py-12 text-[#A3AED0]"><CheckCircle className="mx-auto mb-3" size={48}/><p>Немає нових запитів</p></div> :
+      <div className="flex flex-col gap-4">
+        {unread.map(n=>(
+          <div key={n.id} className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30">
+            <div className="flex items-start justify-between gap-4">
+              <div><div className="flex items-center gap-2 mb-1"><Shield size={16} className="text-blue-500"/><span className="font-semibold text-blue-700 dark:text-blue-300 text-sm">{n.sto}</span></div>
+                <p className="font-bold text-[#2B3674] dark:text-white">{n.service}</p>
+                <p className="text-sm text-[#A3AED0]">{n.car} · {n.date}</p>
+                <p className="text-xl font-bold text-[#4318FF] mt-1">{fmt(n.cost)} грн</p>
+              </div>
+              <div className="flex flex-col gap-2 shrink-0">
+                <Btn sm onClick={()=>{onAccept(n);onClose()}}><Check size={14}/>Прийняти</Btn>
+                <Btn sm variant="danger" onClick={()=>onReject(n.id)}><X size={14}/>Відхилити</Btn>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>}
+    </Modal>
+  )
+}
+
+function MaintenancePlanModal({ open, onClose, car }) {
+  const tasks=[{t:'Заміна моторного масла',u:'Терміново',p:'2 500–3 500 грн',e:'🔴'},{t:'Перевірка гальм',u:'Найближчий місяць',p:'1 000–2 000 грн',e:'🟡'},{t:'Заміна повітряного фільтра',u:'Найближчий місяць',p:'400–800 грн',e:'🟡'},{t:'Перевірка підвіски',u:'При нагоді',p:'500–1 500 грн',e:'🟢'},{t:'Діагностика електрики',u:'При нагоді',p:'300–600 грн',e:'🟢'}]
+  return (
+    <Modal open={open} onClose={onClose} title={`AI План: ${car?.make} ${car?.model}`} wide>
+      <div className="mb-4 p-4 rounded-2xl bg-[#4318FF]/10 border border-[#4318FF]/20 text-sm text-[#A3AED0]">Аналіз на основі пробігу <strong className="text-[#4318FF]">{fmt(car?.mileage||0)} км</strong> та журналу обслуговування.</div>
+      <div className="flex flex-col gap-3">
+        {tasks.map((t,i)=><div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-white/5"><span className="text-2xl">{t.e}</span><div className="flex-1"><p className="font-semibold text-[#2B3674] dark:text-white text-sm">{t.t}</p><p className="text-xs text-[#A3AED0]">{t.u}</p></div><span className="text-sm font-bold text-[#4318FF]">{t.p}</span></div>)}
+      </div>
+    </Modal>
+  )
+}
+
+function CarfaxModal({ open, onClose, car, records }) {
+  const cr=records.filter(r=>r.carId===car?.id); const total=cr.reduce((s,r)=>s+r.cost,0)
+  return (
+    <Modal open={open} onClose={onClose} title="Carfax Звіт" wide>
+      <div className="border-2 border-dashed border-[#4318FF]/30 rounded-2xl p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style={{background:car?.color+'33'}}>🚗</div>
+          <div><h3 className="text-xl font-bold text-[#2B3674] dark:text-white">{car?.year} {car?.make} {car?.model}</h3><p className="text-xs text-[#A3AED0]">VIN: {car?.vin} · {car?.plate} · {car?.fuel}</p></div>
+        </div>
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {[{v:cr.length,l:'Записів'},{v:fmt(total)+' грн',l:'Витрачено'},{v:cr.filter(r=>r.verified).length,l:'Верифіковано'}].map((s,i)=>(
+            <div key={i} className="text-center p-4 bg-gray-50 dark:bg-white/5 rounded-2xl"><p className="text-2xl font-bold text-[#4318FF]">{s.v}</p><p className="text-xs text-[#A3AED0]">{s.l}</p></div>
+          ))}
+        </div>
+        <div className="space-y-2">{cr.map(r=><div key={r.id} className="flex justify-between py-2 border-b border-gray-100 dark:border-white/5 text-sm"><span className="flex items-center gap-2">{r.verified&&<Shield size={12} className="text-blue-500"/>}<span className="text-[#2B3674] dark:text-white">{r.date} · {r.type} · {r.desc}</span></span><span className="font-semibold text-[#4318FF]">{r.cost?fmt(r.cost)+' грн':'Безкоштовно'}</span></div>)}</div>
+      </div>
+    </Modal>
+  )
+}
+
+function QRModal({ open, onClose, car }) {
+  const cells=[0,1,2,3,4,5,6,7,13,14,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,40,41,42,43,44,45,46,47,48,9,10,11,15,16,36,37,38]
+  return (
+    <Modal open={open} onClose={onClose} title="Мій QR-код">
+      <div className="flex flex-col items-center gap-6 py-2">
+        <div className="p-5 bg-white rounded-3xl shadow-lg"><div className="w-40 h-40 grid grid-cols-7 gap-0.5">{Array.from({length:49},(_,i)=><div key={i} className={cx('rounded-sm',cells.includes(i)?'bg-[#2B3674]':'bg-white')}/>)}</div></div>
+        <div className="text-center"><p className="font-bold text-[#2B3674] dark:text-white">{car?.make} {car?.model}</p><p className="text-sm text-[#A3AED0]">{car?.plate}</p></div>
+        <Btn variant="secondary" className="w-full justify-center"><Download size={16}/>Завантажити QR</Btn>
+      </div>
+    </Modal>
+  )
+}
+
+function ShareModal({ open, onClose, car }) {
+  const [copied,setCopied]=useState(false)
+  const link=`https://autolog.ua/car/${car?.id||'xxx'}`
+  return (
+    <Modal open={open} onClose={onClose} title="Поділитися автомобілем">
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-[#A3AED0]">Поділіться посиланням на публічний профіль вашого авто.</p>
+        <div className="flex gap-2"><input readOnly value={link} className="flex-1 px-4 py-2.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-sm text-[#2B3674] dark:text-white"/><Btn onClick={()=>{navigator.clipboard.writeText(link).catch(()=>{});setCopied(true);setTimeout(()=>setCopied(false),2000)}}>{copied?<Check size={16}/>:<Share2 size={16}/>}{copied?'Скопійовано':'Копіювати'}</Btn></div>
+        <div className="grid grid-cols-3 gap-3">{['Viber','Telegram','WhatsApp'].map(s=><button key={s} className="py-3 rounded-2xl bg-gray-50 dark:bg-white/5 hover:bg-[#4318FF]/10 border border-gray-200 dark:border-white/10 text-sm font-semibold text-[#2B3674] dark:text-white transition-all">{s}</button>)}</div>
+      </div>
+    </Modal>
+  )
+}

@@ -1,0 +1,196 @@
+
+function AIMechanic({ cars }) {
+  const [msgs,setMsgs]=useState([{r:'bot',t:'Привіт! Я ваш AI Механік 🤖 Розкажіть, що турбує ваше авто, і я допоможу!'},{r:'user',t:'Чому мій BMW іноді вібрує на холостих?'},{r:'bot',t:'Вібрація на холостих BMW 5 Series може свідчити про: зношені свічки запалювання (рекомендую перевірити при >60к км), забруднені форсунки, або проблеми з подушками двигуна. Рекомендую комплексну діагностику — орієнтовно 300–600 грн.'}])
+  const [input,setInput]=useState('')
+  const botReplies=['Розумію! Це класична проблема для цього типу двигунів. Рекомендую звернутися до СТО для діагностики.','На основі пробігу вашого авто, скоріш за все це пов\'язано з плановим обслуговуванням. Перевірте рівень масла.','Відмінне питання! Зазвичай це вирішується заміною відповідного компонента. Вартість: 800–2500 грн.','Це може бути сезонна проблема. Перевірте тиск у шинах та рівень技 рідин.']
+  const send=()=>{if(!input.trim())return;const u={r:'user',t:input};setMsgs(m=>[...m,u]);setInput('');setTimeout(()=>setMsgs(m=>[...m,{r:'bot',t:botReplies[Math.floor(Math.random()*botReplies.length)]}]),800)}
+  return (
+    <div className="flex flex-col gap-6">
+      <h2 className="text-2xl font-bold text-[#2B3674] dark:text-white">AI Механік</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2 flex flex-col" style={{height:'60vh'}}>
+          <div className="flex-1 overflow-y-auto scrollbar-thin space-y-4 mb-4">
+            {msgs.map((m,i)=>(
+              <div key={i} className={cx('flex',m.r==='user'?'justify-end':'justify-start')}>
+                <div className={cx('max-w-xs lg:max-w-md px-4 py-3 rounded-2xl text-sm',m.r==='user'?'bg-[#4318FF] text-white rounded-br-md':'bg-gray-100 dark:bg-white/10 text-[#2B3674] dark:text-white rounded-bl-md')}>{m.t}</div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder="Запитайте про ваше авто..." className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-sm text-[#2B3674] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4318FF]/50"/>
+            <Btn onClick={send}>Надіслати</Btn>
+          </div>
+        </Card>
+        <div className="flex flex-col gap-4">
+          <Card><h3 className="font-bold text-[#2B3674] dark:text-white mb-3 text-sm">Швидкі запитання</h3>
+            <div className="space-y-2">{['Коли міняти масло?','Чому горить Check Engine?','Як підготуватись до зими?','Розшифруй типи шин'].map(q=><button key={q} onClick={()=>{setInput(q)}} className="w-full text-left text-xs px-3 py-2 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-[#4318FF]/10 text-[#A3AED0] hover:text-[#4318FF] transition-all">{q}</button>)}</div>
+          </Card>
+          <Card className="bg-gradient-to-br from-[#4318FF] to-purple-600 text-white"><Zap size={24} className="mb-2"/><p className="font-bold mb-1">AI Premium</p><p className="text-xs opacity-80 mb-3">Необмежені запити, аналіз фото, інтеграція з OBD</p><button className="w-full py-2 rounded-xl bg-white/20 hover:bg-white/30 text-sm font-semibold transition-all">Оновити план</button></Card>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Plans() {
+  const [yearly,setYearly]=useState(false)
+  const plans=[
+    {name:'Free',price:0,color:'gray',features:['1 автомобіль','Базовий журнал','10 AI запитів/місяць','Carfax звіт'],cta:'Поточний план',highlight:false},
+    {name:'Premium',price:yearly?319:399,color:'#4318FF',features:['5 автомобілів','Необмежений журнал','100 AI запитів/місяць','Верифікація СТО','QR-код','Аналітика'],cta:'Обрати Premium',highlight:true},
+    {name:'Business',price:yearly?799:999,color:'#7928CA',features:['Необмежено авто','CTO-панель','Необмежений AI','API інтеграція','Брендований Carfax','Пріоритетна підтримка'],cta:'Зв\'язатись з нами',highlight:false},
+  ]
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="text-center">
+        <h2 className="text-3xl font-black text-[#2B3674] dark:text-white mb-2">Тарифні плани</h2>
+        <p className="text-[#A3AED0] mb-6">Оберіть план, що підходить саме вам</p>
+        <div className="inline-flex items-center gap-3 bg-white dark:bg-[#111C44] rounded-2xl p-1 shadow-md">
+          <button onClick={()=>setYearly(false)} className={cx('px-4 py-2 rounded-xl text-sm font-semibold transition-all',!yearly?'bg-[#4318FF] text-white':'text-[#A3AED0]')}>Щомісячно</button>
+          <button onClick={()=>setYearly(true)} className={cx('px-4 py-2 rounded-xl text-sm font-semibold transition-all',yearly?'bg-[#4318FF] text-white':'text-[#A3AED0]')}>Щорічно <span className="text-green-500">-20%</span></button>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full">
+        {plans.map(p=>(
+          <div key={p.name} className={cx('rounded-3xl p-6 flex flex-col transition-all duration-300',p.highlight?'bg-gradient-to-b from-[#4318FF] to-[#6B4EFF] text-white scale-105 shadow-2xl shadow-[#4318FF]/30':'bg-white dark:bg-[#111C44] shadow-[0_18px_40px_rgba(112,144,176,0.12)] dark:shadow-none')}>
+            <h3 className={cx('text-xl font-black mb-1',p.highlight?'text-white':'text-[#2B3674] dark:text-white')}>{p.name}</h3>
+            <div className="mb-6"><span className={cx('text-4xl font-black',p.highlight?'text-white':'text-[#2B3674] dark:text-white')}>{p.price===0?'Безкоштовно':p.price+' грн'}</span>{p.price>0&&<span className={cx('text-sm',p.highlight?'opacity-70':'text-[#A3AED0]')}>/міс</span>}</div>
+            <div className="flex flex-col gap-2 flex-1 mb-6">{p.features.map(f=><div key={f} className="flex items-center gap-2 text-sm"><Check size={15} className={p.highlight?'text-white/80':'text-green-500'}/><span className={p.highlight?'text-white/90':'text-[#A3AED0]'}>{f}</span></div>)}</div>
+            <button className={cx('w-full py-3 rounded-2xl font-bold text-sm transition-all',p.highlight?'bg-white text-[#4318FF] hover:bg-white/90':'bg-[#4318FF] text-white hover:bg-[#3311DD]')}>{p.cta}</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AppSettings({ isDark, setDark }) {
+  const [tab,setTab]=useState('profile')
+  return (
+    <div className="flex flex-col gap-6">
+      <h2 className="text-2xl font-bold text-[#2B3674] dark:text-white">Налаштування</h2>
+      <div className="flex gap-2 flex-wrap">
+        {[{id:'profile',label:'Профіль'},{id:'appearance',label:'Вигляд'},{id:'pwa',label:'Встановити додаток'}].map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} className={cx('px-5 py-2 rounded-xl text-sm font-semibold transition-all',tab===t.id?'bg-[#4318FF] text-white':'bg-white dark:bg-[#111C44] text-[#A3AED0] hover:text-[#2B3674] dark:hover:text-white shadow-sm')}>{t.label}</button>
+        ))}
+      </div>
+      {tab==='profile'&&<Card><div className="flex flex-col gap-4 max-w-md"><div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#4318FF] to-purple-500 flex items-center justify-center text-white text-3xl font-black mb-2">І</div><Input label="Ім'я" value="Іван Петренко" onChange={()=>{}}/><Input label="Email" value="ivan@example.com" onChange={()=>{}}/><Input label="Телефон" value="+380 67 123 45 67" onChange={()=>{}}/><Btn className="self-start"><Check size={16}/>Зберегти</Btn></div></Card>}
+      {tab==='appearance'&&<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg"><button onClick={()=>setDark(false)} className={cx('p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-3',!isDark?'border-[#4318FF] bg-[#4318FF]/5':'border-gray-200 dark:border-white/10 bg-white dark:bg-[#111C44]')}><div className="w-full h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center"><Sun className="text-[#4318FF]" size={32}/></div><p className="font-bold text-[#2B3674] dark:text-white">Світла тема</p>{!isDark&&<span className="text-xs text-[#4318FF] font-semibold">✓ Активна</span>}</button>
+      <button onClick={()=>setDark(true)} className={cx('p-6 rounded-3xl border-2 transition-all flex flex-col items-center gap-3',isDark?'border-[#4318FF] bg-[#4318FF]/5':'border-gray-200 dark:border-white/10 bg-white dark:bg-[#111C44]')}><div className="w-full h-20 rounded-2xl bg-gradient-to-br from-[#0B1437] to-[#111C44] flex items-center justify-center"><Moon className="text-[#4318FF]" size={32}/></div><p className="font-bold text-[#2B3674] dark:text-white">Темна тема</p>{isDark&&<span className="text-xs text-[#4318FF] font-semibold">✓ Активна</span>}</button></div>}
+      {tab==='pwa'&&<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">{[{os:'iOS (Safari)',steps:['Відкрийте Safari','Натисніть кнопку "Поділитися" ↑','Оберіть "На екран Додому"','Натисніть "Додати"'],icon:'🍎'},{os:'Android (Chrome)',steps:['Відкрийте Chrome','Натисніть меню ⋮','Оберіть "Додати на головний екран"','Натисніть "Встановити"'],icon:'🤖'}].map(d=><Card key={d.os}><p className="text-2xl mb-2">{d.icon}</p><h3 className="font-bold text-[#2B3674] dark:text-white mb-3">{d.os}</h3><ol className="space-y-2">{d.steps.map((s,i)=><li key={i} className="flex items-start gap-2 text-sm text-[#A3AED0]"><span className="w-5 h-5 rounded-full bg-[#4318FF]/10 text-[#4318FF] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i+1}</span>{s}</li>)}</ol></Card>)}</div>}
+    </div>
+  )
+}
+
+function AdminUsers() {
+  const [users,setUsers]=useState(INIT_USERS)
+  const [search,setSearch]=useState('')
+  const [editUser,setEditUser]=useState(null)
+  const filtered=users.filter(u=>u.name.toLowerCase().includes(search.toLowerCase())||u.email.toLowerCase().includes(search.toLowerCase()))
+  const planColor={Free:'gray',Premium:'purple',Business:'blue'}
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h2 className="text-2xl font-bold text-[#2B3674] dark:text-white">Адмін панель</h2>
+        <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A3AED0]" size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Пошук користувачів..." className="pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111C44] text-sm text-[#2B3674] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4318FF]/50 w-64"/></div>
+      </div>
+      <Card>
+        <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-[#A3AED0] text-xs uppercase tracking-wide">{['Користувач','Email','План','Статус','Дата реєстрації','Дії'].map(h=><th key={h} className="pb-3 pr-4 font-semibold whitespace-nowrap">{h}</th>)}</tr></thead>
+          <tbody>{filtered.map(u=>(
+            <tr key={u.id} className="border-t border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-all">
+              <td className="py-3 pr-4"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#4318FF] to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0">{u.name[0]}</div><span className="font-semibold text-[#2B3674] dark:text-white whitespace-nowrap">{u.name}</span></div></td>
+              <td className="py-3 pr-4 text-[#A3AED0]">{u.email}</td>
+              <td className="py-3 pr-4"><span className={cx('px-2 py-1 rounded-lg text-xs font-semibold',u.plan==='Premium'?'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400':u.plan==='Business'?'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400':'bg-gray-100 dark:bg-white/10 text-[#A3AED0]')}>{u.plan}</span></td>
+              <td className="py-3 pr-4"><span className={cx('px-2 py-1 rounded-lg text-xs font-semibold',u.status==='Активний'?'bg-green-100 dark:bg-green-900/30 text-green-600':'bg-red-100 dark:bg-red-900/30 text-red-500')}>{u.status}</span></td>
+              <td className="py-3 pr-4 text-[#A3AED0] whitespace-nowrap">{u.reg}</td>
+              <td className="py-3"><Btn sm variant="secondary" onClick={()=>setEditUser(u)}><Edit size={14}/>Редагувати</Btn></td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      </Card>
+      <EditUserModal open={!!editUser} onClose={()=>setEditUser(null)} user={editUser} onSave={u=>setUsers(us=>us.map(x=>x.id===u.id?u:x))}/>
+    </div>
+  )
+}
+
+export default function App() {
+  const [tab,setTab]=useState('dashboard')
+  const [isDark,setDark]=useState(false)
+  const [collapsed,setCollapsed]=useState(false)
+  const [cars,setCars]=useState(INIT_CARS)
+  const [records,setRecords]=useState(INIT_RECORDS)
+  const [notifs,setNotifs]=useState(INIT_NOTIF)
+  const [showInbox,setShowInbox]=useState(false)
+  const unread=notifs.filter(n=>!n.read).length
+
+  useEffect(()=>{document.documentElement.classList.toggle('dark',isDark)},[isDark])
+
+  const acceptNotif=(n)=>{
+    setRecords(r=>[...r,{id:Date.now(),carId:n.carId,date:n.date,type:'ТО',desc:n.service,mileage:0,cost:n.cost,verified:true,sto:n.sto}])
+    setNotifs(ns=>ns.map(x=>x.id===n.id?{...x,read:true}:x))
+  }
+  const rejectNotif=(id)=>setNotifs(ns=>ns.map(x=>x.id===id?{...x,read:true}:x))
+
+  const navItems=NAV
+  const currentCar=cars[0]
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#F4F7FE] dark:bg-[#0B1437] transition-colors duration-300">
+      {/* Sidebar */}
+      <aside className={cx('flex flex-col h-full bg-white dark:bg-[#111C44] shadow-[0_18px_40px_rgba(112,144,176,0.12)] dark:shadow-none transition-all duration-300 shrink-0 z-20',collapsed?'w-[72px]':'w-[260px]')}>
+        <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-100 dark:border-white/5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#4318FF] to-purple-500 flex items-center justify-center shrink-0"><span className="text-white font-black text-sm">AL</span></div>
+          {!collapsed&&<div className="overflow-hidden"><p className="font-black text-[#2B3674] dark:text-white leading-tight">AutoLog</p><p className="text-[10px] text-[#A3AED0]">Premium Garage</p></div>}
+          <button onClick={()=>setCollapsed(c=>!c)} className={cx('ml-auto p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 text-[#A3AED0] transition-all shrink-0')}>{collapsed?<ChevronRight size={16}/>:<ChevronLeft size={16}/>}</button>
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
+          {navItems.map(n=>{const Icon=n.icon;return(
+            <button key={n.id} onClick={()=>setTab(n.id)} className={cx('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group',tab===n.id?'bg-[#4318FF] text-white shadow-lg shadow-[#4318FF]/30':'text-[#A3AED0] hover:bg-gray-100 dark:hover:bg-white/10 hover:text-[#2B3674] dark:hover:text-white')}>
+              <Icon size={18} className="shrink-0"/>
+              {!collapsed&&<span className="truncate">{n.label}</span>}
+            </button>
+          )})}
+        </nav>
+        <div className="p-3 border-t border-gray-100 dark:border-white/5">
+          <button className={cx('w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all')}>
+            <LogOut size={18} className="shrink-0"/>
+            {!collapsed&&<span>Вийти</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header */}
+        <header className="shrink-0 bg-white dark:bg-[#111C44]/80 backdrop-blur border-b border-gray-100 dark:border-white/5 px-6 py-3 flex items-center gap-4 transition-colors duration-300">
+          <div className="flex items-center gap-2 bg-gray-50 dark:bg-white/5 rounded-xl px-3 py-2 min-w-0">
+            <Car size={16} className="text-[#4318FF] shrink-0"/>
+            <span className="text-sm font-semibold text-[#2B3674] dark:text-white truncate">{currentCar?.make} {currentCar?.model}</span>
+            <ChevronRight size={14} className="text-[#A3AED0] shrink-0"/>
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            <button onClick={()=>setDark(d=>!d)} className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/10 hover:bg-gray-100 dark:hover:bg-white/20 text-[#A3AED0] transition-all">{isDark?<Sun size={18}/>:<Moon size={18}/>}</button>
+            <button onClick={()=>setShowInbox(true)} className="relative p-2.5 rounded-xl bg-gray-50 dark:bg-white/10 hover:bg-gray-100 dark:hover:bg-white/20 text-[#A3AED0] transition-all">
+              <Bell size={18}/>
+              {unread>0&&<span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 animate-ping"/>}
+              {unread>0&&<span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500"/>}
+            </button>
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#4318FF] to-purple-500 flex items-center justify-center text-white font-bold text-sm">І</div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <main className="flex-1 overflow-y-auto scrollbar-thin p-6">
+          {tab==='dashboard'&&<Dashboard cars={cars} records={records} isDark={isDark}/>}
+          {tab==='cars'&&<Garage cars={cars} records={records} onAdd={c=>setCars(cs=>[...cs,c])}/>}
+          {tab==='records'&&<Records cars={cars} records={records}/>}
+          {tab==='ai'&&<AIMechanic cars={cars}/>}
+          {tab==='plans'&&<Plans/>}
+          {tab==='settings'&&<AppSettings isDark={isDark} setDark={setDark}/>}
+          {tab==='admin_users'&&<AdminUsers/>}
+        </main>
+      </div>
+
+      <InboxModal open={showInbox} onClose={()=>setShowInbox(false)} notifications={notifs} onAccept={acceptNotif} onReject={rejectNotif}/>
+    </div>
+  )
+}

@@ -1,0 +1,98 @@
+import { useState, useEffect } from 'react'
+import { LayoutDashboard, Car, ClipboardList, Bot, CreditCard, Settings, Users, Bell, Sun, Moon, ChevronLeft, ChevronRight, Plus, X, Check, Shield, Download, QrCode, Share2, Edit, Search, AlertTriangle, CheckCircle, Wrench, TrendingUp, Fuel, Zap, MapPin } from 'lucide-react'
+
+const INIT_CARS = [
+  { id: 1, make: 'BMW', model: '5 Series', year: 2021, plate: 'АА1234КА', mileage: 45200, color: '#1C69D4', status: 'ok', fuel: 'Бензин', vin: 'WBA52BH01N7G12345' },
+  { id: 2, make: 'Toyota', model: 'Camry', year: 2019, plate: 'КА5678СС', mileage: 78900, color: '#C0392B', status: 'warning', fuel: 'Гібрид', vin: 'JTDBE32K7930887' },
+  { id: 3, make: 'Tesla', model: 'Model 3', year: 2023, plate: 'ВА9012ЕН', mileage: 12300, color: '#16A085', status: 'ok', fuel: 'Електро', vin: '5YJ3E1EA5PF12345' },
+]
+
+const INIT_RECORDS = [
+  { id: 1, carId: 1, date: '2025-03-10', type: 'ТО', desc: 'Заміна масла та фільтрів', mileage: 45000, cost: 3200, verified: true, sto: 'Bosch Service Київ' },
+  { id: 2, carId: 1, date: '2025-01-15', type: 'Ремонт', desc: 'Заміна гальмівних колодок', mileage: 43000, cost: 5600, verified: true, sto: 'BMW Офіційний дилер' },
+  { id: 3, carId: 2, date: '2025-02-20', type: 'ТО', desc: 'Заміна ременя ГРМ', mileage: 78000, cost: 12500, verified: false, sto: null },
+  { id: 4, carId: 2, date: '2024-11-05', type: 'Шини', desc: 'Заміна зимових шин', mileage: 74000, cost: 8900, verified: false, sto: null },
+  { id: 5, carId: 3, date: '2025-03-01', type: 'ТО', desc: 'Оновлення прошивки + діагностика', mileage: 12000, cost: 0, verified: true, sto: 'Tesla Service Center' },
+]
+
+const INIT_USERS = [
+  { id: 1, name: 'Іван Петренко', email: 'ivan@example.com', plan: 'Premium', status: 'Активний', reg: '2024-01-15' },
+  { id: 2, name: 'Олена Коваль', email: 'olena@example.com', plan: 'Free', status: 'Активний', reg: '2024-03-22' },
+  { id: 3, name: 'Сергій Мороз', email: 'serhiy@example.com', plan: 'Business', status: 'Активний', reg: '2023-11-08' },
+  { id: 4, name: 'Марія Бондаренко', email: 'maria@example.com', plan: 'Free', status: 'Заблокований', reg: '2024-02-14' },
+  { id: 5, name: 'Олексій Шевченко', email: 'oleksiy@example.com', plan: 'Premium', status: 'Активний', reg: '2024-05-30' },
+  { id: 6, name: 'Наталія Гриценко', email: 'natalia@example.com', plan: 'Business', status: 'Активний', reg: '2023-07-19' },
+]
+
+const INIT_NOTIF = [
+  { id: 1, sto: 'Bosch Service Київ', service: 'Заміна ременя ГРМ', car: 'Toyota Camry', cost: 12500, date: '2025-03-27', read: false, carId: 2 },
+  { id: 2, sto: 'Авто Майстер', service: 'Заміна амортизаторів', car: 'BMW 5 Series', cost: 9800, date: '2025-03-26', read: false, carId: 1 },
+]
+
+const NAV = [
+  { id: 'dashboard', label: 'Дашборд', icon: LayoutDashboard },
+  { id: 'cars', label: 'Мій гараж', icon: Car },
+  { id: 'records', label: 'Сервіс', icon: ClipboardList },
+  { id: 'ai', label: 'AI Механік', icon: Bot },
+  { id: 'plans', label: 'Тарифи', icon: CreditCard },
+  { id: 'settings', label: 'Налаштування', icon: Settings },
+  { id: 'admin_users', label: 'Адмін панель', icon: Users },
+]
+
+const cx = (...a) => a.filter(Boolean).join(' ')
+const fmt = (n) => n.toLocaleString('uk-UA')
+
+function Modal({ open, onClose, title, children, wide }) {
+  useEffect(() => { if (open) document.body.style.overflow = 'hidden'; else document.body.style.overflow = ''; return () => { document.body.style.overflow = '' } }, [open])
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className={cx('relative z-10 bg-white dark:bg-[#111C44] rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-y-auto scrollbar-thin', wide ? 'max-w-3xl' : 'max-w-md')}>
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-white/5">
+          <h2 className="text-lg font-bold text-[#2B3674] dark:text-white">{title}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-xl transition-all text-[#A3AED0]"><X size={18} /></button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function Btn({ children, onClick, variant = 'primary', sm, className, disabled }) {
+  const base = 'font-semibold rounded-xl transition-all duration-200 flex items-center gap-2 disabled:opacity-50'
+  const size = sm ? 'px-3 py-1.5 text-sm' : 'px-5 py-2.5 text-sm'
+  const v = {
+    primary: 'bg-[#4318FF] hover:bg-[#3311DD] text-white shadow-lg shadow-[#4318FF]/30',
+    secondary: 'bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-[#2B3674] dark:text-white',
+    danger: 'bg-red-500 hover:bg-red-600 text-white',
+    ghost: 'hover:bg-gray-100 dark:hover:bg-white/10 text-[#A3AED0] hover:text-[#2B3674] dark:hover:text-white',
+  }
+  return <button onClick={onClick} disabled={disabled} className={cx(base, size, v[variant], className)}>{children}</button>
+}
+
+function Input({ label, value, onChange, type = 'text', placeholder }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {label && <label className="text-xs font-semibold text-[#A3AED0] uppercase tracking-wide">{label}</label>}
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-[#2B3674] dark:text-white placeholder-[#A3AED0] focus:outline-none focus:ring-2 focus:ring-[#4318FF]/50 transition-all text-sm" />
+    </div>
+  )
+}
+
+function Select({ label, value, onChange, options }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {label && <label className="text-xs font-semibold text-[#A3AED0] uppercase tracking-wide">{label}</label>}
+      <select value={value} onChange={e => onChange(e.target.value)}
+        className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-[#2B3674] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#4318FF]/50 transition-all text-sm">
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  )
+}
+
+function Card({ children, className }) {
+  return <div className={cx('bg-white dark:bg-[#111C44] rounded-2xl shadow-[0_18px_40px_rgba(112,144,176,0.12)] dark:shadow-none p-5', className)}>{children}</div>
+}
