@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, createContext, useContext } from 'react'
-import { LayoutDashboard, Car, ClipboardList, Bot, CreditCard, Settings, Users, Bell, Moon, Sun, ChevronRight, ChevronLeft, ChevronDown, Plus, X, ShieldCheck, MapPin, Send, LogOut, Sparkles, Filter, Check, FileText, Layers, Calendar, Pencil, Trash2, Download } from 'lucide-react'
+import { LayoutDashboard, Car, ClipboardList, Bot, CreditCard, Settings, Users, Bell, Moon, Sun, ChevronRight, ChevronLeft, ChevronDown, Plus, X, ShieldCheck, MapPin, Send, LogOut, Sparkles, Filter, Check, FileText, Layers, Calendar, Pencil, Trash2, Download, Lock } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { BRANDS_MODELS } from './data/cars'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "firebase/auth"
-import { doc, getDoc, setDoc } from "firebase/firestore"
+import { doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { auth, db } from './firebase'
+import { askGemini } from './lib/ai'
+import ReactMarkdown from 'react-markdown'
 
 const C = '#5C3EFE'
 const ThemeCtx = createContext(false)
@@ -21,24 +23,6 @@ const NAV = [
 ]
 const MONTHS = ['Квіт','Тра','Чер','Лип','Сер','Вер','Жов','Лис','Гру','Січ','Лют','Бер']
 const CHART = [2400,1200,3800,8900,2100,4500,6200,1800,9100,3300,5700,4800]
-const INIT_CARS = [
-  { id:1, brand:'BMW 5 Series', plate:'BM4554AA', mileage:136400, year:2021, status:'ok', vin:'WBAJR3100X0123456' },
-  { id:2, brand:'Toyota Camry', plate:'KA7777BB', mileage:85000, year:2019, status:'warning', vin:'JTNBK13AX01234567' },
-  { id:3, brand:'Tesla Model 3', plate:'AI9111AA', mileage:42000, year:2023, status:'ok', vin:'5YJ3E1EA0NF123456' },
-]
-const INIT_HISTORY = [
-  { id:1, carId:1, date:'2025-03-10', category:'maintenance', title:'Заміна масла та фільтрів', cost:3200, status:'verified', garage:'Офіційний дилер BMW', mileage: 136400 },
-  { id:2, carId:1, date:'2025-01-15', category:'repair', title:'Заміна гальмівних колодок', cost:5600, status:'verified', garage:'AWT Bavaria', mileage: 134200 },
-  { id:3, carId:2, date:'2025-02-20', category:'maintenance', title:'Заміна ременя ГРМ', cost:12500, status:'pending', garage:'СТО "Гараж"', mileage: 85000 },
-  { id:4, carId:2, date:'2024-11-05', category:'tires', title:'Заміна зимових шин', cost:8900, status:'pending', garage:'Шиномонтаж VIP', mileage: 80100 },
-  { id:5, carId:3, date:'2025-03-01', category:'diagnostic', title:'Оновлення прошивки + діагностика', cost:0, status:'verified', garage:'Tesla Service Center', mileage: 42000 },
-]
-const MOCK_USERS = [
-  { id:1, name:'Іван Петренко', email:'ivan@example.com', role:'Admin', status:'active', plan:'Premium' },
-  { id:2, name:'Олена Коваль', email:'olena@example.com', role:'User', status:'active', plan:'Free' },
-  { id:3, name:'Сергій Мороз', email:'serhiy@example.com', role:'User', status:'offline', plan:'Premium' },
-  { id:4, name:'Марія Бондаренко', email:'maria@example.com', role:'Manager', status:'active', plan:'Business' },
-]
 const AI_REPLIES = [
   'Проаналізував ваш запит. Рекомендую звернутися до офіційного СТО для детальної діагностики.',
   'На основі пробігу вашого автомобіля, настав час для планового ТО. Перевірте масло та фільтри.',
@@ -89,7 +73,8 @@ function PrimaryBtn({ children, onClick, type='button', className='' }) {
 }
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
-function Sidebar({ tab, setTab, col, setCol }) {
+function Sidebar({ tab, setTab, col, setCol, isAdmin }) {
+  const links = NAV.filter(n => n.id !== 'admin' || isAdmin)
   return (
     <aside className="flex flex-col h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shrink-0 transition-all duration-300 print:hidden" style={{width:col?72:260}}>
       <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-200 dark:border-gray-700">
@@ -100,7 +85,7 @@ function Sidebar({ tab, setTab, col, setCol }) {
         </button>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {NAV.map(({id,label,icon:Icon}) => {
+        {links.map(({id,label,icon:Icon}) => {
           const active = tab===id
           return (
             <button key={id} onClick={() => setTab(id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${active?'text-white shadow-lg':'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'}`} style={active?{background:C}:{}}>
@@ -258,36 +243,72 @@ function DashboardView({ carList, historyList }) {
 }
 
 // ─── Garage ──────────────────────────────────────────────────────────────────
-function GarageView({ carList, onAddCar, onSelectCar }) {
+function GarageView({ carList, onAddCar, onSelectCar, userProfile, onGoPlans }) {
   const [showAdd, setShowAdd] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
+
+  const plan = userProfile?.plan || 'Free'
+  const limit = plan === 'Business' ? Infinity : (plan === 'Premium' ? 5 : 1)
+  const isLimitReached = carList.length >= limit
+
+  const handleAddClick = () => {
+    if (isLimitReached) setShowPaywall(true)
+    else setShowAdd(true)
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Мій гараж</h1>
-        <PrimaryBtn onClick={() => setShowAdd(true)}><Plus size={18}/>Додати авто</PrimaryBtn>
+        <PrimaryBtn onClick={handleAddClick}><Plus size={18}/>Додати авто</PrimaryBtn>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        {carList.map(car => {
-          const logo = getBrandLogo(car.brand)
-          return (
-            <div key={car.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 p-5 hover:shadow-md dark:hover:shadow-gray-900 transition-all">
-              <div className="flex items-center gap-3 mb-5">
-                {logo ? <img src={logo} alt={car.brand} className="w-12 h-12 object-contain"/>
-                  : <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 font-bold">{car.brand[0]}</div>}
-                <div>
-                  <p className="font-semibold text-gray-900 dark:text-white">{car.brand}</p>
-                  <p className="text-sm text-gray-400">{car.plate}</p>
+      {carList.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+           <Car size={48} className="text-gray-300 mb-4" />
+           <p className="text-gray-500 font-medium">У вашому гаражі поки немає автомобілів</p>
+           <button onClick={handleAddClick} className="mt-4 text-sm font-bold" style={{color:C}}>Додати перший автомобіль</button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {carList.map(car => {
+            const logo = getBrandLogo(car.brand)
+            return (
+              <div key={car.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 p-5 hover:shadow-md dark:hover:shadow-gray-900 transition-all">
+                <div className="flex items-center gap-3 mb-5">
+                  {logo ? <img src={logo} alt={car.brand} className="w-12 h-12 object-contain"/>
+                    : <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 font-bold">{car.brand[0]}</div>}
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white">{car.brand}</p>
+                    <p className="text-sm text-gray-400">{car.plate}</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-base font-bold text-gray-900 dark:text-white">{fmt(car.mileage)} КМ</p>
+                  <button onClick={() => onSelectCar(car)} className="text-sm font-semibold hover:opacity-70 transition-all" style={{color:C}}>Деталі</button>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-base font-bold text-gray-900 dark:text-white">{fmt(car.mileage)} КМ</p>
-                <button onClick={() => onSelectCar(car)} className="text-sm font-semibold hover:opacity-70 transition-all" style={{color:C}}>Деталі</button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
       {showAdd && <AddCarModal onClose={() => setShowAdd(false)} onAdd={car => { onAddCar(car); setShowAdd(false) }}/>}
+      {showPaywall && (
+        <Modal title="Обмеження плану" onClose={() => setShowPaywall(false)}>
+          <div className="flex flex-col items-center text-center gap-4 py-4">
+            <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center text-[#5C3EFE]">
+              <Lock size={32} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Ліміт автомобілів вичерпано</h3>
+              <p className="text-sm text-gray-500 mt-2">На плані <strong>{plan}</strong> ви можете додати не більше {limit} авто. Оновіть підписку для розширення можливостей.</p>
+            </div>
+            <div className="flex gap-3 w-full mt-2">
+              <button onClick={() => setShowPaywall(false)} className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm hover:opacity-80 transition-all">Пізніше</button>
+              <button onClick={() => { setShowPaywall(false); onGoPlans() }} className="flex-1 py-3 text-white rounded-xl font-semibold text-sm transition-all shadow-lg" style={{background:C}}>Оновити план</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
@@ -741,21 +762,31 @@ function ServiceModal({ onClose, onSave, carList, historyList, initialData }) {
 }
 
 // ─── AI Mechanic ─────────────────────────────────────────────────────────────
-function AIView({ carList }) {
-  const [msgs, setMsgs] = useState([{ id:1, text:`Вітаю! Я ваш AI-асистент. Бачу, у ${carList[0]?.brand||'вашого авто'} скоро планове ТО. Допомогти підібрати запчастини?`, sender:'ai' }])
+function AIView({ carList, historyList }) {
+  const [msgs, setMsgs] = useState([
+    { id: 1, text: `Вітаю! Я ваш AI-асистент AutoLog. Бачу у вас ${carList.length > 0 ? carList.map(c => c.brand).join(', ') : 'автомобілі'}. Чим можу допомогти зараз?`, sender: 'ai' }
+  ])
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const ref = useRef(null)
-  useEffect(() => { ref.current?.scrollIntoView({behavior:'smooth'}) }, [msgs, typing])
-  const send = () => {
-    if (!input.trim()) return
-    setMsgs(p => [...p, {id:Date.now(), text:input.trim(), sender:'user'}])
+
+  useEffect(() => { ref.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, typing])
+
+  const send = async () => {
+    if (!input.trim() || typing) return
+    const userText = input.trim()
+    setMsgs(p => [...p, { id: Date.now(), text: userText, sender: 'user' }])
     setInput('')
     setTyping(true)
-    setTimeout(() => {
-      setMsgs(p => [...p, {id:Date.now()+1, text:AI_REPLIES[Math.floor(Math.random()*AI_REPLIES.length)], sender:'ai'}])
+
+    try {
+      const response = await askGemini(userText, carList, historyList);
+      setMsgs(p => [...p, { id: Date.now() + 1, text: response, sender: 'ai' }])
+    } catch (e) {
+      setMsgs(p => [...p, { id: Date.now() + 1, text: "Вибачте, сталася помилка з'єднання з AI.", sender: 'ai' }])
+    } finally {
       setTyping(false)
-    }, 1500)
+    }
   }
   return (
     <div className="flex flex-col" style={{height:'calc(100vh - 140px)'}}>
@@ -765,11 +796,20 @@ function AIView({ carList }) {
           {msgs.map(m => (
             <div key={m.id} className={`flex ${m.sender==='user'?'justify-end':'justify-start'}`}>
               {m.sender==='ai'
-                ? <div className="max-w-[75%]">
-                    <div className="flex items-center gap-1.5 mb-1"><Sparkles size={12} style={{color:C}}/><span className="text-[10px] font-bold tracking-wider" style={{color:C}}>AI АСИСТЕНТ</span></div>
-                    <div className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-900 dark:text-white shadow-sm">{m.text}</div>
+                ? <div className="max-w-[85%] sm:max-w-[75%]">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
+                        <Sparkles size={12} style={{color:C}}/>
+                      </div>
+                      <span className="text-[10px] font-bold tracking-wider opacity-70" style={{color:C}}>AI АСИСТЕНТ</span>
+                    </div>
+                    <div className="bg-white dark:bg-gray-700/50 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-900 dark:text-gray-100 shadow-sm backdrop-blur-sm shadow-indigo-500/5">
+                      <div className="markdown-content">
+                        <ReactMarkdown>{m.text}</ReactMarkdown>
+                      </div>
+                    </div>
                   </div>
-                : <div className="max-w-[75%] px-4 py-3 rounded-2xl rounded-tr-sm text-sm text-white" style={{background:C}}>{m.text}</div>
+                : <div className="max-w-[85%] sm:max-w-[75%] px-4 py-3 rounded-2xl rounded-tr-sm text-sm text-white shadow-lg shadow-indigo-500/10" style={{background:C}}>{m.text}</div>
               }
             </div>
           ))}
@@ -792,48 +832,101 @@ function AIView({ carList }) {
 }
 
 // ─── Plans ───────────────────────────────────────────────────────────────────
-function PlansView({ carList }) {
+function PlansView({ carList, userProfile, onUpdatePlan }) {
+  const [loading, setLoading] = useState(null)
+  const [showSuccess, setShowSuccess] = useState(false)
+  
+  const currentPlan = userProfile?.plan || 'Free'
+  
   const plans = [
-    { name:'Free', price:0, features:['1 автомобіль','10 записів/міс','AI: 5 запитів','Базовий звіт'], current:false },
-    { name:'Premium', price:299, features:['10 автомобілів','Необмежені записи','AI: 100 запитів','Carfax звіт','Push-сповіщення'], current:true },
-    { name:'Business', price:799, features:['Безліміт авто','Команда до 10 осіб','AI: необмежено','API доступ','Пріоритетна підтримка'], current:false },
+    { id:'Free', name:'Free', price:0, features:['1 автомобіль','10 записів/міс','AI: 5 запитів','Базовий звіт'], limit:1, ai:5 },
+    { id:'Premium', name:'Premium', price:299, features:['5 автомобілів','Необмежені записи','AI: 100 запитів','Carfax звіт','Push-сповіщення'], limit:5, ai:100 },
+    { id:'Business', name:'Business', price:799, features:['Безліміт авто','Команда до 10 осіб','AI: необмежено','API доступ','Пріоритетна підтримка'], limit:Infinity, ai:9999 },
   ]
+
+  const handleSelect = async (planId) => {
+    if (planId === currentPlan) return
+    setLoading(planId)
+    // Симуляція оплати
+    setTimeout(async () => {
+      try {
+        await onUpdatePlan(planId)
+        setLoading(null)
+        setShowSuccess(true)
+        setTimeout(() => setShowSuccess(false), 3000)
+      } catch(e) {
+        setLoading(null)
+        alert('Помилка оплати')
+      }
+    }, 1500)
+  }
+
+  const activePlanData = plans.find(p => p.id === currentPlan) || plans[0]
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 relative">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Тарифи</h1>
+      {showSuccess && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-2xl shadow-xl z-50 flex items-center gap-2 animate-bounce">
+          <Check size={20}/> План успішно оновлено!
+        </div>
+      )}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 p-6">
         <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Ліміти акаунту</h2>
-        {[['Автомобілі', carList.length, 10],['AI запити (місяць)', 23, 100]].map(([label,val,max]) => (
-          <div key={label} className="mb-4">
-            <div className="flex justify-between text-sm mb-1.5"><span className="text-gray-500 dark:text-gray-400">{label}</span><span className="font-medium text-gray-900 dark:text-white">{val} / {label==='Автомобілі'?'Безліміт':max}</span></div>
-            <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden"><div className="h-full rounded-full transition-all" style={{width:`${Math.min((val/max)*100,100)}%`, background:C}}/></div>
-          </div>
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           <div className="mb-0">
+             <div className="flex justify-between text-sm mb-1.5">
+               <span className="text-gray-500 dark:text-gray-400">Автомобілі</span>
+               <span className="font-medium text-gray-900 dark:text-white">{carList.length} / {activePlanData.limit === Infinity ? '∞' : activePlanData.limit}</span>
+             </div>
+             <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+               <div className="h-full rounded-full transition-all" style={{width:`${Math.min((carList.length/(activePlanData.limit||1))*100,100)}%`, background:C}}/>
+             </div>
+           </div>
+           <div className="mb-0">
+             <div className="flex justify-between text-sm mb-1.5">
+               <span className="text-gray-500 dark:text-gray-400">AI запити (місяць)</span>
+               <span className="font-medium text-gray-900 dark:text-white">0 / {activePlanData.ai}</span>
+             </div>
+             <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+               <div className="h-full rounded-full transition-all" style={{width:`0%`, background:C}}/>
+             </div>
+           </div>
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        {plans.map(p => (
-          <div key={p.name} className={`rounded-2xl p-6 flex flex-col ${p.current?'text-white':'bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60'}`} style={p.current?{background:`linear-gradient(135deg,#7C3AED,${C})`}:{}}>
-            <div className="flex items-center justify-between mb-1">
-              <h3 className={`text-xl font-bold ${p.current?'text-white':'text-gray-900 dark:text-white'}`}>{p.name}</h3>
-              {p.current && <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-medium">Активний</span>}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {plans.map(p => {
+          const isCurrent = p.id === currentPlan
+          const isPending = loading === p.id
+          return (
+            <div key={p.id} className={`rounded-2xl p-6 flex flex-col relative overflow-hidden transition-all ${isCurrent ? 'ring-2 ring-[#5C3EFE] transform scale-[1.02] shadow-xl' : 'bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60'}`}>
+              {isCurrent && <div className="absolute top-0 right-0 bg-[#5C3EFE] text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider">Поточний</div>}
+              <div className="mb-1">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{p.name}</h3>
+              </div>
+              <div className="mb-5 mt-2">
+                <span className="text-3xl font-black text-gray-900 dark:text-white">{p.price===0?'Безкоштовно':p.price+' ₴'}</span>
+                {p.price>0&&<span className="text-sm text-gray-400">/міс</span>}
+              </div>
+              <div className="flex-1 space-y-2 mb-6">
+                {p.features.map(f => (
+                  <div key={f} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <Check size={14} className="text-green-500 shrink-0"/>
+                    <span>{f}</span>
+                  </div>
+                ))}
+              </div>
+              <button 
+                onClick={() => handleSelect(p.id)}
+                disabled={isCurrent || !!loading}
+                className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${isCurrent ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-default' : 'text-white hover:opacity-90 active:scale-95 shadow-md'}`}
+                style={!isCurrent ? {background:C} : {}}
+              >
+                {isPending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/> : (isCurrent ? 'Активовано' : 'Обрати план')}
+              </button>
             </div>
-            <div className="mb-5 mt-2">
-              <span className={`text-3xl font-black ${p.current?'text-white':'text-gray-900 dark:text-white'}`}>{p.price===0?'Безкоштовно':p.price+' грн'}</span>
-              {p.price>0&&<span className={`text-sm ${p.current?'text-white/70':'text-gray-400'}`}>/міс</span>}
-            </div>
-            <div className="flex-1 space-y-2 mb-6">
-              {p.features.map(f => (
-                <div key={f} className="flex items-center gap-2 text-sm">
-                  <Check size={14} className={p.current?'text-white/80':'text-green-500'}/>
-                  <span className={p.current?'text-white/90':'text-gray-600 dark:text-gray-300'}>{f}</span>
-                </div>
-              ))}
-            </div>
-            <button className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${p.current?'bg-white/20 hover:bg-white/30 text-white':'text-white hover:opacity-90'}`} style={!p.current?{background:C}:{}}>
-              {p.current?'Поточний план':'Обрати план'}
-            </button>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -951,7 +1044,36 @@ function SettingsView({ currentUser, userProfile, setUserProfile }) {
 }
 
 // ─── Admin ───────────────────────────────────────────────────────────────────
-function AdminView({ users, onUpdateUserPlan }) {
+function AdminView() {
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getDocs(collection(db, 'users')).then(snap => {
+      setUsers(snap.docs.map(d => ({id: d.id, ...d.data()})))
+      setLoading(false)
+    }).catch(e => {
+      console.error(e)
+      setLoading(false)
+    })
+  }, [])
+
+  const handleUpdatePlan = async (id, newPlan) => {
+    try {
+      await updateDoc(doc(db, 'users', id), { plan: newPlan })
+      setUsers(p => p.map(u => u.id === id ? { ...u, plan: newPlan } : u))
+    } catch (e) { console.error(e) }
+  }
+  
+  const handleUpdateRole = async (id, newRole) => {
+    try {
+      await updateDoc(doc(db, 'users', id), { role: newRole })
+      setUsers(p => p.map(u => u.id === id ? { ...u, role: newRole } : u))
+    } catch (e) { console.error(e) }
+  }
+
+  if (loading) return <div className="p-6 text-gray-500">Завантаження користувачів...</div>
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Адмін панель</h1>
@@ -962,7 +1084,7 @@ function AdminView({ users, onUpdateUserPlan }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-gray-400 text-xs uppercase tracking-wide bg-gray-50 dark:bg-gray-700/50">
-              {['Користувач','Email','Роль','Статус','Підписка'].map(h => <th key={h} className="text-left px-6 py-3 font-semibold">{h}</th>)}
+              {['Користувач','Email','Телефон','Роль','Підписка'].map(h => <th key={h} className="text-left px-6 py-3 font-semibold">{h}</th>)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -970,21 +1092,30 @@ function AdminView({ users, onUpdateUserPlan }) {
               <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0" style={{background:C}}>{u.name.charAt(0)}</div>
-                    <span className="font-medium text-gray-900 dark:text-white">{u.name}</span>
+                    {u.avatarBase64 ? (
+                      <img src={u.avatarBase64} className="w-9 h-9 rounded-xl object-cover shrink-0"/>
+                    ) : (
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 uppercase" style={{background:C}}>{u.name?.[0] || u.email?.[0] || 'U'}</div>
+                    )}
+                    <span className="font-medium text-gray-900 dark:text-white">{u.name || 'Користувач'}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{u.email}</td>
-                <td className="px-6 py-4"><span className="px-2.5 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 rounded-lg text-xs font-semibold">{u.role}</span></td>
+                <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{u.phone || '—'}</td>
                 <td className="px-6 py-4">
-                  <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${u.status==='active'?'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400':'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
-                    {u.status==='active'?'Активний':'Не в мережі'}
-                  </span>
+                  <select
+                    value={u.role || 'User'}
+                    onChange={e => handleUpdateRole(u.id, e.target.value)}
+                    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 outline-none text-gray-900 dark:text-white text-xs rounded-lg focus:ring-[#5C3EFE] focus:border-[#5C3EFE] block w-full p-2 cursor-pointer transition-colors"
+                  >
+                    <option value="User">User</option>
+                    <option value="Admin">Admin</option>
+                  </select>
                 </td>
                 <td className="px-6 py-4">
                   <select
-                    value={u.plan}
-                    onChange={e => onUpdateUserPlan(u.id, e.target.value)}
+                    value={u.plan || 'Free'}
+                    onChange={e => handleUpdatePlan(u.id, e.target.value)}
                     className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 outline-none text-gray-900 dark:text-white text-xs rounded-lg focus:ring-[#5C3EFE] focus:border-[#5C3EFE] block w-full p-2 cursor-pointer transition-colors"
                   >
                     <option value="Free">Free</option>
@@ -1021,11 +1152,22 @@ export default function AutoLogDashboard() {
           } else {
             setUserProfile({ phone: '', city: '', avatarBase64: '' })
           }
+          
+          const carSnap = await getDocs(query(collection(db, 'cars'), where('userId', '==', user.uid)))
+          setCarList(carSnap.docs.map(d => ({id:d.id, ...d.data()})))
+          
+          const histSnap = await getDocs(query(collection(db, 'history'), where('userId', '==', user.uid)))
+          const hList = histSnap.docs.map(d => ({id:d.id, ...d.data()}))
+          hList.sort((a,b) => new Date(b.date) - new Date(a.date))
+          setHistoryList(hList)
+
         } catch (e) {
           console.error("Firestore error:", e)
         }
       } else {
         setUserProfile(null)
+        setCarList([])
+        setHistoryList([])
       }
     })
     return () => unsub()
@@ -1034,50 +1176,94 @@ export default function AutoLogDashboard() {
   const [tab, setTab] = useState('dashboard')
   const [col, setCol] = useState(false)
   const [isDark, setDark] = useState(false)
-  const [carList, setCarList] = useState(INIT_CARS)
-  const [historyList, setHistoryList] = useState(INIT_HISTORY)
+  const [carList, setCarList] = useState([])
+  const [historyList, setHistoryList] = useState([])
   const [selectedCar, setSelectedCar] = useState(null)
-  const [users, setUsers] = useState(MOCK_USERS)
   const [showReport, setShowReport] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
   const [incomingTransfer, setIncomingTransfer] = useState(null)
 
-  const updateUserPlan = (id, newPlan) => setUsers(p => p.map(u => u.id === id ? { ...u, plan: newPlan } : u))
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark)
+  }, [isDark])
 
-  const addCar = car => setCarList(p => [car, ...p])
-  const addService = svc => setHistoryList(p => [svc, ...p])
-  const updateService = svc => setHistoryList(p => p.map(h => h.id===svc.id ? svc : h))
-  const deleteService = id => setHistoryList(p => p.filter(h => h.id!==id))
-  const goService = () => { setSelectedCar(null); setTab('service') }
+  const isAdmin = currentUser?.email === 'olehmelnykovych@gmail.com' || userProfile?.role === 'Admin'
 
-  const handleTransfer = (email) => {
-    if (!selectedCar) return
-    const cid = selectedCar.id
-    const transferredRecord = historyList.filter(h => h.carId === cid)
-    setCarList(p => p.filter(c => c.id !== cid))
-    setHistoryList(p => p.filter(h => h.carId !== cid))
-    setShowTransfer(false)
-    setSelectedCar(null)
-    setTab('dashboard')
-    
-    // Simulate incoming transfer
-    setIncomingTransfer({ 
-      car: selectedCar, 
-      history: transferredRecord,
-      brand: selectedCar.brand, 
-      from: users[0]?.name || 'Користувач' 
-    })
-    setTimeout(() => alert(`Авто успішно передано. Відправлено сповіщення користувачу ${email}.`), 300)
+  const addCar = async car => {
+    if (!currentUser) return
+    try {
+      const docRef = await addDoc(collection(db, 'cars'), { ...car, userId: currentUser.uid })
+      setCarList(p => [{ ...car, id: docRef.id, userId: currentUser.uid }, ...p])
+    } catch(e) { console.error(e) }
   }
 
-  const handleAcceptTransfer = () => {
-    if (incomingTransfer?.car) {
-      setCarList(p => [incomingTransfer.car, ...p])
-      if (incomingTransfer.history) {
-        setHistoryList(p => [...incomingTransfer.history, ...p])
+  const addService = async svc => {
+    if (!currentUser) return
+    try {
+      const docRef = await addDoc(collection(db, 'history'), { ...svc, userId: currentUser.uid })
+      setHistoryList(p => [{ ...svc, id: docRef.id, userId: currentUser.uid }, ...p])
+    } catch(e) { console.error(e) }
+  }
+
+  const updateService = async svc => {
+    if (!currentUser) return
+    try {
+      await updateDoc(doc(db, 'history', svc.id), svc)
+      setHistoryList(p => p.map(h => h.id===svc.id ? svc : h))
+    } catch(e) { console.error(e) }
+  }
+
+  const deleteService = async id => {
+    if (!currentUser) return
+    try {
+      await deleteDoc(doc(db, 'history', id))
+      setHistoryList(p => p.filter(h => h.id!==id))
+    } catch(e) { console.error(e) }
+  }
+
+  const goService = () => { setSelectedCar(null); setTab('service') }
+
+  const handleTransfer = async (email) => {
+    if (!selectedCar || !currentUser) return
+    try {
+      const q = query(collection(db, 'users'), where('email', '==', email))
+      const snap = await getDocs(q)
+      if (snap.empty) {
+        alert("Користувача з такою поштою не знайдено!")
+        return
       }
+      const recipientUid = snap.docs[0].id
+      
+      const batch = writeBatch(db)
+      batch.update(doc(db, 'cars', selectedCar.id), { userId: recipientUid })
+      
+      const historyToTransfer = historyList.filter(h => h.carId === selectedCar.id)
+      historyToTransfer.forEach(h => {
+        batch.update(doc(db, 'history', h.id), { userId: recipientUid })
+      })
+
+      await batch.commit()
+
+      setCarList(p => p.filter(c => c.id !== selectedCar.id))
+      setHistoryList(p => p.filter(h => h.carId !== selectedCar.id))
+      setShowTransfer(false)
+      setSelectedCar(null)
+      setTab('dashboard')
+      alert(`Авто успішно передано користувачу ${email}!`)
+    } catch (e) {
+      console.error(e)
+      alert("Помилка передачі авто.")
     }
-    setIncomingTransfer(null)
+  }
+
+  const handleAcceptTransfer = () => setIncomingTransfer(null)
+
+  const handleUpdatePlan = async (planId) => {
+     if (!currentUser) return
+     try {
+       await updateDoc(doc(db, 'users', currentUser.uid), { plan: planId })
+       setUserProfile(p => ({ ...p, plan: planId }))
+     } catch(e) { console.error(e); throw e }
   }
 
   const handleLogout = () => {
@@ -1097,17 +1283,17 @@ export default function AutoLogDashboard() {
   return (
     <ThemeCtx.Provider value={isDark}>
       <div className={`flex h-screen w-full font-sans overflow-hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
-        <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol}/>
+        <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin}/>
         <div className="flex flex-1 flex-col overflow-hidden">
           <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={handleAcceptTransfer} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={handleLogout} currentUser={currentUser} userProfile={userProfile}/>
           <main className="flex-1 overflow-y-auto p-6">
             {tab==='dashboard' && <DashboardView carList={carList} historyList={historyList}/>}
-            {tab==='garage'    && <GarageView carList={carList} onAddCar={addCar} onSelectCar={setSelectedCar}/>}
+            {tab==='garage'    && <GarageView carList={carList} onAddCar={addCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => setTab('plans')}/>}
             {tab==='service'   && <ServiceView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService}/>}
-            {tab==='ai'        && <AIView carList={carList}/>}
-            {tab==='plans'     && <PlansView carList={carList}/>}
+            {tab==='ai'        && <AIView carList={carList} historyList={historyList}/>}
+            {tab==='plans'     && <PlansView carList={carList} userProfile={userProfile} onUpdatePlan={handleUpdatePlan}/>}
             {tab==='settings'  && <SettingsView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile}/>}
-            {tab==='admin'     && <AdminView users={users} onUpdateUserPlan={updateUserPlan}/>}
+            {tab==='admin'     && isAdmin && <AdminView />}
           </main>
         </div>
         {selectedCar && !showReport && !showTransfer && (
@@ -1160,6 +1346,12 @@ function AuthScreen({ isDark, setDark }) {
       } else {
         const cred = await createUserWithEmailAndPassword(auth, email, password)
         if (name.trim()) await updateProfile(cred.user, { displayName: name.trim() })
+        await setDoc(doc(db, 'users', cred.user.uid), {
+           email: cred.user.email,
+           phone: '',
+           city: '',
+           avatarBase64: ''
+        }, { merge: true })
       }
     } catch (error) {
       console.error(error)

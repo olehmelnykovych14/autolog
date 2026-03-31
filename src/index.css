@@ -10,10 +10,10 @@
   }
   body {
     font-family: 'Inter', system-ui, sans-serif;
-    @apply bg-[#F4F7FE] text-[#2B3674];
+    @apply bg-gray-50 text-gray-900 transition-colors duration-200;
   }
-  .dark body {
-    @apply bg-[#0B1437] text-white;
+  html.dark body {
+    @apply bg-gray-950 text-white;
   }
 }
 
@@ -32,3 +32,20 @@
     border-radius: 9999px;
   }
 }
+
+.markdown-content p {
+  @apply mb-2 last:mb-0 leading-relaxed;
+}
+.markdown-content strong {
+  @apply font-bold text-[#5C3EFE] dark:text-[#A49CFF];
+}
+.markdown-content ul, .markdown-content ol {
+  @apply my-2 pl-4 space-y-1;
+}
+.markdown-content li {
+  @apply list-disc last:mb-0 leading-relaxed;
+}
+.markdown-content {
+  @apply text-sm leading-relaxed;
+}
+
