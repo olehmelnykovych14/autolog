@@ -81,10 +81,13 @@ function PrimaryBtn({ children, onClick, type = 'button', className = '' }) {
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
 function Sidebar({ tab, setTab, col, setCol, isAdmin, userProfile }) {
+  const isDark = useContext(ThemeCtx)
   const isSto = userProfile?.accountType === 'sto'
   const navSource = isSto ? NAV_STO : NAV_OWNER
   const links = navSource.filter(n => n.id !== 'admin' || isAdmin)
-  const bgClass = isSto ? "bg-[#0F172A] border-[#1E293B]" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+  const bgClass = isSto 
+    ? (isDark ? "bg-[#0F172A] border-[#1E293B]" : "bg-white border-gray-200") 
+    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
   return (
     <aside className={`flex flex-col h-full shrink-0 transition-all duration-300 print:hidden border-r ${bgClass}`} style={{ width: col ? 72 : 260 }}>
       <div className={`flex flex-col items-center justify-center ${col ? 'py-10' : 'px-4 py-8'} border-b border-gray-200 dark:border-gray-700 min-h-[7rem] relative overflow-hidden`}>
@@ -93,8 +96,8 @@ function Sidebar({ tab, setTab, col, setCol, isAdmin, userProfile }) {
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white font-bold text-base shadow-xl shadow-indigo-500/30" style={{ background: isSto ? '#3B82F6' : C }}>AL</div>
               <div className="transition-all duration-300">
-                <p className={`font-bold leading-tight text-lg ${isSto ? 'text-white' : 'text-gray-900 dark:text-white'}`}>AutoLog</p>
-                <p className={`text-[11px] uppercase tracking-widest leading-none mt-1 ${isSto ? 'text-[#94A3B8]' : 'text-gray-400'}`}>Premium Garage</p>
+                <p className={`font-bold leading-tight text-lg ${isSto ? (isDark ? 'text-white' : 'text-gray-900') : 'text-gray-900 dark:text-white'}`}>AutoLog</p>
+                <p className={`text-[11px] uppercase tracking-widest leading-none mt-1 ${isSto ? (isDark ? 'text-[#94A3B8]' : 'text-gray-400') : 'text-gray-400'}`}>Premium Garage</p>
               </div>
             </div>
             <button onClick={() => setCol(true)} className="p-3 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-all hover:text-indigo-600">
@@ -114,7 +117,7 @@ function Sidebar({ tab, setTab, col, setCol, isAdmin, userProfile }) {
         {links.map(({ id, label, icon: Icon }) => {
           const active = tab === id
           return (
-            <button key={id} onClick={() => setTab(id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${active ? 'text-white shadow-lg' : (isSto ? 'text-[#94A3B8] hover:bg-[#1E293B] hover:text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white')}`} style={active ? { background: isSto ? '#3B82F6' : C } : {}}>
+            <button key={id} onClick={() => setTab(id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${active ? 'text-white shadow-lg' : (isSto ? (isDark ? 'text-[#94A3B8] hover:bg-[#1E293B] hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900') : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white')}`} style={active ? { background: isSto ? '#3B82F6' : C } : {}}>
               <Icon size={18} className="shrink-0" />{!col && label}
             </button>
           )
@@ -1436,6 +1439,7 @@ function AdminView() {
 }
 
 function STODashboardView({ userProfile, setTab }) {
+  const isDark = useContext(ThemeCtx)
   const CURRENT_STO_NAME = userProfile?.stoName || "AWT Bavaria (Київ)"
   const [clientCars] = useState([
     { id: 101, brand: 'Audi Q5', plate: 'BC4554EP', vin: '22222222222222222', ownerName: 'Олександр' }
@@ -1563,14 +1567,14 @@ function STODashboardView({ userProfile, setTab }) {
       )}
 
       <div>
-        <h1 className="text-3xl font-black text-[#0F172A] dark:text-white">Кабінет партнера: {CURRENT_STO_NAME}</h1>
+        <h1 className="text-3xl font-black text-gray-900 dark:text-white">Кабінет партнера: {CURRENT_STO_NAME}</h1>
         <p className="text-gray-500 dark:text-gray-400 mt-2">Пошук авто та відправка записів про сервіс на підтвердження власникам</p>
       </div>
 
-      <div className="bg-[#1E293B] rounded-2xl p-8 shadow-sm">
+      <div className="bg-white dark:bg-[#1E293B] border border-gray-100 dark:border-none rounded-2xl p-8 shadow-sm">
         <div className="flex items-end gap-4 max-w-2xl">
           <div className="flex-1">
-            <label className="block text-sm font-bold text-white mb-2 ml-1">VIN-код автомобіля</label>
+            <label className="block text-sm font-bold text-gray-700 dark:text-white mb-2 ml-1">VIN-код автомобіля</label>
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20}/>
               <input 
@@ -1578,7 +1582,7 @@ function STODashboardView({ userProfile, setTab }) {
                 onChange={e => setSearchVin(e.target.value.toUpperCase())} 
                 placeholder="Введіть 17 символів VIN..." 
                 maxLength={17}
-                className="w-full pl-12 pr-4 py-3.5 bg-[#334155] border-none rounded-xl outline-none focus:ring-2 focus:ring-[#5C3EFE] transition-all font-mono uppercase text-white placeholder-gray-400"
+                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-[#334155] border border-gray-200 dark:border-none rounded-xl outline-none focus:ring-2 focus:ring-[#5C3EFE] transition-all font-mono uppercase text-gray-900 dark:text-white placeholder-gray-400"
               />
             </div>
           </div>
@@ -1630,10 +1634,10 @@ function STODashboardView({ userProfile, setTab }) {
 
       <div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Останні відправлені записи</h2>
-        <div className="bg-[#1E293B] rounded-3xl overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-[#1E293B] border border-gray-100 dark:border-none rounded-3xl overflow-hidden shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-400 text-xs uppercase tracking-wider border-b border-gray-700/50">
+              <tr className="text-gray-400 dark:text-gray-400 text-xs uppercase tracking-wider border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-transparent">
                 <th className="text-left px-6 py-4 font-semibold">Автомобіль / Власник</th>
                 <th className="text-left px-6 py-4 font-semibold">Послуга</th>
                 <th className="text-left px-6 py-4 font-semibold">Сума</th>
@@ -1643,23 +1647,23 @@ function STODashboardView({ userProfile, setTab }) {
             </thead>
             <tbody className="divide-y divide-gray-700/50">
               {stoHistory.map(r => (
-                <tr key={r.id} className="hover:bg-slate-800/50 transition-colors">
+                <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors border-b border-gray-50 dark:border-gray-800/50 last:border-0">
                   <td className="px-6 py-4">
                     {r.car ? (
-                      <p className="font-bold text-white">{r.car}</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{r.car}</p>
                     ) : (
-                      <p className="font-bold text-white">{r.brand} <span className="text-xs font-normal text-gray-400 border border-gray-600 rounded px-1 ml-1">{r.plate}</span></p>
+                      <p className="font-bold text-gray-900 dark:text-white">{r.brand} <span className="text-xs font-normal text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded px-1 ml-1">{r.plate}</span></p>
                     )}
-                    {r.ownerName && <p className="text-xs text-gray-400 mt-1">Власник: {r.ownerName}</p>}
+                    {r.ownerName && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Власник: {r.ownerName}</p>}
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold mr-2 uppercase tracking-tight bg-blue-100 text-blue-700">
                       {CAT[r.category] || 'ТО'}
                     </span>
-                    <span className="font-medium text-gray-300">{r.title}</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{r.title}</span>
                   </td>
-                  <td className="px-6 py-4 font-black text-white">{r.cost} ₴</td>
-                  <td className="px-6 py-4 text-gray-500 font-medium">{r.date}</td>
+                  <td className="px-6 py-4 font-black text-gray-900 dark:text-white">{r.cost} ₴</td>
+                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400 font-medium">{r.date}</td>
                   <td className="px-6 py-4">
                     {r.status === 'pending_approval' && (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#FEF08A]/20 text-[#FACC15]">
