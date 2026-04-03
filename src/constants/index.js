@@ -1,0 +1,55 @@
+import { LayoutDashboard, Car, ClipboardList, Bot, Users, CreditCard, Settings, Wrench } from 'lucide-react'
+
+export const C = '#5C3EFE'
+
+export const CAT = { 
+  maintenance: 'ТО', 
+  repair: 'Ремонт', 
+  diagnostic: 'Діагностика', 
+  tires: 'Шиномонтаж', 
+  washing: 'Мийка', 
+  tuning: 'Тюнінг', 
+  insurance: 'Страховка', 
+  fuel: 'Паливо', 
+  parts: 'Запчастини', 
+  other: 'Інше' 
+}
+
+export const CAT_CLR = { 
+  maintenance: 'bg-blue-100 text-blue-700', 
+  repair: 'bg-orange-100 text-orange-700', 
+  diagnostic: 'bg-purple-100 text-purple-700', 
+  tires: 'bg-gray-100 text-gray-600', 
+  washing: 'bg-cyan-100 text-cyan-700', 
+  tuning: 'bg-yellow-100 text-yellow-700', 
+  insurance: 'bg-green-100 text-green-700', 
+  fuel: 'bg-red-100 text-red-700', 
+  parts: 'bg-indigo-100 text-indigo-700', 
+  other: 'bg-gray-100 text-gray-600' 
+}
+
+export const NAV_OWNER = [
+  { id: 'dashboard', label: 'Дашборд', icon: LayoutDashboard },
+  { id: 'garage', label: 'Мій гараж', icon: Car },
+  { id: 'service', label: 'Сервіс', icon: ClipboardList },
+  { id: 'ai', label: 'AI Механік', icon: Bot },
+  { id: 'team', label: 'Команда', icon: Users },
+  { id: 'plans', label: 'Тарифи', icon: CreditCard },
+  { id: 'settings', label: 'Налаштування', icon: Settings },
+  { id: 'admin', label: 'Адмін панель', icon: Users },
+]
+
+export const NAV_STO = [
+  { id: 'sto', label: 'Кабінет партнера', icon: Wrench },
+  { id: 'sto_plans', label: 'Тарифи', icon: CreditCard },
+  { id: 'settings', label: 'Налаштування', icon: Settings },
+  { id: 'admin', label: 'Адмін панель', icon: Users },
+]
+
+export const AI_REPLIES = [
+  'Проаналізував ваш запит. Рекомендую звернутися до офіційного СТО для детальної діагностики.',
+  'На основі пробігу вашого автомобіля, настав час для планового ТО. Перевірте масло та фільтри.',
+  'Це типова проблема. Зазвичай вирішується заміною вузла. Вартість: 2 000–5 000 грн.',
+  'Можливі проблеми з гальмівною системою. Рекомендую термінову перевірку.',
+  'Найчастіше допомагає промивка форсунок або заміна свічок запалювання.',
+]
