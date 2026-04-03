@@ -24,13 +24,16 @@ export function Sidebar({ tab, setTab, col, setCol, isAdmin, userProfile, showMo
       <aside className={`fixed lg:static inset-y-0 left-0 z-[60] flex flex-col h-full border-r ${bgClass} transition-all duration-500 ease-in-out transform ${showMobileMenu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${col ? 'w-20' : 'w-72 sm:w-80 lg:w-72'}`}>
         <div className="flex items-center justify-between px-6 py-8">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 rounded-2xl bg-[#5C3EFE] flex items-center justify-center text-white font-black text-lg shadow-lg shadow-indigo-500/20 shrink-0">AL</div>
+            <div className="w-10 h-10 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center p-1.5 shadow-lg shadow-indigo-500/10 shrink-0 border border-gray-100 dark:border-gray-700">
+              <img src="/logo.png" alt="AutoLog" className="w-full h-full object-contain" />
+            </div>
             {!col && <h1 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white transition-opacity duration-300">AutoLog</h1>}
           </div>
           <button onClick={() => setShowMobileMenu(false)} className="lg:hidden p-2 text-gray-400">
             <X size={24} />
           </button>
         </div>
+
 
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto no-scrollbar">
           {links.map((item) => {

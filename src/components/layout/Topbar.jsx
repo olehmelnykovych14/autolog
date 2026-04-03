@@ -12,9 +12,14 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
       <div className="flex items-center gap-4">
         <button onClick={() => setShowMobileMenu(true)} className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all"><Menu size={24} /></button>
         <button onClick={() => setCol(!col)} className="hidden lg:flex p-2 text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-all"><Menu size={20} /></button>
-        <div className="hidden sm:flex flex-col">
-          <h2 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest">{isSto ? 'Кабінет партнера' : 'Мій дашборд'}</h2>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">AutoLog SaaS Platform</p>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-white dark:bg-gray-800 flex items-center justify-center p-1 shadow-sm border border-gray-100 dark:border-gray-700">
+            <img src="/logo.png" alt="" className="w-full h-full object-contain" />
+          </div>
+          <div className="hidden sm:flex flex-col">
+            <h2 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest leading-none mb-0.5">{isSto ? 'Кабінет партнера' : 'Мій дашборд'}</h2>
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">AutoLog SaaS</p>
+          </div>
         </div>
       </div>
 

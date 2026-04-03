@@ -53,3 +53,9 @@ export const AI_REPLIES = [
   'Можливі проблеми з гальмівною системою. Рекомендую термінову перевірку.',
   'Найчастіше допомагає промивка форсунок або заміна свічок запалювання.',
 ]
+
+export const PLANS = [
+  { id: 'Free', name: 'Free', price: 0, features: ['1 автомобіль', '10 записів/міс', 'AI: 5 запитів', 'Базовий звіт'], carLimit: 1, teamLimit: 1, aiLimit: 5 },
+  { id: 'Premium', name: 'Premium', price: 299, features: ['5 автомобілів', 'Необмежені записи', 'AI: 100 запитів', 'Carfax звіт', 'Push-сповіщення'], carLimit: 5, teamLimit: 3, aiLimit: 100 },
+  { id: 'Business', name: 'Business', price: 799, features: ['Безліміт авто', 'Команда до 10 осіб', 'AI: необмежено', 'Експорт в Excel', 'Брендування звітів'], carLimit: Infinity, teamLimit: 10, aiLimit: 9999 },
+]

@@ -65,9 +65,10 @@ export function STODashboardView({ userProfile, setTab }) {
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input 
               value={search} 
-              onChange={e => setSearch(e.target.value)} 
+              onChange={e => setSearch(e.target.value.toUpperCase().slice(0, 17))} 
               placeholder="Введіть номер або VIN..." 
-              className="w-full pl-14 pr-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-base focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all text-gray-900 dark:text-white"
+              maxLength={17}
+              className="w-full pl-14 pr-6 py-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-base focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all text-gray-900 dark:text-white uppercase font-mono tracking-wider"
             />
           </div>
           <button 

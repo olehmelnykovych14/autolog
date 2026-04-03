@@ -5,23 +5,47 @@ import { fmt, getBrandLogo } from '../../utils'
 import { C } from '../../constants'
 
 export function CarDetailsModal({ car, onClose, onGoService, onGoReport, onGoTransfer }) {
+  const logo = getBrandLogo(car.brand)
+
   return (
     <Modal title="Деталі автомобіля" onClose={onClose}>
       <div className="flex flex-col gap-6">
-        <div className="h-48 rounded-[2rem] overflow-hidden border border-gray-100 dark:border-gray-700 shadow-inner group">
+        <div className="h-56 sm:h-64 rounded-[2.5rem] overflow-hidden border border-gray-100 dark:border-gray-700/60 shadow-inner group relative">
           {car.image ? (
             <img src={car.image} alt={car.brand} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
           ) : (
-            <div className="w-full h-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-300"><FileText size={48}/></div>
+            <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                {logo ? (
+                  <img 
+                    src={logo} 
+                    alt={car.brand} 
+                    className="w-24 h-24 object-contain opacity-20 grayscale group-hover:grayscale-0 group-hover:opacity-40 transition-all duration-700" 
+                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                  />
+                ) : null}
+                <div className={`w-24 h-24 rounded-3xl bg-indigo-500/5 dark:bg-white/5 flex items-center justify-center border border-indigo-500/10 dark:border-white/10 ${logo ? 'hidden' : 'flex'}`}>
+                  <span className="text-5xl font-black text-indigo-400/30 dark:text-gray-600 uppercase">{car.brand?.[0] || '?'}</span>
+                </div>
+                <p className="text-xs font-black text-gray-300 dark:text-gray-600 uppercase tracking-[0.3em]">{car.brand}</p>
+              </div>
+            </div>
           )}
         </div>
         
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {getBrandLogo(car.brand) && <img src={getBrandLogo(car.brand)} alt="" className="w-6 h-6 grayscale opacity-80" />}
-            <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">{car.brand} {car.model}</h3>
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-4">
+            {logo && (
+              <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center p-2 border border-gray-100 dark:border-gray-700">
+                <img src={logo} alt="" className="w-full h-full object-contain opacity-80" onError={(e) => e.target.parentElement.style.display = 'none'} />
+              </div>
+            )}
+            <div>
+              <h3 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight leading-none mb-1">{car.brand}</h3>
+              <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">{car.model}</p>
+            </div>
           </div>
-          <div className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-xs font-black text-gray-500 dark:text-gray-300 tracking-wider shadow-inner uppercase">{car.plate}</div>
+          <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-xl text-sm font-black text-gray-500 dark:text-gray-300 tracking-widest shadow-inner uppercase border border-gray-200 dark:border-gray-600">{car.plate}</div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

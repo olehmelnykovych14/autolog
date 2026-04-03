@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react'
 import { Check, Info, LayoutDashboard, Send, Wrench } from 'lucide-react'
-import { C } from '../../constants'
+import { C, PLANS } from '../../constants'
 import { ThemeCtx } from '../../context/ThemeContext'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
@@ -10,11 +10,6 @@ export function PlansView({ carList, userProfile, onUpdatePlan }) {
   const [showSuccess, setShowSuccess] = useState(false)
   const currentPlan = userProfile?.plan || 'Free'
 
-  const plans = [
-    { id: 'Free', name: 'Free', price: 0, features: ['1 автомобіль', '10 записів/міс', 'AI: 5 запитів', 'Базовий звіт'], limit: 1, ai: 5 },
-    { id: 'Premium', name: 'Premium', price: 299, features: ['5 автомобілів', 'Необмежені записи', 'AI: 100 запитів', 'Carfax звіт', 'Push-сповіщення'], limit: 5, ai: 100 },
-    { id: 'Business', name: 'Business', price: 799, features: ['Безліміт авто', 'Команда до 10 осіб', 'AI: необмежено', 'API доступ', 'Пріоритетна підтримка'], limit: Infinity, ai: 9999 },
-  ]
 
   const handleSelect = async (planId) => {
     if (planId === currentPlan) return
@@ -32,7 +27,7 @@ export function PlansView({ carList, userProfile, onUpdatePlan }) {
     }, 1500)
   }
 
-  const activePlanData = plans.find(p => p.id === currentPlan) || plans[0]
+  const activePlanData = PLANS.find(p => p.id === currentPlan) || PLANS[0]
 
   return (
     <div className="flex flex-col gap-6 relative">
@@ -48,16 +43,16 @@ export function PlansView({ carList, userProfile, onUpdatePlan }) {
           <div className="mb-0">
             <div className="flex justify-between text-sm mb-1.5">
               <span className="text-gray-500 dark:text-gray-400">Автомобілі</span>
-              <span className="font-medium text-gray-900 dark:text-white">{carList.length} / {activePlanData.limit === Infinity ? '∞' : activePlanData.limit}</span>
+              <span className="font-medium text-gray-900 dark:text-white">{carList.length} / {activePlanData.carLimit === Infinity ? '∞' : activePlanData.carLimit}</span>
             </div>
             <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((carList.length / (activePlanData.limit || 1)) * 100, 100)}%`, background: C }} />
+              <div className="h-full rounded-full transition-all" style={{ width: `${Math.min((carList.length / (activePlanData.carLimit || 1)) * 100, 100)}%`, background: C }} />
             </div>
           </div>
           <div className="mb-0">
             <div className="flex justify-between text-sm mb-1.5">
               <span className="text-gray-500 dark:text-gray-400">AI запити (місяць)</span>
-              <span className="font-medium text-gray-900 dark:text-white">0 / {activePlanData.ai}</span>
+              <span className="font-medium text-gray-900 dark:text-white">0 / {activePlanData.aiLimit}</span>
             </div>
             <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
               <div className="h-full rounded-full transition-all" style={{ width: `0%`, background: C }} />
@@ -66,7 +61,7 @@ export function PlansView({ carList, userProfile, onUpdatePlan }) {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {plans.map(p => {
+        {PLANS.map(p => {
           const isCurrent = p.id === currentPlan
           const isPending = loading === p.id
           return (
@@ -112,12 +107,15 @@ export function STOPricingView({ currentUser, userProfile, setUserProfile, setTa
     await new Promise(r => setTimeout(r, 1500))
     if (currentUser) {
       try {
-        await updateDoc(doc(db, 'users', currentUser.uid), { stoSubscription: 'active' })
+        await updateDoc(doc(db, 'users', currentUser.uid), { 
+          stoSubscription: 'active',
+          accountType: 'sto' 
+        })
       } catch (e) {
         console.error("Failed to update subscription", e)
       }
     }
-    setUserProfile(p => ({ ...p, stoSubscription: 'active' }))
+    setUserProfile(p => ({ ...p, stoSubscription: 'active', accountType: 'sto' }))
     setLoading(null)
     setTab('sto')
   }

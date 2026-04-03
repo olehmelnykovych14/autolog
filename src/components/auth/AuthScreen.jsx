@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Car, Mail, Lock, User, MapPin, ClipboardList, ShieldCheck, Sun, Moon, Send, LayoutDashboard } from 'lucide-react'
 import { auth, db } from '../../firebase'
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { C } from '../../constants'
 
@@ -16,6 +16,8 @@ export function AuthScreen({ isDark, setDark }) {
   const [stoEdrpou, setStoEdrpou] = useState('')
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isReset, setIsReset] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -53,6 +55,21 @@ export function AuthScreen({ isDark, setDark }) {
     }
   }
 
+  const handleReset = async (e) => {
+    e.preventDefault()
+    if (!email) return setErr('Введіть email')
+    setLoading(true)
+    setErr('')
+    try {
+      await sendPasswordResetEmail(auth, email)
+      setResetSent(true)
+    } catch (error) {
+      setErr(error.message.replace('Firebase: ', ''))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const inp_cls = "w-full p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-[#5C3EFE] transition-all"
 
   return (
@@ -64,17 +81,40 @@ export function AuthScreen({ isDark, setDark }) {
 
         <div className="w-full max-w-md mx-auto">
           <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg" style={{ background: C }}>AL</div>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white dark:bg-gray-800 shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+              <img src="/logo.png" alt="AutoLog" className="w-8 h-8 object-contain" />
+            </div>
             <h1 className="text-3xl font-bold tracking-tight">AutoLog</h1>
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-700/60">
-            <h2 className="text-2xl font-bold mb-2">{isLogin ? 'З поверненням' : 'Створити акаунт'}</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">{isLogin ? 'Введіть свої дані для входу в систему' : 'Приєднайтеся до найзручнішого гаража'}</p>
+            <h2 className="text-2xl font-bold mb-2">
+              {isReset ? 'Відновлення пароля' : (isLogin ? 'З поверненням' : 'Створити акаунт')}
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">
+              {isReset 
+                ? 'Введіть email для отримання інструкцій' 
+                : (isLogin ? 'Введіть свої дані для входу в систему' : 'Приєднайтеся до найзручнішого гаража')}
+            </p>
 
             {err && <div className="p-4 mb-4 text-sm font-semibold text-red-700 bg-red-100 rounded-xl dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800">{err}</div>}
+            {resetSent && <div className="p-4 mb-4 text-sm font-semibold text-green-700 bg-green-100 rounded-xl dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800">Інструкції надіслано на вашу пошту!</div>}
 
-            <form onSubmit={submit} className="flex flex-col gap-4">
+            {isReset ? (
+              <form onSubmit={handleReset} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2 ml-1 text-gray-700 dark:text-gray-300">Email *</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="hello@autolog.app" className={inp_cls + ' rounded-xl'} required />
+                </div>
+                <button disabled={loading} type="submit" className="w-full py-4 mt-2 text-white rounded-xl font-bold shadow-md shadow-indigo-500/30 flex items-center justify-center hover:opacity-90 transition-all disabled:opacity-50" style={{ background: C }}>
+                  {loading ? 'Надсилаємо...' : 'Скинути пароль'}
+                </button>
+                <button type="button" onClick={() => { setIsReset(false); setErr(''); setResetSent(false); }} className="text-sm font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-2">
+                  Повернутися до входу
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={submit} className="flex flex-col gap-4">
               {!isLogin && (
                 <>
                   <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-xl mb-2">
@@ -110,7 +150,14 @@ export function AuthScreen({ isDark, setDark }) {
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="hello@autolog.app" className={inp_cls + ' rounded-xl'} required />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-2 ml-1 text-gray-700 dark:text-gray-300">Пароль *</label>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300">Пароль *</label>
+                  {isLogin && (
+                    <button type="button" onClick={() => { setIsReset(true); setErr(''); }} className="text-xs font-bold text-[#5C3EFE] hover:underline">
+                      Забули пароль?
+                    </button>
+                  )}
+                </div>
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" minLength={6} className={inp_cls + ' rounded-xl'} required />
               </div>
 
@@ -118,6 +165,7 @@ export function AuthScreen({ isDark, setDark }) {
                 {loading ? 'Зачекайте...' : (isLogin ? 'Увійти в гараж' : 'Створити акаунт')}
               </button>
             </form>
+            )}
 
             <div className="mt-8 text-center">
               <p className="text-sm text-gray-500 dark:text-gray-400">

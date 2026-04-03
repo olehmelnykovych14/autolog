@@ -6,7 +6,7 @@ import { doc, getDoc, getDocs, collection, query, where, addDoc, updateDoc, dele
 
 // Context & Constants
 import { ThemeCtx } from './context/ThemeContext'
-import { C } from './constants'
+import { C, PLANS } from './constants'
 
 // Layout
 import { Sidebar } from './components/layout/Sidebar'
@@ -44,8 +44,12 @@ export default function App() {
   const [showReport, setShowReport] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
   const [incomingTransfer, setIncomingTransfer] = useState(null)
+  
+  const tabRef = useRef(tab)
+  useEffect(() => { tabRef.current = tab }, [tab])
 
-  const TEAM_LIMIT = 5
+  const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
+  const TEAM_LIMIT = activePlan.teamLimit
   const [teamMembers, setTeamMembers] = useState([
     { id: 1, name: 'Олександр (Ви)', email: 'owner@autolog.ua', role: 'owner', status: 'active' }
   ])
@@ -64,11 +68,15 @@ export default function App() {
           if (snap.exists()) {
             const up = snap.data()
             setUserProfile(up)
-            if (up.accountType === 'sto' && tab === 'dashboard') {
+            // Ensure STO always lands on sto tab, Owners on dashboard tab
+            if (up.accountType === 'sto') {
               setTab('sto')
+            } else {
+              setTab('dashboard')
             }
           } else {
-            setUserProfile({ phone: '', city: '', avatarBase64: '' })
+            setUserProfile({ phone: '', city: '', avatarBase64: '', accountType: 'owner' })
+            setTab('dashboard')
           }
 
           const carSnap = await getDocs(query(collection(db, 'cars'), where('userId', '==', user.uid)))
@@ -91,6 +99,7 @@ export default function App() {
         setUserProfile(null)
         setCarList([])
         setHistoryList([])
+        setTab('dashboard') // Reset tab on logout
       }
     });
     return () => unsub();
@@ -113,6 +122,15 @@ export default function App() {
     }
   }, [tab, userProfile?.accountType])
 
+  const onUpdateAIUsage = async () => {
+    if (!currentUser) return
+    const newUsage = (userProfile?.aiUsage || 0) + 1
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), { aiUsage: newUsage })
+      setUserProfile(p => ({ ...p, aiUsage: newUsage }))
+    } catch (e) { console.error(e) }
+  }
+
   const isAdmin = currentUser?.email === 'olehmelnykovych@gmail.com' || userProfile?.role === 'Admin'
 
   const addCar = async car => {
@@ -120,6 +138,14 @@ export default function App() {
     try {
       const docRef = await addDoc(collection(db, 'cars'), { ...car, userId: currentUser.uid })
       setCarList(p => [{ ...car, id: docRef.id, userId: currentUser.uid }, ...p])
+    } catch (e) { console.error(e) }
+  }
+
+  const updateCar = async (carId, updates) => {
+    if (!currentUser) return
+    try {
+      await updateDoc(doc(db, 'cars', carId), updates)
+      setCarList(p => p.map(c => c.id === carId ? { ...c, ...updates } : c))
     } catch (e) { console.error(e) }
   }
 
@@ -150,11 +176,15 @@ export default function App() {
   }
 
   const deleteService = async id => {
-    if (!currentUser) return
+    if (!currentUser) return false
     try {
       await deleteDoc(doc(db, 'history', id))
       setHistoryList(p => p.filter(h => h.id !== id))
-    } catch (e) { console.error(e) }
+      return true
+    } catch (e) { 
+      console.error(e)
+      return false
+    }
   }
 
   const handleAcceptService = async (svcId) => {
@@ -201,8 +231,22 @@ export default function App() {
     } catch (e) { console.error(e); throw e }
   }
 
-  if (currentUser === undefined) {
-    return <div className={`flex items-center justify-center h-screen w-full bg-gray-50 dark:bg-gray-900 ${isDark ? 'dark' : ''}`}><div className="animate-spin text-[#5C3EFE]"><LayoutDashboard size={40} /></div></div>
+  if (currentUser === undefined || (currentUser && userProfile === null)) {
+    return (
+      <div className={`flex items-center justify-center h-screen w-full bg-gray-50 dark:bg-gray-900 transition-colors duration-500 ${isDark ? 'dark' : ''}`}>
+        <div className="flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500">
+           <div className="w-16 h-16 rounded-[2rem] bg-white dark:bg-gray-800 flex items-center justify-center shadow-2xl border border-gray-100 dark:border-gray-700 animate-bounce">
+              <img src="/logo.png" alt="AutoLog" className="w-10 h-10 object-contain" />
+           </div>
+           <div className="flex flex-col items-center gap-2">
+             <div className="w-48 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                <div className="h-full bg-[#5C3EFE] animate-progress-loading" style={{ width: '40%' }}></div>
+             </div>
+             <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] animate-pulse">Завантаження...</p>
+           </div>
+        </div>
+      </div>
+    )
   }
 
   if (currentUser === null) {
@@ -219,9 +263,9 @@ export default function App() {
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
               <div className="max-w-7xl mx-auto space-y-6 pb-12">
                 {tab === 'dashboard' && <DashboardView carList={carList} historyList={historyList} />}
-                {tab === 'garage' && <GarageView carList={carList} onAddCar={addCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => setTab('plans')} />}
+                {tab === 'garage' && <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => setTab('plans')} />}
                 {tab === 'service' && <HistoryView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />}
-                {tab === 'ai' && <AIView carList={carList} historyList={historyList} />}
+                {tab === 'ai' && <AIView carList={carList} historyList={historyList} userProfile={userProfile} onUpdateAIUsage={onUpdateAIUsage} onGoPlans={() => setTab('plans')} />}
                 {tab === 'team' && <TeamView teamMembers={teamMembers} limit={TEAM_LIMIT} onRemove={id => setTeamMembers(p => p.filter(m => m.id !== id))} onInvite={() => setShowInviteModal(true)} />}
                 {tab === 'plans' && <PlansView carList={carList} userProfile={userProfile} onUpdatePlan={handleUpdatePlan} />}
                 {tab === 'settings' && <SettingsView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} />}
@@ -234,7 +278,7 @@ export default function App() {
         </div>
         {showInviteModal && <InviteMemberModal limit={TEAM_LIMIT} currentCount={teamMembers.length} onClose={() => setShowInviteModal(false)} onInvite={mbr => setTeamMembers(p => [...p, mbr])} />}
         {selectedCar && !showReport && !showTransfer && <CarDetailsModal car={selectedCar} onClose={() => setSelectedCar(null)} onGoService={() => setTab('service')} onGoReport={() => setShowReport(true)} onGoTransfer={() => setShowTransfer(true)} />}
-        {showReport && <CarReportModal car={selectedCar} historyList={historyList} onClose={() => setShowReport(false)} />}
+        {showReport && <CarReportModal car={selectedCar} historyList={historyList} userProfile={userProfile} onClose={() => setShowReport(false)} />}
         {showTransfer && <TransferCarModal car={selectedCar} onClose={() => setShowTransfer(false)} onTransfer={handleTransfer} />}
       </div>
     </ThemeCtx.Provider>

@@ -59,9 +59,29 @@ export function ServiceModal({ onClose, onSave, carList, historyList, initialDat
   }
   const ic = inp_cls()
   const fieldCls = `${ic} flex items-center gap-2`
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    setIsDeleting(true)
+    const success = await onDelete(initialData.id)
+    if (success) {
+      onClose()
+    } else {
+      setIsDeleting(false)
+      setConfirmDelete(false)
+      alert("Не вдалося видалити запис. Спробуйте пізніше.")
+    }
+  }
+
   return (
     <Modal title={isEdit ? 'Редагувати запис' : 'Додати сервіс'} onClose={onClose}>
       <form onSubmit={submit} className="flex flex-col gap-4">
+        {/* ... form fields remain the same ... */}
         <Field label="Автомобіль *">
           <div className={fieldCls}><Car size={16} className="text-gray-400 shrink-0" />
             <select value={f.carId} onChange={e => set('carId')(e.target.value)} className="flex-1 bg-transparent focus:outline-none text-sm dark:text-white" required>
@@ -116,16 +136,20 @@ export function ServiceModal({ onClose, onSave, carList, historyList, initialDat
             ))}
           </div>
         </Field>
-        <button type="submit" className="w-full py-3 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all" style={{ background: C }}>
+        <button type="submit" disabled={isDeleting} className="w-full py-4 text-white rounded-2xl font-black text-sm hover:opacity-90 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50" style={{ background: C }}>
           {isEdit ? 'Зберегти зміни' : 'Додати в історію'}
         </button>
         {isEdit && onDelete && (
           <button
             type="button"
-            onClick={() => { if (confirm('Видалити цей запис назавжди?')) { onDelete(initialData.id); onClose() } }}
-            className="w-full py-3 text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 rounded-xl font-semibold text-sm hover:bg-red-100 dark:hover:bg-red-900/40 transition-all flex items-center justify-center gap-2"
+            disabled={isDeleting}
+            onClick={handleDelete}
+            onMouseLeave={() => setConfirmDelete(false)}
+            className={`w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-3 border-2 ${confirmDelete ? 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20 animate-pulse' : 'text-red-500 bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30 hover:bg-red-50 dark:hover:bg-red-900/20'}`}
           >
-            <Trash2 size={16} /> Видалити запис
+            {isDeleting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (
+              confirmDelete ? 'Ви впевнені? Видалити назавжди' : <><Trash2 size={18} /> Видалити запис</>
+            )}
           </button>
         )}
       </form>
