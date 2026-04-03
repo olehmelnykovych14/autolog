@@ -26,7 +26,7 @@ import { STODashboardView } from './components/views/STODashboardView'
 // Modals
 import { CarDetailsModal } from './components/modals/CarDetailsModal'
 import { CarReportModal } from './components/modals/CarReportModal'
-import { TransferCarModal, InviteMemberModal } from './components/modals/index'
+import { TransferCarModal, InviteMemberModal } from './components/modals'
 
 // Auth
 import { AuthScreen } from './components/auth/AuthScreen'
