@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Camera, Check, MapPin, Smartphone, User, Loader2 } from 'lucide-react'
-import { Field, inp_cls, PrimaryBtn } from '../common'
+import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { updateProfile } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { db } from '../../firebase'

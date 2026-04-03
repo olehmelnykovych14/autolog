@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { Search, Car, ClipboardList, Zap, ShieldCheck, Mail, Send, Activity, Bookmark, Info, ChevronRight, Loader2 } from 'lucide-react'
-import { Field, inp_cls, PrimaryBtn } from '../common'
+import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { C } from '../../constants'
-import { AddVerifiedServiceModal } from '../modals'
+import { AddVerifiedServiceModal } from '../modals/Modals'
 
 export function STODashboardView({ userProfile, setTab }) {
   const [search, setSearch] = useState('')

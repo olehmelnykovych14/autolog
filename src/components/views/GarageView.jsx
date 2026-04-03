@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react'
 import { Plus, Camera, Search, User, Info, Smartphone, FileText, Send, Share2, MoreVertical, Trash2 } from 'lucide-react'
-import { Modal, Field, inp_cls, PrimaryBtn } from '../common'
+import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { fmt, getBrandLogo } from '../../utils'
-import { C, BRANDS_MODELS } from '../../constants'
+import { C } from '../../constants'
+import { BRANDS_MODELS } from '../../data/cars'
 
 export function GarageView({ carList, onAddCar, onSelectCar, userProfile, onGoPlans }) {
   const [showAdd, setShowAdd] = useState(false)

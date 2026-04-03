@@ -46,3 +46,21 @@ export function PrimaryBtn({ children, onClick, type = 'button', className = '',
     </button>
   )
 }
+
+export function Card({ title, sub, icon, children, className = '' }) {
+  return (
+    <div className={`bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700/60 shadow-sm ${className}`}>
+      {(title || icon) && (
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            {title && <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight tracking-tight">{title}</h3>}
+            {sub && <p className="text-xs font-medium text-gray-500 mt-1">{sub}</p>}
+          </div>
+          {icon && <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center border border-indigo-100 dark:border-indigo-800/50">{icon}</div>}
+        </div>
+      )}
+      {children}
+    </div>
+  )
+}
+

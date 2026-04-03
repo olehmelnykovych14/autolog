@@ -1,6 +1,6 @@
 import React from 'react'
 import { Printer, Download, X, ShieldCheck, Activity, MapPin, Calendar, Layers, FileText } from 'lucide-react'
-import { Modal } from '../common'
+import { Modal } from '../common/Common'
 import { fmt, fmtCost } from '../../utils'
 import { C, CAT } from '../../constants'
 

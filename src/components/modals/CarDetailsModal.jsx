@@ -1,6 +1,6 @@
 import React from 'react'
-import { Info, Tooltip, FileText, Share2, ClipboardList, TrendingUp, X } from 'lucide-react'
-import { Modal, PrimaryBtn } from '../common'
+import { Info, FileText, Share2, ClipboardList, TrendingUp, X } from 'lucide-react'
+import { Modal, PrimaryBtn } from '../common/Common'
 import { fmt, getBrandLogo } from '../../utils'
 import { C } from '../../constants'
 

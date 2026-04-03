@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { Car, Layers, FileText, Calendar, Activity, MapPin, Trash2 } from 'lucide-react'
-import { Modal, Field, inp_cls } from '../common'
-import { fmt, C, CAT } from '../../constants'
+import { Modal, Field, inp_cls } from '../common/Common'
+import { C, CAT } from '../../constants'
+import { fmt } from '../../utils'
 
 export function ServiceModal({ onClose, onSave, carList, historyList, initialData, onDelete }) {
   const isEdit = !!initialData
