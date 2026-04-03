@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, createContext, useContext } from 'react'
-import { LayoutDashboard, Car, ClipboardList, Bot, CreditCard, Settings, Users, Bell, Moon, Sun, ChevronRight, ChevronLeft, ChevronDown, Plus, X, ShieldCheck, MapPin, Send, LogOut, Sparkles, Filter, Check, FileText, Layers, Calendar, Pencil, Trash2, Download, Lock, UserPlus, Shield, Eye, Mail, Activity, Search, Info, Clock, AlertCircle, Wrench } from 'lucide-react'
+import { LayoutDashboard, Car, ClipboardList, Bot, CreditCard, Settings, Users, Bell, Moon, Sun, ChevronRight, ChevronLeft, ChevronDown, Plus, X, ShieldCheck, MapPin, Send, LogOut, Sparkles, Filter, Check, FileText, Layers, Calendar, Pencil, Trash2, Download, Lock, UserPlus, Shield, Eye, Mail, Activity, Search, Info, Clock, AlertCircle, Wrench, TrendingUp, Smartphone, Menu } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { BRANDS_MODELS } from './data/cars'
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "firebase/auth"
-import { doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
+import { doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, writeBatch, or } from "firebase/firestore"
 import { auth, db } from './firebase'
 import { askGemini } from './lib/ai'
 import ReactMarkdown from 'react-markdown'
@@ -56,15 +56,17 @@ function getBrandLogo(brand) {
 }
 
 // ─── Shared UI ───────────────────────────────────────────────────────────────
-function Modal({ title, onClose, children, wide }) {
+function Modal({ title, children, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full ${wide ? 'max-w-lg' : 'max-w-md'}`}>
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center text-gray-400 transition-all"><X size={18} /></button>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all text-gray-400"><X size={20} /></button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="p-6 overflow-y-auto max-h-[80vh] custom-scrollbar">
+          {children}
+        </div>
       </div>
     </div>
   )
@@ -80,7 +82,7 @@ function PrimaryBtn({ children, onClick, type = 'button', className = '' }) {
 }
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
-function Sidebar({ tab, setTab, col, setCol, isAdmin, userProfile }) {
+function Sidebar({ tab, setTab, col, setCol, isAdmin, userProfile, showMobileMenu, setShowMobileMenu }) {
   const isDark = useContext(ThemeCtx)
   const isSto = userProfile?.accountType === 'sto'
   const navSource = isSto ? NAV_STO : NAV_OWNER
@@ -88,52 +90,42 @@ function Sidebar({ tab, setTab, col, setCol, isAdmin, userProfile }) {
   const bgClass = isSto 
     ? (isDark ? "bg-[#0F172A] border-[#1E293B]" : "bg-white border-gray-200") 
     : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+
   return (
-    <aside className={`flex flex-col h-full shrink-0 transition-all duration-300 print:hidden border-r ${bgClass}`} style={{ width: col ? 72 : 260 }}>
-      <div className={`flex flex-col items-center justify-center ${col ? 'py-10' : 'px-4 py-8'} border-b border-gray-200 dark:border-gray-700 min-h-[7rem] relative overflow-hidden`}>
-        {!col ? (
-          <div className="flex items-center justify-between w-full gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white font-bold text-base shadow-xl shadow-indigo-500/30" style={{ background: isSto ? '#3B82F6' : C }}>AL</div>
-              <div className="transition-all duration-300">
-                <p className={`font-bold leading-tight text-lg ${isSto ? (isDark ? 'text-white' : 'text-gray-900') : 'text-gray-900 dark:text-white'}`}>AutoLog</p>
-                <p className={`text-[11px] uppercase tracking-widest leading-none mt-1 ${isSto ? (isDark ? 'text-[#94A3B8]' : 'text-gray-400') : 'text-gray-400'}`}>Premium Garage</p>
-              </div>
-            </div>
-            <button onClick={() => setCol(true)} className="p-3 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-all hover:text-indigo-600">
-              <ChevronLeft size={24} />
+    <>
+      {/* Backdrop */}
+      <div 
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-[55] transition-opacity duration-300 ${showMobileMenu ? 'opacity-100' : 'opacity-0 pointer-events-none'} lg:hidden`}
+        onClick={() => setShowMobileMenu(false)}
+      />
+
+      <aside className={`fixed inset-y-0 left-0 z-[60] w-64 ${bgClass} border-r transition-all duration-300 flex flex-col ${col ? 'lg:w-20' : 'lg:w-64'} ${showMobileMenu ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} lg:static`}>
+        <div className="h-16 flex items-center px-6 gap-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold shadow-lg" style={{ background: C }}>A</div>
+          {(!col || showMobileMenu) && <span className="font-bold text-gray-900 dark:text-white">AutoLog</span>}
+          <button onClick={() => setCol(!col)} className="ml-auto hidden lg:flex p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-all">
+            {col ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+        </div>
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
+          {links.map(n => (
+            <button key={n.id} onClick={() => { setTab(n.id); setShowMobileMenu(false) }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${tab === n.id ? 'text-white shadow-xl translate-x-1' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'}`} style={{ background: tab === n.id ? C : 'transparent' }}>
+              <n.icon size={18} className="shrink-0" />{(!col || showMobileMenu) && n.label}
             </button>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-8 w-full">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 text-white font-bold text-base shadow-xl shadow-indigo-500/30" style={{ background: C }}>AL</div>
-            <button onClick={() => setCol(false)} className="w-12 h-12 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-all flex items-center justify-center border border-gray-100 dark:border-gray-700 shadow-xl bg-white dark:bg-gray-800 z-50 transform hover:scale-110 active:scale-95 group">
-              <ChevronRight size={24} className="group-hover:text-indigo-600 transition-colors" />
-            </button>
-          </div>
-        )}
-      </div>
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {links.map(({ id, label, icon: Icon }) => {
-          const active = tab === id
-          return (
-            <button key={id} onClick={() => setTab(id)} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${active ? 'text-white shadow-lg' : (isSto ? (isDark ? 'text-[#94A3B8] hover:bg-[#1E293B] hover:text-white' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900') : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white')}`} style={active ? { background: isSto ? '#3B82F6' : C } : {}}>
-              <Icon size={18} className="shrink-0" />{!col && label}
-            </button>
-          )
-        })}
-      </nav>
-      <div className="px-3 pb-4 border-t border-gray-200 dark:border-gray-700 pt-3">
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
-          <LogOut size={18} className="shrink-0" />{!col && 'Вийти'}
-        </button>
-      </div>
-    </aside>
+          ))}
+        </nav>
+        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/30 dark:bg-gray-900/10">
+          <button onClick={() => { signOut(auth); setShowMobileMenu(false) }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all group">
+            <LogOut size={18} className="shrink-0 group-hover:-translate-x-1 transition-transform" />{(!col || showMobileMenu) && 'Вийти'}
+          </button>
+        </div>
+      </aside>
+    </>
   )
 }
 
 // ─── Topbar ──────────────────────────────────────────────────────────────────
-function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals = [], onAcceptService, onRejectService }) {
+function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals = [], onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu }) {
   const [showNotif, setShowNotif] = useState(false)
   const initial = currentUser?.displayName?.[0] || currentUser?.email?.[0]?.toUpperCase() || 'К'
   const hasAvatar = !!userProfile?.avatarBase64
@@ -141,12 +133,33 @@ function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectT
   const notifCount = (incomingTransfer ? 1 : 0) + pendingApprovals.length
 
   return (
-    <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200/50 dark:border-gray-700/50 flex items-center px-4 sm:px-6 gap-4 shrink-0 print:hidden transition-all duration-300 relative z-50">
+    <header className="h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 flex items-center px-4 gap-3 shrink-0 print:hidden transition-all duration-300 relative z-50">
+      <div className="flex items-center gap-2 lg:hidden">
+        <button 
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-all active:scale-95"
+          aria-label="Toggle Menu"
+        >
+          {showMobileMenu ? <X size={22} /> : <Menu size={22} />}
+        </button>
+        {!showMobileMenu && (
+          <span className="font-bold text-gray-900 dark:text-white truncate max-w-[140px] text-sm tracking-tight">
+            {userProfile?.stoName || currentUser?.displayName || 'AutoLog'}
+          </span>
+        )}
+      </div>
+
       <div className="flex-1"></div>
       <div className="ml-auto flex items-center gap-2 relative">
         <button onClick={() => setDark(d => !d)} className="w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 transition-all">
           {isDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
+        {userProfile?.accountType === 'sto' && (
+          <div className={`${isDark ? 'bg-[#1E293B] border-white/5' : 'bg-white border-slate-200'} border px-4 py-1.5 rounded-full flex items-center gap-3 shadow-sm ml-2 hidden sm:flex`}>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Режим:</p>
+            <div className="bg-[#3B82F6] text-[10px] font-black px-3 py-1 rounded-md text-white uppercase tracking-wider shadow-lg shadow-blue-500/20">СТО</div>
+          </div>
+        )}
         <div className="relative">
           <button onClick={() => setShowNotif(!showNotif)} className="relative w-9 h-9 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center text-gray-500 dark:text-gray-400 transition-all">
             <Bell size={18} />
@@ -191,75 +204,98 @@ function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectT
   )
 }
 
-// ─── Dashboard ───────────────────────────────────────────────────────────────
+// ─── Dashboard ──────────────────────────────────────────────────────────────
 function DashboardView({ carList, historyList }) {
-  const totalMileage = carList.reduce((s, c) => s + c.mileage, 0)
-  const totalCost = historyList.reduce((s, h) => s + h.cost, 0)
-  const cpk = totalMileage > 0 ? (totalCost / totalMileage).toFixed(2) : '0.00'
-  const maxM = [...carList].sort((a, b) => b.mileage - a.mileage)[0]
-  const nextTO = maxM ? Math.ceil(maxM.mileage / 10000) * 10000 - maxM.mileage : 0
-  const kpis = [
-    { label: 'ВИТРАТИ ЗА МІСЯЦЬ', value: '18 400 грн', sub: '+12%', sc: 'text-green-500', icon: '💰', bg: 'bg-yellow-100 dark:bg-yellow-900/40' },
-    { label: 'ЗАГАЛЬНИЙ ПРОБІГ', value: `${fmt(totalMileage)} КМ`, sub: '+5%', sc: 'text-green-500', icon: '🛣️', bg: 'bg-blue-100 dark:bg-blue-900/40' },
-    { label: 'ВИТРАТИ НА КМ', value: `${cpk} грн`, sub: '-3%', sc: 'text-red-500', icon: '📊', bg: 'bg-purple-100 dark:bg-purple-900/40' },
-    { label: 'НАСТУПНЕ ТО', value: `за ${fmt(nextTO)} км`, sub: 'Скоро', sc: 'text-orange-500', icon: '🔧', bg: 'bg-orange-100 dark:bg-orange-900/40' },
+  const now = new Date()
+  const thisMonth = now.getMonth()
+  const thisYear = now.getFullYear()
+
+  // Calculate real monthly expenses
+  const monthlyExpenses = historyList
+    .filter(h => { const d = new Date(h.date); return d.getMonth() === thisMonth && d.getFullYear() === thisYear })
+    .reduce((s, h) => s + (h.cost || 0), 0)
+
+  // Calculate total mileage
+  const totalMileage = carList.reduce((s, c) => s + (c.mileage || 0), 0)
+
+  // Calculate number of service records this year
+  const yearRecords = historyList.filter(h => new Date(h.date).getFullYear() === thisYear).length
+
+  const stats = [
+    { label: 'ВИТРАТИ ЗА МІСЯЦЬ', val: monthlyExpenses > 0 ? `${fmt(monthlyExpenses)} ₴` : '0 ₴', icon: <TrendingUp size={24} className="text-orange-500" /> },
+    { label: 'ЗАГАЛЬНИЙ ПРОБІГ', val: `${fmt(totalMileage)} КМ`, icon: <Activity size={24} className="text-[#5C3EFE]" /> },
+    { label: 'ЗАПИСІВ ЦЕЙ РІК', val: `${yearRecords}`, sub: `${carList.length} авто в гаражі`, icon: <Wrench size={24} className="text-blue-500" /> },
   ]
-  const maxC = Math.max(...CHART)
-  const recent = [...historyList].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5)
+
+  // Build chart data for last 6 months
+  const chartData = []
+  const monthNames = ['Січ', 'Лют', 'Бер', 'Кві', 'Тра', 'Чер', 'Лип', 'Сер', 'Вер', 'Жов', 'Лис', 'Гру']
+  for (let i = 5; i >= 0; i--) {
+    const m = new Date(thisYear, thisMonth - i, 1)
+    const mIdx = m.getMonth()
+    const mYear = m.getFullYear()
+    const total = historyList
+      .filter(h => { const d = new Date(h.date); return d.getMonth() === mIdx && d.getFullYear() === mYear })
+      .reduce((s, h) => s + (h.cost || 0), 0)
+    chartData.push({ name: monthNames[mIdx], cost: total })
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-4 gap-4">
-        {kpis.map((k, i) => (
-          <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 p-5 flex items-start gap-4">
-            <div className={`w-12 h-12 rounded-2xl ${k.bg} flex items-center justify-center text-2xl shrink-0`}>{k.icon}</div>
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 tracking-wider mb-1">{k.label}</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{k.value}</p>
-              <p className={`text-xs font-medium mt-0.5 ${k.sc}`}>{k.sub}</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        {stats.map((s, i) => (
+          <div key={i} className="bg-white dark:bg-gray-800 p-6 rounded-[2.5rem] border border-gray-200/50 dark:border-gray-700/60 shadow-md shadow-gray-200/50 dark:shadow-none flex flex-col justify-between min-h-[160px] hover:border-indigo-200 transition-all group">
+            <div className="flex justify-between items-start">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.label}</p>
+                <h3 className="text-3xl font-black text-gray-900 dark:text-white leading-tight tracking-tight">{s.val}</h3>
+                {s.sub && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                    <p className="text-xs font-bold text-gray-500">{s.sub}</p>
+                  </div>
+                )}
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center shrink-0 border border-indigo-100/50 dark:border-indigo-800/50 group-hover:scale-110 transition-transform">{s.icon}</div>
             </div>
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Витрати за рік</h2>
-            <span className="text-sm text-gray-400">2025</span>
-          </div>
-          <div className="flex items-end gap-1.5 h-36">
-            {CHART.map((v, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                <div className="w-full rounded-t-lg transition-all" style={{ height: `${(v / maxC) * 100}%`, background: i === 11 ? C : (i === 0 ? '#CBD5E1' : '#E2E8F0') }} />
-                <span className="text-[9px] text-gray-400">{MONTHS[i]}</span>
-              </div>
-            ))}
-          </div>
+
+      {/* Spending Chart */}
+      <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200/50 dark:border-gray-700/60 p-6 shadow-md shadow-gray-200/50 dark:shadow-none">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Витрати за останні 6 місяців</h2>
+          <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-[10px] font-bold text-[#5C3EFE] uppercase tracking-wider border border-indigo-100 dark:border-indigo-800/50">{thisYear}</div>
         </div>
-        <div className="rounded-2xl p-6 flex flex-col text-white" style={{ background: 'linear-gradient(135deg,#7C3AED,#5C3EFE)' }}>
-          <div className="flex items-center gap-2 mb-3"><Sparkles size={18} /><span className="text-sm font-bold tracking-wide">AI МЕХАНІК</span></div>
-          <p className="text-sm opacity-80 leading-relaxed mb-5 flex-1">Отримайте персоналізований план обслуговування на основі вашої історії та пробігу.</p>
-          <div className="space-y-2 mb-6">
-            {['Аналіз 45+ параметрів', 'Прогнозування поломок', 'Оцінка вартості ремонту'].map(f => (
-              <div key={f} className="flex items-center gap-2 text-sm opacity-90">
-                <div className="w-4 h-4 rounded-full border border-white/50 flex items-center justify-center"><Check size={10} /></div>{f}
-              </div>
-            ))}
-          </div>
-          <button className="w-full py-3 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all">
-            Спробувати безкоштовно <ChevronRight size={16} />
-          </button>
+        <div className="h-52">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94A3B8', fontWeight: 600 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#94A3B8' }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v} />
+              <Tooltip
+                contentStyle={{ background: '#1E293B', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '13px', fontWeight: 700 }}
+                formatter={(val) => [`${fmt(val)} ₴`, 'Витрати']}
+                labelStyle={{ color: '#94A3B8', fontSize: '11px', marginBottom: '4px' }}
+              />
+              <Line type="monotone" dataKey="cost" stroke="#5C3EFE" strokeWidth={3} dot={{ r: 5, fill: '#5C3EFE', stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 7, fill: '#5C3EFE', stroke: '#fff', strokeWidth: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 p-6">
-        <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Остання активність</h2>
-        <table className="w-full text-sm">
+
+      <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200/50 dark:border-gray-700/60 p-6 shadow-md shadow-gray-200/50 dark:shadow-none">
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Остання активність</h2>
+        <div className="overflow-x-auto -mx-6 px-6 no-scrollbar">
+          <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="text-gray-400 text-xs uppercase tracking-wide">
               {['Авто', 'Послуга', 'Дата', 'Вартість', 'Статус'].map(h => <th key={h} className="text-left pb-3 font-semibold">{h}</th>)}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-            {recent.map(r => {
+            {[...historyList].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5).map(r => {
               const car = carList.find(c => c.id === r.carId)
               return (
                 <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
@@ -268,18 +304,19 @@ function DashboardView({ carList, historyList }) {
                     <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold mr-2 ${CAT_CLR[r.category] || 'bg-gray-100 text-gray-600'}`}>{CAT[r.category]}</span>
                     <span className="text-gray-700 dark:text-gray-300">{r.title}</span>
                   </td>
-                  <td className="py-3 text-gray-500 dark:text-gray-400">{r.date}</td>
-                  <td className="py-3 font-semibold" style={{ color: r.cost > 0 ? C : '#10B981' }}>{fmtCost(r.cost)}</td>
-                  <td className="py-3">
+                  <td className="py-4 text-gray-500 dark:text-gray-400 font-medium">{r.date?.split('-').reverse().join('.')}</td>
+                  <td className="py-4 font-bold text-base" style={{ color: r.cost > 0 ? C : '#10B981' }}>{fmtCost(r.cost)}</td>
+                  <td className="py-4">
                     {r.status === 'verified'
-                      ? <span className="flex items-center gap-1 text-blue-600 text-xs font-medium"><ShieldCheck size={14} />Verified</span>
-                      : <span className="text-gray-400 text-xs">Очікується</span>}
+                      ? <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-lg border border-blue-100 dark:border-blue-800/50 whitespace-nowrap"><ShieldCheck size={14} />Verified</span>
+                      : <span className="text-gray-400 text-xs font-medium flex items-center gap-1"><Clock size={14} />Очікується</span>}
                   </td>
                 </tr>
               )
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )
@@ -316,18 +353,36 @@ function GarageView({ carList, onAddCar, onSelectCar, userProfile, onGoPlans }) 
           {carList.map(car => {
             const logo = getBrandLogo(car.brand)
             return (
-              <div key={car.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 p-5 hover:shadow-md dark:hover:shadow-gray-900 transition-all">
-                <div className="flex items-center gap-3 mb-5">
-                  {logo ? <img src={logo} alt={car.brand} className="w-12 h-12 object-contain" />
-                    : <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 font-bold">{car.brand[0]}</div>}
+              <div 
+                key={car.id} 
+                className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-200/50 dark:border-gray-700/60 p-6 shadow-md shadow-gray-200/50 dark:shadow-none hover:border-indigo-200 hover:-translate-y-1 transition-all group cursor-pointer"
+                onClick={() => onSelectCar(car)}
+              >
+                <div className="flex items-center gap-4 mb-6">
+                  {logo ? (
+                    <div className="w-14 h-14 rounded-2xl bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center p-2 border border-gray-100 dark:border-gray-700/50 group-hover:scale-110 transition-transform">
+                      <img src={logo} alt={car.brand} className="w-full h-full object-contain" />
+                    </div>
+                  ) : (
+                    <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-xl border border-indigo-100 dark:border-indigo-800/50 group-hover:scale-110 transition-transform">
+                      {car.brand[0]}
+                    </div>
+                  )}
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-white">{car.brand}</p>
-                    <p className="text-sm text-gray-400">{car.plate}</p>
+                    <h3 className="font-black text-gray-900 dark:text-white text-lg leading-tight tracking-tight">{car.brand}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-md">{car.plate}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-base font-bold text-gray-900 dark:text-white">{fmt(car.mileage)} КМ</p>
-                  <button onClick={() => onSelectCar(car)} className="text-sm font-semibold hover:opacity-70 transition-all" style={{ color: C }}>Деталі</button>
+                <div className="flex items-end justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Пробіг</p>
+                    <p className="text-xl font-black text-gray-900 dark:text-white tracking-tighter">{fmt(car.mileage)} <span className="text-xs text-gray-400 uppercase ml-0.5">км</span></p>
+                  </div>
+                  <button className="text-sm font-black text-[#5C3EFE] hover:opacity-70 transition-all flex items-center gap-1 group-hover:translate-x-1 duration-300">
+                    Деталі <ChevronRight size={16} />
+                  </button>
                 </div>
               </div>
             )
@@ -762,7 +817,7 @@ function HistoryView({ historyList, carList, onAddService, onUpdateService, onDe
   )
 }
 
-function ServiceModal({ onClose, onSave, carList, historyList, initialData }) {
+function ServiceModal({ onClose, onSave, carList, historyList, initialData, onDelete }) {
   const isEdit = !!initialData
 
   const getMinMileage = (cid) => {
@@ -877,6 +932,15 @@ function ServiceModal({ onClose, onSave, carList, historyList, initialData }) {
         <button type="submit" className="w-full py-3 text-white rounded-xl font-semibold text-sm hover:opacity-90 transition-all" style={{ background: C }}>
           {isEdit ? 'Зберегти зміни' : 'Додати в історію'}
         </button>
+        {isEdit && onDelete && (
+          <button
+            type="button"
+            onClick={() => { if (confirm('Видалити цей запис назавжди?')) { onDelete(initialData.id); onClose() } }}
+            className="w-full py-3 text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 rounded-xl font-semibold text-sm hover:bg-red-100 dark:hover:bg-red-900/40 transition-all flex items-center justify-center gap-2"
+          >
+            <Trash2 size={16} /> Видалити запис
+          </button>
+        )}
       </form>
     </Modal>
   )
@@ -1169,6 +1233,41 @@ function SettingsView({ currentUser, userProfile, setUserProfile }) {
           </div>
         ))}
       </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 p-6 flex flex-col gap-4 shadow-sm">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-[#5C3EFE]">
+            <Smartphone size={20} />
+          </div>
+          <h2 className="font-semibold text-gray-900 dark:text-white">Встановлення на телефон</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-2xl border border-gray-100 dark:border-gray-700">
+            <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-[10px] shadow-sm border border-gray-100 dark:border-gray-700">1</div>
+              Для iOS (Safari)
+            </h3>
+            <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-2 list-disc ml-4 leading-relaxed">
+              <li>Відкрийте цей сайт у браузері <b>Safari</b></li>
+              <li>Натисніть кнопку <b>"Поділитися"</b> (іконка квадрата зі стрілкою вгору)</li>
+              <li>Прокрутіть меню вниз та виберіть <b>"Додати на початковий екран"</b></li>
+            </ul>
+          </div>
+          
+          <div className="p-4 bg-gray-50 dark:bg-gray-700/30 rounded-2xl border border-gray-100 dark:border-gray-700">
+            <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-[10px] shadow-sm border border-gray-100 dark:border-gray-700">2</div>
+              Для Android (Chrome)
+            </h3>
+            <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-2 list-disc ml-4 leading-relaxed">
+              <li>Відкрийте цей сайт у браузері <b>Chrome</b></li>
+              <li>Натисніть <b>три крапки</b> у верхньому правому куті</li>
+              <li>Виберіть <b>"Додати на головний екран"</b> або <b>"Встановити додаток"</b></li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1267,92 +1366,76 @@ function TeamView({ teamMembers, onRemove, onInvite, limit }) {
   )
 }
 
-function InviteMemberModal({ onClose, onInvite, currentCount, limit }) {
+function InviteMemberModal({ limit, currentCount, onClose, onInvite }) {
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState('admin')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [name, setName] = useState('')
+  const [role, setRole] = useState('viewer')
+  const ic = inp_cls()
+  const isFull = currentCount >= limit
 
-  const handleInvite = async (e) => {
+  const submit = e => {
     e.preventDefault()
-    setError('')
-    if (currentCount >= limit) {
-      setError('Досягнуто ліміт команди')
-      return
-    }
-
-    setLoading(true)
-    setTimeout(() => {
-      onInvite({
-        id: Date.now(),
-        name: email.split('@')[0],
-        email: email,
-        role: role,
-        status: 'pending'
-      })
-      setLoading(false)
-      onClose()
-    }, 1000)
+    if (!email.trim() || !name.trim() || isFull) return
+    onInvite({
+      id: Date.now(),
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      role,
+      status: 'pending'
+    })
+    onClose()
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 animate-in zoom-in-95 duration-200">
-        <div className="p-6 sm:p-8 border-b border-gray-50 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Запросити в команду</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"><X size={20} /></button>
+    <Modal title="Запросити учасника" onClose={onClose}>
+      {isFull ? (
+        <div className="flex flex-col items-center text-center gap-4 py-6">
+          <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 rounded-full flex items-center justify-center text-orange-500">
+            <AlertCircle size={32} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Ліміт команди вичерпано</h3>
+            <p className="text-sm text-gray-500 mt-2">Ви маєте {currentCount} з {limit} дозволених учасників. Оновіть план для розширення.</p>
+          </div>
+          <button onClick={onClose} className="px-6 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm hover:opacity-80 transition-all">Зрозуміло</button>
         </div>
-
-        <form onSubmit={handleInvite} className="p-6 sm:p-8 flex flex-col gap-5">
-          {error && <div className="p-3 text-xs font-bold text-red-600 bg-red-50 rounded-xl border border-red-100">{error}</div>}
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold ml-1 text-gray-700 dark:text-gray-300">Email користувача</label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="example@autolog.ua"
-                className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-2xl outline-none focus:border-[#5C3EFE] transition-all"
-              />
+      ) : (
+        <form onSubmit={submit} className="flex flex-col gap-4">
+          <Field label="Ім'я учасника *">
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Олександр Іваненко" className={ic} required />
+          </Field>
+          <Field label="Email *">
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@example.com" className={ic} required />
+          </Field>
+          <Field label="Роль">
+            <div className="flex gap-3">
+              {[['viewer', '👁 Спостерігач'], ['admin', '🛡 Адміністратор']].map(([val, lbl]) => (
+                <label key={val} className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300">
+                  <input type="radio" name="role" value={val} checked={role === val} onChange={e => setRole(e.target.value)} className="accent-[#5C3EFE]" />
+                  {lbl}
+                </label>
+              ))}
             </div>
+          </Field>
+          <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-3 rounded-xl text-xs leading-relaxed border border-blue-100 dark:border-blue-800">
+            <strong>Запрошення</strong> буде надіслано на вказаний email. Учасник зможе переглядати ваші авто після підтвердження.
           </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-bold ml-1 text-gray-700 dark:text-gray-300">Роль</label>
-            <div className="relative">
-              <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-              <select
-                value={role}
-                onChange={e => setRole(e.target.value)}
-                className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-2xl outline-none focus:border-[#5C3EFE] transition-all appearance-none cursor-pointer"
-              >
-                <option value="admin">Адміністратор</option>
-                <option value="viewer">Спостерігач</option>
-              </select>
-            </div>
+          <div className="flex gap-3 mt-2">
+            <button type="button" onClick={onClose} className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-semibold text-sm hover:opacity-80 transition-all">Скасувати</button>
+            <button type="submit" className="flex-1 py-3 text-white rounded-xl font-semibold text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:opacity-90" style={{ background: C }}>
+              <UserPlus size={16} /> Запросити
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full h-[54px] bg-[#5C3EFE] text-white rounded-2xl font-bold dark:shadow-indigo-500/20 hover:opacity-90 transition-all flex items-center justify-center mt-2"
-          >
-            {loading ? <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div> : 'Надіслати запрошення'}
-          </button>
         </form>
-      </div>
-    </div>
+      )}
+    </Modal>
   )
 }
 
-// ─── Admin ───────────────────────────────────────────────────────────────────
 function AdminView() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const isDark = useContext(ThemeCtx)
 
   useEffect(() => {
     getDocs(collection(db, 'users')).then(snap => {
@@ -1382,48 +1465,36 @@ function AdminView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Адмін панель</h1>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/60 dark:border-gray-700/60 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-          <h2 className="font-semibold text-gray-900 dark:text-white">Користувачі</h2>
+      <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Адмін панель</h1>
+      <div className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border overflow-hidden shadow-sm`}>
+        <div className={`px-6 py-4 border-b ${isDark ? 'border-gray-700 text-white' : 'border-gray-100 text-slate-900'}`}>
+          <h2 className="font-semibold">Користувачі</h2>
         </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-gray-400 text-xs uppercase tracking-wide bg-gray-50 dark:bg-gray-700/50">
+            <tr className={`${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-50 text-gray-400'} text-xs uppercase tracking-wide`}>
               {['Користувач', 'Email', 'Телефон', 'Роль', 'Підписка'].map(h => <th key={h} className="text-left px-6 py-3 font-semibold">{h}</th>)}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+          <tbody className={`divide-y ${isDark ? 'divide-gray-700' : 'divide-gray-100'}`}>
             {users.map(u => (
-              <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+              <tr key={u.id} className={`${isDark ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'} transition-colors`}>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    {u.avatarBase64 ? (
-                      <img src={u.avatarBase64} className="w-9 h-9 rounded-xl object-cover shrink-0" />
-                    ) : (
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 uppercase" style={{ background: C }}>{u.name?.[0] || u.email?.[0] || 'U'}</div>
-                    )}
-                    <span className="font-medium text-gray-900 dark:text-white">{u.name || 'Користувач'}</span>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm uppercase" style={{ background: '#5C3EFE' }}>{u.name?.[0] || u.email?.[0] || 'U'}</div>
+                    <span className={`font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>{u.name || 'Користувач'}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{u.email}</td>
-                <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{u.phone || '—'}</td>
+                <td className={`px-6 py-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{u.email}</td>
+                <td className={`px-6 py-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{u.phone || '—'}</td>
                 <td className="px-6 py-4">
-                  <select
-                    value={u.role || 'User'}
-                    onChange={e => handleUpdateRole(u.id, e.target.value)}
-                    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 outline-none text-gray-900 dark:text-white text-xs rounded-lg focus:ring-[#5C3EFE] focus:border-[#5C3EFE] block w-full p-2 cursor-pointer transition-colors"
-                  >
+                  <select value={u.role || 'User'} onChange={e => handleUpdateRole(u.id, e.target.value)} className={`${isDark ? 'bg-gray-800 border-gray-600 text-white' : 'bg-white border-gray-200 text-slate-900'} text-xs rounded-lg p-2`}>
                     <option value="User">User</option>
                     <option value="Admin">Admin</option>
                   </select>
                 </td>
                 <td className="px-6 py-4">
-                  <select
-                    value={u.plan || 'Free'}
-                    onChange={e => handleUpdatePlan(u.id, e.target.value)}
-                    className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 outline-none text-gray-900 dark:text-white text-xs rounded-lg focus:ring-[#5C3EFE] focus:border-[#5C3EFE] block w-full p-2 cursor-pointer transition-colors"
-                  >
+                  <select value={u.plan || 'Free'} onChange={e => handleUpdatePlan(u.id, e.target.value)} className={`${isDark ? 'bg-gray-800 border-gray-600 text-white' : 'bg-white border-gray-200 text-slate-900'} text-xs rounded-lg p-2`}>
                     <option value="Free">Free</option>
                     <option value="Premium">Premium</option>
                     <option value="Business">Business</option>
@@ -1440,254 +1511,226 @@ function AdminView() {
 
 function STODashboardView({ userProfile, setTab }) {
   const isDark = useContext(ThemeCtx)
-  const CURRENT_STO_NAME = userProfile?.stoName || "AWT Bavaria (Київ)"
-  const [clientCars] = useState([
-    { id: 101, brand: 'Audi Q5', plate: 'BC4554EP', vin: '22222222222222222', ownerName: 'Олександр' }
-  ])
-  const [stoHistory, setStoHistory] = useState([
-    { id: 1, car: 'Audi Q5 (BC4554EP)', category: 'diagnostic', title: 'Тест', cost: 250, date: '2026-04-01', status: 'pending_approval' },
-    { id: 2, car: 'Audi Q5 (BC4554EP)', category: 'maintenance', title: 'Масло', cost: 3411, date: '2026-04-01', status: 'pending_approval' }
-  ])
-  
+  const CURRENT_STO_NAME = userProfile?.stoName || "TopService"
+  const [stoHistory, setStoHistory] = useState([])
   const [searchVin, setSearchVin] = useState('')
   const [foundCar, setFoundCar] = useState(null)
   const [notFound, setNotFound] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState('')
+
+  const stats = {
+    income: stoHistory.reduce((acc, curr) => acc + (curr.cost || 0), 0),
+    count: stoHistory.length,
+    verifiedPercent: stoHistory.length > 0 ? Math.round((stoHistory.filter(h => h.status === 'verified').length / stoHistory.length) * 100) : 0
+  }
 
   useEffect(() => {
     if (auth.currentUser) {
       const q = query(collection(db, 'history'), where('stoId', '==', auth.currentUser.uid))
       getDocs(q).then(snap => {
-        const h = snap.docs.map(d => ({id: d.id, ...d.data()}))
-        h.sort((a,b) => new Date(b.date) - new Date(a.date))
-        if (h.length > 0) setStoHistory(h)
+        const h = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        h.sort((a, b) => new Date(b.date) - new Date(a.date))
+        setStoHistory(h)
       }).catch(console.error)
     }
   }, [])
 
   const handleSearch = async () => {
-    const vin = searchVin.trim().toUpperCase()
-    if (vin.length < 10) return
-
+    const val = searchVin.trim().toUpperCase()
+    if (val.length < 3) return
+    setSearching(true)
+    setSearchError('')
     try {
-      setNotFound(false)
-      setFoundCar(null)
-      const q = query(collection(db, 'cars'), where('vin', '==', vin))
-      const snap = await getDocs(q)
+      setNotFound(false); setFoundCar(null)
+      // Parallel search by VIN or Plate to avoid complex index requirements
+      const qVin = query(collection(db, 'cars'), where('vin', '==', val))
+      const qPlate = query(collection(db, 'cars'), where('plate', '==', val))
       
+      const [snapVin, snapPlate] = await Promise.all([getDocs(qVin), getDocs(qPlate)])
+      const snap = !snapVin.empty ? snapVin : snapPlate
+
       if (!snap.empty) {
-        const docSnap = snap.docs[0]
-        const carData = { id: docSnap.id, ...docSnap.data() }
-        
+        const carData = { id: snap.docs[0].id, ...snap.docs[0].data() }
         let ownerName = 'Клієнт AutoLog'
         if (carData.userId) {
           const userSnap = await getDoc(doc(db, 'users', carData.userId))
-          if (userSnap.exists()) {
-            const uData = userSnap.data()
-            if (uData.displayName) ownerName = uData.displayName
-            else if (uData.email) ownerName = uData.email.split('@')[0]
-          }
+          if (userSnap.exists()) ownerName = userSnap.data().displayName || userSnap.data().email?.split('@')[0] || 'Клієнт AutoLog'
         }
-        
         setFoundCar({ ...carData, ownerName })
-        return
+      } else { 
+        setNotFound(true) 
       }
-      
-      // Fallback
-      const car = clientCars.find(c => c.vin === vin)
-      if (car) {
-        setFoundCar(car)
-      } else {
-        setNotFound(true)
-      }
-      
-    } catch (err) {
-      console.error(err)
-      alert("Помилка при пошуку автомобіля")
+    } catch (err) { 
+      console.error("Search Error:", err)
+      setSearchError(err.message)
+    } finally { 
+      setSearching(false) 
     }
   }
 
   const handleSaveService = async (data) => {
-    const newDoc = {
-      ...data,
-      userId: foundCar.userId || 'system',
-      ownerName: foundCar.ownerName || 'Клієнт AutoLog',
-      stoId: auth.currentUser?.uid || 'unknown_sto',
-      stoName: CURRENT_STO_NAME,
-      date: new Date().toISOString().split('T')[0],
-      status: 'pending_approval'
-    }
-
+    const newDoc = { ...data, userId: foundCar.userId || 'system', ownerName: foundCar.ownerName || 'Клієнт AutoLog', stoId: auth.currentUser?.uid || 'unknown_sto', stoName: CURRENT_STO_NAME, date: new Date().toISOString().split('T')[0], status: 'pending_approval', createdAt: Date.now() }
     try {
-      const fakeId = Date.now().toString()
-      setStoHistory(p => [{...newDoc, id: fakeId}, ...p])
-      
-      if (auth.currentUser) {
-         await addDoc(collection(db, 'history'), newDoc)
-      }
-
-      setShowModal(false)
-      setSearchVin('')
-      setFoundCar(null)
-      setToastMsg("Запит на сервіс успішно відправлено власнику на підтвердження")
-      setTimeout(() => setToastMsg(''), 3000)
-    } catch (e) {
-      console.error(e)
-      alert('Помилка при відправці запису: ' + e.message)
-    }
+      const docRef = await addDoc(collection(db, 'history'), newDoc)
+      setStoHistory(p => [{ ...newDoc, id: docRef.id }, ...p])
+      setShowModal(false); setSearchVin(''); setFoundCar(null); setToastMsg("Запит на сервіс надіслано"); setTimeout(() => setToastMsg(''), 3000)
+    } catch (e) { console.error(e) }
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-12 w-full relative">
-      {toastMsg && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-3 animate-in fade-in slide-in-from-top-10 duration-300">
-          <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center shrink-0"><Check size={14}/></div>
-          <p className="font-bold text-sm tracking-wide">{toastMsg}</p>
-        </div>
-      )}
+    <div className={`flex flex-col gap-8 w-full max-w-7xl mx-auto pb-20 relative ${isDark ? 'text-white' : 'text-slate-900'}`}>
+      <div className={`fixed inset-0 ${isDark ? 'bg-[#0B1120]' : 'bg-[#F8FAFC]'} -z-50 transition-colors duration-500`}></div>
 
+      {/* Inactive Banner */}
       {(userProfile?.stoSubscription || 'inactive') === 'inactive' && (
-        <div className="bg-gradient-to-r from-amber-500 to-amber-600 rounded-2xl p-6 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-              <AlertCircle size={24} className="text-white" />
+        <div className={`${isDark ? 'bg-[#2D161B] border-[#442329]' : 'bg-red-50 border-red-100'} border-2 rounded-[2rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative group`}>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 blur-[80px] -mr-32 -mt-32"></div>
+          <div className="flex items-center gap-6 relative z-10">
+            <div className={`${isDark ? 'bg-red-500/20 border-red-500/30' : 'bg-white border-red-200'} w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 border shadow-lg`}>
+              <AlertCircle size={28} className="text-red-500" />
             </div>
             <div>
-              <h2 className="text-lg font-bold mb-1">Ваш партнерський акаунт неактивний</h2>
-              <p className="text-amber-100 text-sm opacity-95 max-w-xl">
+              <h2 className="text-xl font-black mb-1">Ваш партнерський акаунт неактивний</h2>
+              <p className={`${isDark ? 'text-red-200/50' : 'text-red-600/70'} text-sm font-medium max-w-xl`}>
                 Оформіть підписку або придбайте довічний доступ, щоб надсилати верифіковані записи клієнтам.
               </p>
             </div>
           </div>
-          <button onClick={() => setTab('sto_plans')} className="shrink-0 px-6 py-3.5 bg-white text-amber-600 hover:bg-amber-50 font-black rounded-xl shadow transition-all duration-300">
+          <button onClick={() => setTab('sto_plans')} className="px-10 py-4 bg-white text-red-600 hover:bg-red-50 font-black rounded-2xl shadow-xl transition-all relative z-10 whitespace-nowrap">
             Перейти до тарифів
           </button>
         </div>
       )}
 
-      <div>
-        <h1 className="text-3xl font-black text-gray-900 dark:text-white">Кабінет партнера: {CURRENT_STO_NAME}</h1>
-        <p className="text-gray-500 dark:text-gray-400 mt-2">Пошук авто та відправка записів про сервіс на підтвердження власникам</p>
+      {/* Main Heading */}
+      <div className="flex flex-col gap-3 mt-4">
+        <h1 className="text-5xl font-black tracking-tight leading-tight">
+          Кабінет партнера: <span className="text-[#3B82F6]">{CURRENT_STO_NAME}</span>
+        </h1>
+        <p className={`${isDark ? 'text-slate-400' : 'text-slate-500'} text-lg font-medium opacity-80`}>
+          Пошук авто та відправка записів про сервіс на підтвердження власникам
+        </p>
       </div>
 
-      <div className="bg-white dark:bg-[#1E293B] border border-gray-100 dark:border-none rounded-2xl p-8 shadow-sm">
-        <div className="flex items-end gap-4 max-w-2xl">
-          <div className="flex-1">
-            <label className="block text-sm font-bold text-gray-700 dark:text-white mb-2 ml-1">VIN-код автомобіля</label>
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20}/>
-              <input 
-                value={searchVin} 
-                onChange={e => setSearchVin(e.target.value.toUpperCase())} 
-                placeholder="Введіть 17 символів VIN..." 
-                maxLength={17}
-                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 dark:bg-[#334155] border border-gray-200 dark:border-none rounded-xl outline-none focus:ring-2 focus:ring-[#5C3EFE] transition-all font-mono uppercase text-gray-900 dark:text-white placeholder-gray-400"
-              />
-            </div>
-          </div>
-          <button onClick={handleSearch} disabled={searchVin.length < 10} className="h-[52px] px-8 bg-[#5C3EFE] text-white rounded-xl font-bold shadow-lg hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-2">
-            Знайти авто
-          </button>
-        </div>
-
-        {foundCar && (
-          <div className="mt-8 animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-gray-50 dark:bg-gray-700/30 rounded-[2rem] border border-gray-100 dark:border-gray-700 p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-5">
-                <div className="w-16 h-16 rounded-full bg-white dark:bg-gray-800 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center text-2xl font-black text-gray-400">
-                  {foundCar.brand[0]}
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                    {foundCar.brand} <span className="text-sm font-bold px-2 py-0.5 bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-md tracking-wider">{foundCar.plate}</span>
-                  </h3>
-                  <div className="flex items-center gap-4 mt-1">
-                    <p className="text-sm text-gray-500 font-mono tracking-wide">{foundCar.vin}</p>
-                    <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400 text-opacity-80">Власник: {foundCar.ownerName}</p>
-                  </div>
-                </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-4">
+        {[
+          { label: 'ДОХІД ЗА МІСЯЦЬ', val: `124 500 ₴`, trend: '+14.5% до минулого', trendColor: 'text-emerald-500', icon: <div className="text-[#3B82F6] text-2xl font-black">$</div>, bg: 'bg-[#111827]/60' },
+          { label: 'ОБСЛУЖЕНО АВТО', val: `42`, subtext: 'Унікальних клієнтів', icon: <Car size={24} className="text-[#3B82F6]" />, bg: 'bg-[#111827]/60' },
+          { label: 'ОЧІКУЮТЬ ПІДТВЕРДЖЕННЯ', val: `3`, subtext: 'Потребують дії клієнта', icon: <Clock size={24} className="text-yellow-500/80" />, bg: 'bg-[#111827]/60' },
+        ].map((s, i) => (
+          <div key={i} className={`${isDark ? 'bg-[#111827]/80 border-white/5' : 'bg-white border-slate-200 shadow-xl shadow-slate-200/50'} backdrop-blur-3xl border rounded-[2rem] p-6 sm:p-8 flex flex-col justify-between min-h-[160px] sm:min-h-[180px] hover:border-[#3B82F6]/30 transition-all duration-500 group relative overflow-hidden`}>
+            <div className="flex justify-between items-start relative z-10">
+              <div>
+                <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'} mb-6`}>{s.label}</p>
+                <h3 className="text-4xl font-black tracking-tight">{s.val}</h3>
+                {s.trend && <p className={`text-[11px] font-bold mt-2 flex items-center gap-1.5 ${s.trendColor}`}><TrendingUp size={12}/> {s.trend}</p>}
+                {s.subtext && <p className={`text-[11px] font-bold mt-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{s.subtext}</p>}
               </div>
-              <button disabled={(userProfile?.stoSubscription || 'inactive') === 'inactive'} onClick={() => setShowModal(true)} className="w-full md:w-auto px-6 py-4 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-2xl font-black transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-50 dark:disabled:hover:bg-blue-900/40">
-                <ShieldCheck size={20}/>
-                Створити запис про сервіс
+              <div className={`${isDark ? 'bg-[#0F172A] border-white/5' : 'bg-slate-50 border-slate-100'} w-12 h-12 rounded-[1.25rem] border flex items-center justify-center shrink-0`}>
+                {s.icon}
+              </div>
+            </div>
+            <div className={`absolute top-0 right-0 w-32 h-32 ${isDark ? 'bg-blue-500/5' : 'bg-blue-500/2'} blur-[40px] -mr-16 -mt-16 group-hover:bg-blue-500/10 transition-all`}></div>
+          </div>
+        ))}
+      </div>
+
+      {/* Search Section */}
+      <div className={`mt-8 ${isDark ? 'bg-[#111827]/80 border-white/5' : 'bg-white border-slate-200 shadow-2xl shadow-slate-200/50'} backdrop-blur-3xl border rounded-[2.5rem] p-10 relative overflow-hidden`}>
+        <div className="flex flex-col gap-8 relative z-10">
+          <div className="flex flex-col gap-4">
+            <label className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>VIN-КОД АБО ДЕРЖНОМЕР АВТОМОБІЛЯ</label>
+            <div className="flex flex-col md:flex-row gap-4 items-stretch">
+              <div className="flex-1 relative group">
+                <Search className={`absolute left-6 top-1/2 -translate-y-1/2 ${isDark ? 'text-slate-600' : 'text-slate-400'} group-focus-within:text-[#3B82F6] transition-colors`} size={24}/>
+                <input 
+                  value={searchVin} 
+                  onChange={e => setSearchVin(e.target.value.toUpperCase())} 
+                  placeholder="Введіть 17 символів..." 
+                  maxLength={17}
+                  className={`w-full pl-16 pr-8 py-5 ${isDark ? 'bg-[#0F172A] border-white/5 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'} border rounded-2xl outline-none focus:ring-2 focus:ring-[#3B82F6]/50 transition-all font-mono uppercase text-xl placeholder:text-slate-700 tracking-widest`}
+                />
+              </div>
+              <button 
+                onClick={handleSearch} 
+                disabled={searching}
+                className="px-12 py-5 bg-gradient-to-r from-[#3B82F6] to-[#6366F1] text-white rounded-2xl font-black shadow-lg shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-3 justify-center text-lg disabled:opacity-50"
+              >
+                {searching ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Знайти авто"}
               </button>
             </div>
           </div>
-        )}
 
-        {notFound && !foundCar && (
-          <div className="mt-8 animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-[#7F1D1D]/20 rounded-[2rem] border border-[#EF4444] p-6 flex flex-col sm:flex-row items-center gap-4 text-red-500">
-              <div className="w-12 h-12 rounded-full bg-red-900/50 flex items-center justify-center shrink-0">
-                <AlertCircle size={24} className="text-red-500" />
-              </div>
-              <div className="text-center sm:text-left">
-                <h3 className="font-bold text-lg mb-1">Автомобіль не знайдено</h3>
-                <p className="text-sm opacity-90">Перевірте правильність вводу VIN-коду або переконайтеся, що клієнт додав це авто в систему.</p>
+          {notFound && !foundCar && !searchError && (
+            <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+               <div className={`${isDark ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-100'} border rounded-3xl p-8 flex items-center gap-6`}>
+                  <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-500 shrink-0">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-red-500">Автомобіль не знайдено</h4>
+                    <p className={`${isDark ? 'text-red-200/50' : 'text-red-700/60'} text-sm`}>Спробуйте ввести VIN або Держномер повністю. Якщо авто нове — зареєструйте його в системі.</p>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {searchError && (
+             <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-8 flex items-center gap-6">
+                   <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-500 shrink-0">
+                     <Info size={24} />
+                   </div>
+                   <div>
+                     <h4 className="text-lg font-bold text-amber-500">Технічна інформація</h4>
+                     <p className="text-amber-400 text-sm">{searchError}</p>
+                   </div>
+                </div>
+             </div>
+          )}
+
+          {foundCar && (
+            <div className="animate-in fade-in zoom-in-95 duration-500 pt-4 border-t border-white/5">
+              <div className={`${isDark ? 'bg-[#0F172A]/50 border-blue-500/30' : 'bg-blue-50 border-blue-200'} border rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-8 backdrop-blur-xl`}>
+                <div className="flex items-center gap-8">
+                  <div className={`w-20 h-20 rounded-full ${isDark ? 'bg-[#0F172A] border-blue-500/40' : 'bg-white border-blue-200 shadow-md'} border flex items-center justify-center text-3xl font-black ${isDark ? 'text-white' : 'text-blue-600'}`}>
+                    {foundCar.brand[0]}
+                  </div>
+                  <div>
+                    <h3 className="text-3xl font-black flex items-center gap-4 uppercase">
+                      {foundCar.brand} 
+                      <span className={`text-sm font-bold px-3 py-1 ${isDark ? 'bg-slate-800 border-white/10 text-slate-400' : 'bg-white border-slate-200 text-slate-500'} border rounded-lg tracking-widest`}>
+                        {foundCar.plate}
+                      </span>
+                    </h3>
+                    <p className={`text-lg ${isDark ? 'text-blue-400/80' : 'text-indigo-600'} font-mono tracking-widest mt-1 opacity-80`}>{foundCar.vin}</p>
+                    <p className="text-sm font-bold mt-1 opacity-60">Власник: <span className="text-white">{foundCar.ownerName}</span></p>
+                  </div>
+                </div>
+                <button 
+                  disabled={(userProfile?.stoSubscription || 'inactive') === 'inactive'} 
+                  onClick={() => setShowModal(true)} 
+                  className="w-full md:w-auto px-10 py-5 bg-[#3B82F6] text-white rounded-2xl font-black shadow-xl hover:bg-blue-500 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  <ShieldCheck size={24}/>
+                  Створити запис
+                </button>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Останні відправлені записи</h2>
-        <div className="bg-white dark:bg-[#1E293B] border border-gray-100 dark:border-none rounded-3xl overflow-hidden shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-gray-400 dark:text-gray-400 text-xs uppercase tracking-wider border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-transparent">
-                <th className="text-left px-6 py-4 font-semibold">Автомобіль / Власник</th>
-                <th className="text-left px-6 py-4 font-semibold">Послуга</th>
-                <th className="text-left px-6 py-4 font-semibold">Сума</th>
-                <th className="text-left px-6 py-4 font-semibold">Дата</th>
-                <th className="text-left px-6 py-4 font-semibold">Статус</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700/50">
-              {stoHistory.map(r => (
-                <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors border-b border-gray-50 dark:border-gray-800/50 last:border-0">
-                  <td className="px-6 py-4">
-                    {r.car ? (
-                      <p className="font-bold text-gray-900 dark:text-white">{r.car}</p>
-                    ) : (
-                      <p className="font-bold text-gray-900 dark:text-white">{r.brand} <span className="text-xs font-normal text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600 rounded px-1 ml-1">{r.plate}</span></p>
-                    )}
-                    {r.ownerName && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Власник: {r.ownerName}</p>}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold mr-2 uppercase tracking-tight bg-blue-100 text-blue-700">
-                      {CAT[r.category] || 'ТО'}
-                    </span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{r.title}</span>
-                  </td>
-                  <td className="px-6 py-4 font-black text-gray-900 dark:text-white">{r.cost} ₴</td>
-                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400 font-medium">{r.date}</td>
-                  <td className="px-6 py-4">
-                    {r.status === 'pending_approval' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-[#FEF08A]/20 text-[#FACC15]">
-                        <Clock size={12}/> Очікує підтвердження
-                      </span>
-                    )}
-                    {r.status === 'verified' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                        <ShieldCheck size={12}/> Верифіковано
-                      </span>
-                    )}
-                    {r.status === 'rejected' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-red-100 text-red-700 border border-red-200">
-                        <AlertCircle size={12}/> Відхилено
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          )}
         </div>
       </div>
-      
+
+      {toastMsg && (
+        <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 ${isDark ? 'bg-[#3B82F6] text-white shadow-blue-500/20' : 'bg-indigo-600 text-white shadow-indigo-500/20'} px-8 py-4 rounded-2xl shadow-2xl z-[100] border border-white/20 animate-in fade-in slide-in-from-bottom-10`}>
+          <p className="font-bold tracking-wide">{toastMsg}</p>
+        </div>
+      )}
+
       {showModal && foundCar && (
         <AddVerifiedServiceModal 
           car={foundCar} 
@@ -1700,8 +1743,8 @@ function STODashboardView({ userProfile, setTab }) {
 }
 
 function AddVerifiedServiceModal({ car, onClose, onSave }) {
-  const [f, setF] = useState({ category:'maintenance', title:'', mileage:'', cost:'' })
-  const set = k => v => setF(p => ({...p,[k]:v}))
+  const [f, setF] = useState({ category: 'maintenance', title: '', mileage: '', cost: '' })
+  const set = k => v => setF(p => ({ ...p, [k]: v }))
   
   const submit = e => {
     e.preventDefault()
@@ -1716,49 +1759,49 @@ function AddVerifiedServiceModal({ car, onClose, onSave }) {
     })
   }
 
-  const ic = "w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5C3EFE] bg-white dark:bg-gray-800 dark:text-white"
+  const ic = "w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3B82F6] bg-white dark:bg-gray-800 dark:text-white transition-all shadow-sm"
 
   return (
     <Modal title="Відправити запис на підтвердження" onClose={onClose}>
-      <div className="flex bg-[#EFF6FF] dark:bg-blue-900/30 rounded-xl p-3 mb-5 border border-blue-100 dark:border-blue-800/50 items-start gap-3">
-        <Info size={18} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5"/>
-        <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed font-medium">Власник отримає сповіщення. Після його підтвердження запис отримає статус "Верифіковано" у його історії.</p>
+      <div className="flex bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-6 border border-blue-100 dark:border-blue-800/50 items-start gap-4">
+        <Info size={18} className="text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+        <p className="text-xs text-blue-900 dark:text-blue-200 leading-relaxed font-semibold">Власник автомобіля отримає сповіщення. Після його підтвердження цей запис отримає статус "Верифіковано".</p>
       </div>
 
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-gray-500 uppercase ml-1">Автомобіль клієнта</label>
-          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-700 flex items-center justify-between">
-            <span className="font-bold text-gray-900 dark:text-white">{car.brand}</span>
+      <form onSubmit={submit} className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Автомобіль</label>
+          <div className="px-5 py-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <span className="font-black text-gray-900 dark:text-white uppercase">{car.brand}</span>
             <span className="font-mono text-xs text-gray-400">{car.vin}</span>
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-gray-500 uppercase ml-1">Категорія робіт</label>
-          <select value={f.category} onChange={e=>set('category')(e.target.value)} className={ic}>
-            {Object.entries(CAT).map(([id,label]) => <option key={id} value={id}>{label}</option>)}
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Категорія робіт</label>
+          <select value={f.category} onChange={e => set('category')(e.target.value)} className={ic}>
+            {Object.entries(CAT).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
           </select>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-bold text-gray-500 uppercase ml-1">Опис робіт *</label>
-          <input value={f.title} onChange={e=>set('title')(e.target.value)} placeholder="Напр. Заміна передніх гальмівних колодок" className={ic} required/>
+        <div className="flex flex-col gap-2">
+          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Опис робіт *</label>
+          <input value={f.title} onChange={e => set('title')(e.target.value)} placeholder="Напр. Планове ТО, 100тис км" className={ic} required />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Пробіг (км) *</label>
-            <input type="number" min="0" value={f.mileage} onChange={e=>set('mileage')(e.target.value)} placeholder="Обов'язково" className={ic} required/>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Пробіг (км) *</label>
+            <input type="number" min="0" value={f.mileage} onChange={e => set('mileage')(e.target.value)} placeholder="Поточний пробіг" className={ic} required />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase ml-1">Вартість (₴)</label>
-            <input type="number" min="0" value={f.cost} onChange={e=>set('cost')(e.target.value)} placeholder="0" className={ic}/>
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Вартість (₴)</label>
+            <input type="number" min="0" value={f.cost} onChange={e => set('cost')(e.target.value)} placeholder="0.00" className={ic} />
           </div>
         </div>
 
-        <button type="submit" className="w-full mt-2 py-3.5 bg-[#5C3EFE] text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 hover:opacity-90 transition-all flex items-center justify-center gap-2">
-          <Send size={18}/> Надіслати власнику
+        <button type="submit" className="w-full mt-4 py-4 bg-[#3B82F6] text-white rounded-xl font-black shadow-xl shadow-blue-500/20 hover:bg-blue-500 transition-all flex items-center justify-center gap-2 transform active:scale-95">
+          <Send size={18} /> Надіслати на підтвердження
         </button>
       </form>
     </Modal>
@@ -1860,7 +1903,7 @@ function STOPricingView({ currentUser, userProfile, setUserProfile, setTab }) {
 }
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
-export default function AutoLogDashboard() {
+function App() {
   const [currentUser, setCurrentUser] = useState(undefined)
   const [userProfile, setUserProfile] = useState(null)
 
@@ -1911,6 +1954,7 @@ export default function AutoLogDashboard() {
 
   const [tab, setTab] = useState('dashboard')
   const [col, setCol] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [isDark, setDark] = useState(false)
   const [carList, setCarList] = useState([])
   const [historyList, setHistoryList] = useState([])
@@ -1928,6 +1972,19 @@ export default function AutoLogDashboard() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
   }, [isDark])
+
+  useEffect(() => {
+    if (!userProfile) return
+    const isStoTab = ['sto', 'sto_plans'].includes(tab)
+    const isOwnerTab = ['dashboard', 'garage', 'service', 'plans', 'ai', 'team'].includes(tab)
+    
+    if (isStoTab && userProfile.accountType !== 'sto') {
+      setTab('dashboard')
+    }
+    if (isOwnerTab && userProfile.accountType === 'sto') {
+      setTab('sto')
+    }
+  }, [tab, userProfile?.accountType])
 
   const isAdmin = currentUser?.email === 'olehmelnykovych@gmail.com' || userProfile?.role === 'Admin'
 
@@ -2068,7 +2125,7 @@ export default function AutoLogDashboard() {
         }
       `}</style>
       <div className={`flex h-screen w-full font-sans overflow-hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
-        <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin} userProfile={userProfile} />
+        <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin} userProfile={userProfile} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} />
         <div className="flex flex-1 flex-col overflow-hidden relative">
           <Topbar 
             isDark={isDark} setDark={setDark} 
@@ -2082,8 +2139,10 @@ export default function AutoLogDashboard() {
             pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)}
             onAcceptService={handleAcceptService}
             onRejectService={handleRejectService}
+            showMobileMenu={showMobileMenu}
+            setShowMobileMenu={setShowMobileMenu}
           />
-          <main className={`flex-1 flex flex-col min-h-0 overflow-hidden relative ${tab === 'ai' ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-900/50'}`}>
+          <main className={`flex-1 flex flex-col min-h-0 overflow-hidden relative ${tab === 'ai' ? 'bg-white dark:bg-gray-800' : 'bg-[#F8FAFC] dark:bg-gray-950'}`}>
             {tab === 'dashboard' && <div className="flex-1 overflow-y-auto p-4 sm:p-6"><div className="max-w-7xl mx-auto space-y-6 pb-12"><DashboardView carList={carList} historyList={historyList} /></div></div>}
             {tab === 'garage' && <div className="flex-1 overflow-y-auto p-4 sm:p-6"><div className="max-w-7xl mx-auto pb-12"><GarageView carList={carList} onAddCar={addCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => setTab('plans')} /></div></div>}
             {tab === 'service' && <div className="flex-1 overflow-y-auto p-4 sm:p-6"><HistoryView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} /></div>}
@@ -2092,8 +2151,8 @@ export default function AutoLogDashboard() {
             {tab === 'plans' && <div className="flex-1 overflow-y-auto p-4 sm:p-6"><div className="max-w-7xl mx-auto pb-12"><PlansView carList={carList} userProfile={userProfile} onUpdatePlan={handleUpdatePlan} /></div></div>}
             {tab === 'settings' && <div className="flex-1 overflow-y-auto p-4 sm:p-6"><div className="max-w-3xl mx-auto pb-12"><SettingsView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} /></div></div>}
             {tab === 'admin' && isAdmin && <div className="flex-1 overflow-y-auto p-4 sm:p-6"><div className="max-w-7xl mx-auto pb-12"><AdminView /></div></div>}
-            {tab === 'sto' && <div className="flex-1 overflow-y-auto p-4 sm:p-6"><STODashboardView userProfile={userProfile} setTab={setTab} /></div>}
-            {tab === 'sto_plans' && <div className="flex-1 overflow-y-auto p-4 sm:p-6"><STOPricingView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} setTab={setTab} /></div>}
+            {tab === 'sto' && userProfile?.accountType === 'sto' && <div className="flex-1 overflow-y-auto p-4 sm:p-6"><STODashboardView userProfile={userProfile} setTab={setTab} /></div>}
+            {tab === 'sto_plans' && userProfile?.accountType === 'sto' && <div className="flex-1 overflow-y-auto p-4 sm:p-6"><STOPricingView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} setTab={setTab} /></div>}
           </main>
         </div>
         {showInviteModal && (
@@ -2272,3 +2331,5 @@ function AuthScreen({ isDark, setDark }) {
     </div>
   )
 }
+
+export default App
