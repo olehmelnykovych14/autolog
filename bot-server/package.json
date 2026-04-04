@@ -1,0 +1,14 @@
+{
+  "name": "autolog-bot",
+  "version": "1.0.0",
+  "description": "AutoLog Telegram Bot",
+  "main": "bot.js",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.14.0",
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^12.0.0",
+    "telegraf": "^4.16.3",
+    "telegraf-session-local": "^2.1.1"
+  }
+}

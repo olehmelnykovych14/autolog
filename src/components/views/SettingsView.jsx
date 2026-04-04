@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Camera, Check, MapPin, Smartphone, User, Loader2 } from 'lucide-react'
+import { Camera, Check, MapPin, Smartphone, User, Loader2, Send, ExternalLink } from 'lucide-react'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { updateProfile } from 'firebase/auth'
-import { doc, setDoc } from 'firebase/firestore'
+import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
 
 export function SettingsView({ currentUser, userProfile, setUserProfile }) {
@@ -12,6 +12,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
   const [city, setCity] = useState('')
   const [avatar, setAvatar] = useState('')
   const [saving, setSaving] = useState(false)
+  const [tgLoading, setTgLoading] = useState(false)
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -21,6 +22,29 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
       setAvatar(userProfile.avatarBase64 || '')
     }
   }, [userProfile])
+
+  const generateTgToken = async () => {
+    if (!currentUser) return
+    setTgLoading(true)
+    try {
+      const token = Math.random().toString(36).substring(2, 8).toUpperCase()
+      const expires = Date.now() + 10 * 60 * 1000 // 10 minutes
+      const tokenData = { token, expires }
+      
+      // Спробуємо оновити конкретне поле в базі
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        tgLinkingToken: tokenData
+      })
+      
+      const up = { ...userProfile, tgLinkingToken: tokenData }
+      setUserProfile(up)
+    } catch (e) {
+      console.error("Помилка Firestore:", e)
+      alert("Не вдалося зберегти код у базу: " + (e.message || "Unknown error"))
+    } finally {
+      setTgLoading(false)
+    }
+  }
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0]
@@ -64,7 +88,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
             <div className="w-28 h-28 rounded-[2rem] bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-[#5C3EFE] text-3xl font-black border-4 border-white dark:border-gray-800 shadow-xl overflow-hidden group-hover:scale-105 transition-all duration-500">
               {avatar ? <img src={avatar} alt="" className="w-full h-full object-cover" /> : (name[0] || 'U')}
             </div>
-            <button 
+            <button
               onClick={() => fileRef.current?.click()}
               className="absolute -bottom-2 -right-2 w-10 h-10 bg-[#5C3EFE] text-white rounded-xl flex items-center justify-center border-4 border-white dark:border-gray-800 shadow-lg hover:scale-110 active:scale-95 transition-all"
             >
@@ -110,6 +134,52 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
             </PrimaryBtn>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700/60 p-8 shadow-sm">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-500">
+            <Send size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Telegram Бот</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Отримуйте звіти та керуйте гаражем через месенджер.</p>
+          </div>
+        </div>
+
+        {userProfile?.telegramId ? (
+          <div className="p-4 bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-800/40 flex items-center justify-between">
+            <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
+              <Check size={18} />
+              <p className="text-sm font-bold uppercase tracking-widest text-[10px]">Акаунт підключено</p>
+            </div>
+            <p className="text-xs font-medium text-gray-400">ID: {userProfile.telegramId}</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {!userProfile?.tgLinkingToken ? (
+              <PrimaryBtn onClick={generateTgToken} disabled={tgLoading} className="w-full py-4 justify-center bg-blue-500 hover:bg-blue-600 shadow-blue-500/20 shadow-lg !border-none">
+                {tgLoading ? <Loader2 className="animate-spin" size={20} /> : 'ПІДКЛЮЧИТИ TELEGRAM'}
+              </PrimaryBtn>
+            ) : (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 text-center">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Ваш код підключення</p>
+                  <p className="text-3xl font-black text-[#5C3EFE] tracking-[0.2em]">{userProfile.tgLinkingToken.token}</p>
+                  <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase">Дійсний протягом 10 хвилин</p>
+                </div>
+                <a
+                  href={`https://t.me/autologGarage_bot?start=${userProfile.tgLinkingToken.token}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-3 w-full py-4 bg-blue-500 text-white rounded-2xl font-black text-sm hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20"
+                >
+                  ПЕРЕЙТИ В БОТ <ExternalLink size={18} />
+                </a>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
