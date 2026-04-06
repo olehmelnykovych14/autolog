@@ -267,7 +267,7 @@ export default function App() {
                 {tab === 'service' && <HistoryView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />}
                 {tab === 'ai' && <AIView carList={carList} historyList={historyList} userProfile={userProfile} onUpdateAIUsage={onUpdateAIUsage} onGoPlans={() => setTab('plans')} />}
                 {tab === 'team' && <TeamView teamMembers={teamMembers} limit={TEAM_LIMIT} onRemove={id => setTeamMembers(p => p.filter(m => m.id !== id))} onInvite={() => setShowInviteModal(true)} />}
-                {tab === 'plans' && <PlansView carList={carList} userProfile={userProfile} onUpdatePlan={handleUpdatePlan} />}
+                {tab === 'plans' && <PlansView carList={carList} userProfile={userProfile} onUpdatePlan={handleUpdatePlan} currentUser={currentUser} />}
                 {tab === 'settings' && <SettingsView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} />}
                 {tab === 'admin' && isAdmin && <AdminView />}
                 {tab === 'sto' && userProfile?.accountType === 'sto' && <STODashboardView userProfile={userProfile} setTab={setTab} />}

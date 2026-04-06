@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Camera, Check, MapPin, Smartphone, User, Loader2, Send, ExternalLink } from 'lucide-react'
+import { Camera, Check, MapPin, Smartphone, User, Loader2, Send, ExternalLink, CreditCard, Star, Zap } from 'lucide-react'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { updateProfile } from 'firebase/auth'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, updateDoc, setDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
 
 export function SettingsView({ currentUser, userProfile, setUserProfile }) {
@@ -31,7 +31,6 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
       const expires = Date.now() + 10 * 60 * 1000 // 10 minutes
       const tokenData = { token, expires }
       
-      // Спробуємо оновити конкретне поле в базі
       await updateDoc(doc(db, 'users', currentUser.uid), {
         tgLinkingToken: tokenData
       })
@@ -40,7 +39,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
       setUserProfile(up)
     } catch (e) {
       console.error("Помилка Firestore:", e)
-      alert("Не вдалося зберегти код у базу: " + (e.message || "Unknown error"))
+      alert("Не вдалося зберегти код у базу")
     } finally {
       setTgLoading(false)
     }
@@ -75,6 +74,8 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
     }
   }
 
+  const isBusiness = userProfile?.plan === 'Business'
+
   return (
     <div className="flex flex-col gap-8 max-w-2xl mx-auto pb-12 w-full pt-4">
       <div>
@@ -97,7 +98,12 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
             <input type="file" ref={fileRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" />
           </div>
           <div className="flex-1 text-center sm:text-left">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{name || 'Користувач'}</h3>
+            <div className="flex flex-col sm:flex-row items-center gap-2 mb-1">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">{name || 'Користувач'}</h3>
+              <div className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${isBusiness ? 'bg-amber-100 text-amber-600 border border-amber-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
+                {isBusiness ? 'Business' : 'Free'}
+              </div>
+            </div>
             <p className="text-sm text-gray-400 font-medium mb-4">{currentUser?.email}</p>
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-[10px] font-black rounded-lg border border-green-100 dark:border-green-800/40 tracking-wider uppercase">
               Акаунт Верифіковано

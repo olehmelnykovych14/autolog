@@ -5,14 +5,55 @@ import { ThemeCtx } from '../../context/ThemeContext'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
 
-export function PlansView({ carList, userProfile, onUpdatePlan }) {
+export function PlansView({ carList, userProfile, onUpdatePlan, currentUser }) {
   const [loading, setLoading] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const currentPlan = userProfile?.plan || 'Free'
 
 
+  const handleUpgrade = async (plan) => {
+    setLoading(plan.id)
+    try {
+      const resp = await fetch('http://localhost:3000/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: currentUser?.uid, 
+          email: currentUser?.email,
+          planName: plan.name,
+          amount: plan.price
+        })
+      })
+      if (!resp.ok) throw new Error('Server error')
+      const data = await resp.json()
+      
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = 'https://secure.wayforpay.com/pay'
+      form.acceptCharset = 'utf-8'
+
+      Object.entries(data).forEach(([k, v]) => {
+        const input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = k
+        input.value = v
+        form.appendChild(input)
+      })
+
+      document.body.appendChild(form)
+      form.submit()
+    } catch (e) {
+      setLoading(null)
+      alert('Не вдалося створити платіж. Переконайтеся, що сервер AutoLog запущено.')
+    }
+  }
+
   const handleSelect = async (planId) => {
     if (planId === currentPlan) return
+    const plan = PLANS.find(p => p.id === planId)
+    if (plan && plan.price > 0) {
+      return handleUpgrade(plan)
+    }
     setLoading(planId)
     setTimeout(async () => {
       try {

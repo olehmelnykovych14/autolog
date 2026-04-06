@@ -3,10 +3,16 @@
   "version": "1.0.0",
   "description": "AutoLog Telegram Bot",
   "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.14.0",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.6",
     "dotenv": "^16.4.5",
+    "express": "^4.18.2",
     "firebase-admin": "^12.0.0",
     "telegraf": "^4.16.3",
     "telegraf-session-local": "^2.1.1"
