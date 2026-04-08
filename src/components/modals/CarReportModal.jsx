@@ -2,8 +2,11 @@ import { Printer, Download, X, ShieldCheck, Activity, MapPin, Calendar, Layers, 
 import { Modal } from '../common/Common'
 import { fmt, fmtCost } from '../../utils'
 import { C, CAT, PLANS } from '../../constants'
+import html2pdf from 'html2pdf.js'
 
 export function CarReportModal({ car, historyList, userProfile, onClose }) {
+  const [downloading, setDownloading] = React.useState(false)
+  
   const records = historyList.filter(h => h.carId === car.id)
   const totalSpend = records.reduce((s, h) => s + (h.cost || 0), 0)
   
@@ -15,9 +18,43 @@ export function CarReportModal({ car, historyList, userProfile, onClose }) {
     window.print()
   }
 
+  const downloadPDF = async () => {
+    setDownloading(true)
+    const element = document.getElementById('report-pdf-content')
+    
+    // Створюємо клон, щоб відрендерити його без обмежень висоти і сховати кнопки
+    const clone = element.cloneNode(true)
+    clone.style.position = 'absolute'
+    clone.style.top = '-9999px'
+    clone.style.width = '800px'
+    clone.style.padding = '40px'
+    clone.style.background = 'white'
+    
+    // Ховаємо блок з кнопками перед рендером
+    const btns = clone.querySelector('#report-pdf-buttons')
+    if (btns) btns.style.display = 'none'
+
+    document.body.appendChild(clone)
+
+    const opt = {
+      margin:       10,
+      filename:     `AutoLog_Report_${car.plate}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, windowWidth: 800 },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }
+
+    try {
+      await html2pdf().set(opt).from(clone).save()
+    } finally {
+      document.body.removeChild(clone)
+      setDownloading(false)
+    }
+  }
+
   return (
     <Modal title={isBusiness ? `Звіт: ${userProfile?.stoName || 'AutoLog Business'}` : (isPremium ? 'Carfax-AutoLog Преміум Звіт' : 'Базовий Звіт AutoLog')} onClose={onClose}>
-      <div className="flex flex-col gap-6 print:p-0">
+      <div id="report-pdf-content" className="flex flex-col gap-6 print:p-0 bg-white dark:bg-gray-800">
         {isBusiness && userProfile?.stoName && (
           <div className="px-6 py-3 bg-gray-900 text-white rounded-2xl flex items-center justify-between border border-gray-800">
             <div>
@@ -92,14 +129,14 @@ export function CarReportModal({ car, historyList, userProfile, onClose }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 mt-4 print:hidden">
+        <div id="report-pdf-buttons" className="flex flex-wrap gap-3 mt-4 print:hidden">
           <button onClick={print} className="flex-1 min-w-[200px] py-4 bg-gray-900 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:bg-gray-800 transition-all shadow-xl shadow-gray-400/20 active:scale-95">
             <Printer size={18} /> ДРУКУВАТИ ЗВІТ
           </button>
           
           {isPremium ? (
-            <button onClick={print} className="flex-1 min-w-[200px] py-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all border border-gray-200 dark:border-gray-700 active:scale-95">
-              <Download size={18} /> ЗАВАНТАЖИТИ PDF
+            <button onClick={downloadPDF} disabled={downloading} className="flex-1 min-w-[200px] py-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl font-black text-sm flex items-center justify-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all border border-gray-200 dark:border-gray-700 active:scale-95 disabled:opacity-50">
+              <Download size={18} /> {downloading ? 'ГЕНЕРУЄМО...' : 'ЗАВАНТАЖИТИ PDF'}
             </button>
           ) : (
             <button disabled className="flex-1 min-w-[200px] py-4 bg-gray-100 dark:bg-gray-800 text-gray-400 rounded-2xl font-black text-sm flex items-center justify-center gap-3 border border-dashed border-gray-300 dark:border-gray-700 cursor-not-allowed opacity-60">
