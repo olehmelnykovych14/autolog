@@ -21,41 +21,42 @@ export function CarReportModal({ car, historyList, userProfile, onClose }) {
 
   const downloadPDF = async () => {
     setDownloading(true)
+    // Використовуємо оригінальний елемент, щоб не ламати верстку клонуванням
     const element = document.getElementById('report-pdf-content')
+    const parent = element.parentElement
     
-    // Створюємо клон, щоб відрендерити його без обмежень висоти і сховати кнопки
-    const clone = element.cloneNode(true)
-    clone.style.width = '800px'
-    clone.style.padding = '40px'
-    clone.style.background = 'white'
+    // Зберігаємо оригінальні стилі
+    const origMaxH = parent.style.maxHeight
+    const origOverflow = parent.style.overflow
+    
+    // Розтягуємо контейнер на всю висоту для зняття повного знімку
+    parent.style.maxHeight = 'none'
+    parent.style.overflow = 'visible'
     
     // Ховаємо блок з кнопками перед рендером
-    const btns = clone.querySelector('#report-pdf-buttons')
+    const btns = element.querySelector('#report-pdf-buttons')
     if (btns) btns.style.display = 'none'
 
-    // Замість винесення елементу за екран (-9999px), що може спричинити пустий кадр,
-    // просто ховаємо його на дно під усі шари.
-    const wrapper = document.createElement('div')
-    wrapper.style.position = 'absolute'
-    wrapper.style.top = '0'
-    wrapper.style.left = '0'
-    wrapper.style.zIndex = '-9999'
-    wrapper.appendChild(clone)
-
-    document.body.appendChild(wrapper)
-
     const opt = {
-      margin:       10,
+      margin:       [10, 10, 10, 10], // top, left, bottom, right
       filename:     `AutoLog_Report_${car.plate}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, scrollY: 0, windowWidth: 800 },
+      image:        { type: 'jpeg', quality: 1.0 },
+      html2canvas:  { 
+        scale: 2, 
+        useCORS: true, 
+        scrollY: 0,
+        backgroundColor: '#ffffff'
+      },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }
 
     try {
-      await html2pdf().set(opt).from(clone).save()
+      await html2pdf().set(opt).from(element).save()
     } finally {
-      document.body.removeChild(wrapper)
+      // Повертаємо все як було
+      if (btns) btns.style.display = 'flex'
+      parent.style.maxHeight = origMaxH
+      parent.style.overflow = origOverflow
       setDownloading(false)
     }
   }
@@ -125,7 +126,10 @@ export function CarReportModal({ car, historyList, userProfile, onClose }) {
                     </td>
                     <td className="px-4 py-4">
                       <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">{r.title}</p>
-                      <div className="flex items-center gap-2"><span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-500 text-[8px] font-black uppercase rounded-md tracking-widest border border-indigo-100 dark:border-indigo-800/20">{CAT[r.category]}</span><span className="text-[10px] text-gray-400 font-medium truncate max-w-[100px]">{r.garage}</span></div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-500 text-[8px] font-black uppercase rounded-md tracking-widest border border-indigo-100 dark:border-indigo-800/20">{CAT[r.category]}</span>
+                        <span className="text-[10px] text-gray-400 font-medium">{r.garage}</span>
+                      </div>
                     </td>
                     <td className="px-4 py-4 text-right">
                       <p className="font-black text-gray-900 dark:text-white text-sm">{fmtCost(r.cost)}</p>
