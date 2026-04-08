@@ -221,6 +221,28 @@ bot.hears('👤 Мій профіль', (ctx) => {
   ctx.reply(`👤 *Мій профіль:*\n\n🔹 *Email:* ${email || '—'}\n🔹 *Тариф:* ${plan || 'Free'}\n🔹 *ID:* ${ctx.userId}`, { parse_mode: 'Markdown' });
 });
 
+bot.hears('📜 Останні записи', async (ctx) => {
+  const historySnap = await db.collection('history').where('userId', '==', ctx.userId).get();
+  if (historySnap.empty) return ctx.reply('У вас ще немає записів.');
+  let text = `📜 *Ваші останні записи:*\n\n`;
+  const records = historySnap.docs.map(d => d.data()).sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+  records.forEach(r => {
+    text += `🔹 *${r.title}* (${r.date})\n💰 ${fmtCost(r.cost)} ₴\n\n`;
+  });
+  ctx.reply(text, { parse_mode: 'Markdown' });
+});
+
+bot.hears('💰 Витрати 2024', async (ctx) => {
+  const historySnap = await db.collection('history').where('userId', '==', ctx.userId).get();
+  let total = 0;
+  historySnap.forEach(d => total += (d.data().cost || 0));
+  ctx.reply(`💰 *Загальні витрати:*\n\nВи витратили: *${fmtCost(total)} ₴*`, { parse_mode: 'Markdown' });
+});
+
+bot.hears('❓ Допомога', (ctx) => {
+  ctx.reply('❓ *Допомога:*\n\nЯ - ваш AI помічник AutoLog. Я вмію розпізнавати чеки з СТО та зберігати вашу сервісну історію.\nНадішліть мені фото чека натиснувши "Додати запис (AI)".', { parse_mode: 'Markdown' });
+});
+
 bot.hears('🧾 Додати запис (AI)', (ctx) => ctx.reply('📸 Надішліть фото чека СТО.'));
 
 bot.on('photo', async (ctx) => {
