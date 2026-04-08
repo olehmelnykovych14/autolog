@@ -74,11 +74,13 @@
   #root > div > div.flex-1 {
     display: none !important;
   }
-  #root > div > .lg\:flex.flex-col {
+  #root > div > aside {
     display: none !important;
   }
-  #root > div > .fixed { 
-    /* Hide mobile sidebar in print just in case */
+  #root > div > nav {
+    display: none !important;
+  }
+  #root > div > .w-64 { 
     display: none !important;
   }
 
@@ -90,11 +92,14 @@
     background: transparent !important;
   }
 
-  /* Transform the fixed modal into a normal flowing block */
+  /* Transform the fixed modal into a normal flowing block starting at top-left */
   .fixed.inset-0.z-\[100\] {
-    position: relative !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
     display: block !important;
     padding: 0 !important;
+    margin: 0 !important;
     background: white !important;
     backdrop-filter: none !important;
   }
@@ -109,6 +114,7 @@
     overflow: visible !important;
     animation: none !important;
     transform: none !important;
+    margin: 0 !important;
   }
 
   /* Let the scrollable area expand to fit all records */
