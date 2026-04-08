@@ -35,6 +35,7 @@ export function AuthScreen({ isDark, setDark }) {
         if (name.trim()) await updateProfile(cred.user, { displayName: name.trim() })
         const payload = {
           email: cred.user.email,
+          displayName: name.trim(),
           phone: '',
           city: '',
           avatarBase64: '',

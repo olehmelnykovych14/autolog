@@ -49,10 +49,10 @@ function EditUserModal({ user, onClose, onSave }) {
         {/* User header */}
         <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700/60">
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-500 font-black text-lg border border-indigo-100 dark:border-indigo-800/50 shrink-0 overflow-hidden">
-            {user.avatarBase64 ? <img src={user.avatarBase64} alt="" className="w-full h-full object-cover rounded-2xl" /> : (user.displayName?.[0] || 'U')}
+            {user.avatarBase64 ? <img src={user.avatarBase64} alt="" className="w-full h-full object-cover rounded-2xl" /> : ((user.displayName || user.email || 'U')[0].toUpperCase())}
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-gray-900 dark:text-white tracking-tight truncate">{user.displayName || 'Невідомо'}</p>
+            <p className="font-bold text-gray-900 dark:text-white tracking-tight truncate">{user.displayName || user.email?.split('@')[0] || 'Невідомо'}</p>
             <p className="text-xs text-gray-400 font-medium truncate">{user.email}</p>
           </div>
         </div>
@@ -169,17 +169,17 @@ function DeleteUserModal({ user, onClose, onConfirm }) {
           <div>
             <p className="text-sm font-bold text-red-800 dark:text-red-200 mb-1">Ця дія є незворотною!</p>
             <p className="text-xs text-red-700/80 dark:text-red-300/70 leading-relaxed">
-              Видалення профілю користувача <strong>{user.displayName || user.email}</strong> призведе до втрати всіх даних цього користувача з бази. Авто та сервісна історія залишаться в системі.
+              Видалення профілю користувача <strong>{user.displayName || user.email?.split('@')[0]}</strong> призведе до втрати всіх даних цього користувача з бази. Авто та сервісна історія залишаться в системі.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700/60">
           <div className="w-11 h-11 rounded-2xl bg-red-50 dark:bg-red-900/40 flex items-center justify-center text-red-500 font-black text-sm border border-red-100 dark:border-red-800/50 shrink-0">
-            {user.displayName?.[0] || 'U'}
+            {(user.displayName || user.email || 'U')[0].toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-gray-900 dark:text-white tracking-tight">{user.displayName || 'Невідомо'}</p>
+            <p className="font-bold text-gray-900 dark:text-white tracking-tight">{user.displayName || user.email?.split('@')[0] || 'Невідомо'}</p>
             <p className="text-[11px] text-gray-400 font-medium">{user.email}</p>
           </div>
         </div>
@@ -290,7 +290,7 @@ export function AdminView() {
             <thead className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-400 font-bold uppercase tracking-widest text-[10px] border-b border-gray-100 dark:border-gray-700">
               <tr>
                 <th className="px-8 py-5">Користувач</th>
-                <th className="px-6 py-5">Тіп акаунту</th>
+                <th className="px-6 py-5">Тип акаунту</th>
                 <th className="px-6 py-5">Контакти</th>
                 <th className="px-6 py-5">Підписка</th>
                 <th className="px-8 py-5 text-right">Дії</th>
@@ -302,10 +302,10 @@ export function AdminView() {
                   <td className="px-8 py-5">
                     <div className="flex items-center gap-4 min-w-[200px]">
                       <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-500 font-black text-sm border border-indigo-100 dark:border-indigo-800/50 shrink-0">
-                        {u.avatarBase64 ? <img src={u.avatarBase64} alt="" className="w-full h-full object-cover rounded-2xl" /> : (u.displayName?.[0] || 'U')}
+                        {u.avatarBase64 ? <img src={u.avatarBase64} alt="" className="w-full h-full object-cover rounded-2xl" /> : ((u.displayName || u.email || 'U')[0].toUpperCase())}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900 dark:text-white mb-0.5 tracking-tight">{u.displayName || 'Невідомо'}</p>
+                        <p className="font-bold text-gray-900 dark:text-white mb-0.5 tracking-tight">{u.displayName || u.email?.split('@')[0] || 'Невідомо'}</p>
                         <p className="text-[11px] text-gray-400 font-medium lowercase tracking-tight">{u.email}</p>
                       </div>
                     </div>
