@@ -58,3 +58,78 @@
 .animate-progress-loading {
   animation: progress-loading 2s infinite ease-in-out;
 }
+
+@media print {
+  @page {
+    margin: 1cm;
+  }
+
+  body, html {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide the underlying dashboard while printing modal */
+  #root > div > div.flex-1 {
+    display: none !important;
+  }
+  #root > div > .lg\:flex.flex-col {
+    display: none !important;
+  }
+  #root > div > .fixed { 
+    /* Hide mobile sidebar in print just in case */
+    display: none !important;
+  }
+
+  /* Release all height and overflow constraints on the root */
+  #root > div {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    background: transparent !important;
+  }
+
+  /* Transform the fixed modal into a normal flowing block */
+  .fixed.inset-0.z-\[100\] {
+    position: relative !important;
+    display: block !important;
+    padding: 0 !important;
+    background: white !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Unconstrain the modal content wrapper */
+  .fixed.inset-0.z-\[100\] > div.max-w-lg {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  /* Let the scrollable area expand to fit all records */
+  .max-h-\[80vh\] {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 1rem 0 !important;
+  }
+
+  /* Stop breaks inside table rows */
+  tr {
+    break-inside: avoid;
+  }
+
+  /* The top modal header right above the scroll area - hide the close button, keep title */
+  .fixed.inset-0.z-\[100\] > div.max-w-lg > div.border-b {
+    border-bottom: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  .fixed.inset-0.z-\[100\] > div.max-w-lg > div.border-b > button {
+    display: none !important;
+  }
+}
