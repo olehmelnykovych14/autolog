@@ -10,13 +10,31 @@ export function HistoryView({ historyList, carList, onAddService, onUpdateServic
   const [editingRecord, setEditingRecord] = useState(null)
   const [filterCar, setFilterCar] = useState('all')
   const [filterCat, setFilterCat] = useState('all')
+  const [filterDate, setFilterDate] = useState('all')
+  const [sortOrder, setSortOrder] = useState('desc')
   const [search, setSearch] = useState('')
 
   const filtered = historyList.filter(h => {
-    const mCar = filterCar === 'all' || h.carId === parseInt(filterCar)
-    const mCat = filterCat === 'all' || h.category === filterCat
+    const mCar = filterCar === 'all' || String(h.carId) === String(filterCar)
+    const mCat = filterCat === 'all' || String(h.category) === String(filterCat)
     const mSch = h.title.toLowerCase().includes(search.toLowerCase()) || h.garage?.toLowerCase().includes(search.toLowerCase())
-    return mCar && mCat && mSch
+    
+    let mDate = true
+    const recDate = new Date(h.date || h.createdAt || 0)
+    const now = new Date()
+    if (filterDate === 'month') {
+      const msInMonth = 30 * 24 * 60 * 60 * 1000
+      mDate = (now - recDate) <= msInMonth
+    } else if (filterDate === 'year') {
+      const msInYear = 365 * 24 * 60 * 60 * 1000
+      mDate = (now - recDate) <= msInYear
+    }
+
+    return mCar && mCat && mSch && mDate
+  }).sort((a, b) => {
+    const dA = new Date(a.date || a.createdAt || 0).getTime()
+    const dB = new Date(b.date || b.createdAt || 0).getTime()
+    return sortOrder === 'desc' ? dB - dA : dA - dB
   })
 
   const handleEdit = (rec) => {
@@ -53,11 +71,28 @@ export function HistoryView({ historyList, carList, onAddService, onUpdateServic
             className="w-full pl-12 pr-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5C3EFE]/20 transition-all text-gray-900 dark:text-white"
           />
         </div>
-        <div className="flex gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <select 
+            value={sortOrder} 
+            onChange={e => setSortOrder(e.target.value)}
+            className="flex-1 min-w-[140px] px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5C3EFE]/20 text-gray-700 dark:text-white appearance-none"
+          >
+            <option value="desc">Спочатку нові</option>
+            <option value="asc">Спочатку старі</option>
+          </select>
+          <select 
+            value={filterDate} 
+            onChange={e => setFilterDate(e.target.value)}
+            className="flex-1 min-w-[140px] px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5C3EFE]/20 text-gray-700 dark:text-white appearance-none"
+          >
+            <option value="all">Усі дати</option>
+            <option value="month">За 30 днів</option>
+            <option value="year">За рік</option>
+          </select>
           <select 
             value={filterCar} 
             onChange={e => setFilterCar(e.target.value)}
-            className="flex-1 md:w-48 px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5C3EFE]/20 text-gray-700 dark:text-white appearance-none"
+            className="flex-1 min-w-[140px] px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5C3EFE]/20 text-gray-700 dark:text-white appearance-none"
           >
             <option value="all">Усі авто</option>
             {carList.map(c => <option key={c.id} value={c.id}>{c.brand} ({c.plate})</option>)}
@@ -65,7 +100,7 @@ export function HistoryView({ historyList, carList, onAddService, onUpdateServic
           <select 
             value={filterCat} 
             onChange={e => setFilterCat(e.target.value)}
-            className="flex-1 md:w-48 px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5C3EFE]/20 text-gray-700 dark:text-white appearance-none"
+            className="flex-1 min-w-[140px] px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5C3EFE]/20 text-gray-700 dark:text-white appearance-none"
           >
             <option value="all">Усі категорії</option>
             {Object.entries(CAT).map(([id, lbl]) => <option key={id} value={id}>{lbl}</option>)}
