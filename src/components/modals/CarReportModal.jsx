@@ -25,8 +25,6 @@ export function CarReportModal({ car, historyList, userProfile, onClose }) {
     
     // Створюємо клон, щоб відрендерити його без обмежень висоти і сховати кнопки
     const clone = element.cloneNode(true)
-    clone.style.position = 'absolute'
-    clone.style.top = '-9999px'
     clone.style.width = '800px'
     clone.style.padding = '40px'
     clone.style.background = 'white'
@@ -35,20 +33,29 @@ export function CarReportModal({ car, historyList, userProfile, onClose }) {
     const btns = clone.querySelector('#report-pdf-buttons')
     if (btns) btns.style.display = 'none'
 
-    document.body.appendChild(clone)
+    // Замість винесення елементу за екран (-9999px), що може спричинити пустий кадр,
+    // просто ховаємо його на дно під усі шари.
+    const wrapper = document.createElement('div')
+    wrapper.style.position = 'absolute'
+    wrapper.style.top = '0'
+    wrapper.style.left = '0'
+    wrapper.style.zIndex = '-9999'
+    wrapper.appendChild(clone)
+
+    document.body.appendChild(wrapper)
 
     const opt = {
       margin:       10,
       filename:     `AutoLog_Report_${car.plate}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, windowWidth: 800 },
+      html2canvas:  { scale: 2, useCORS: true, scrollY: 0, windowWidth: 800 },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }
 
     try {
       await html2pdf().set(opt).from(clone).save()
     } finally {
-      document.body.removeChild(clone)
+      document.body.removeChild(wrapper)
       setDownloading(false)
     }
   }
