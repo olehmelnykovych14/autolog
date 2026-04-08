@@ -267,7 +267,10 @@ bot.on('photo', async (ctx) => {
         ...Markup.inlineKeyboard([[Markup.button.callback('Так, зберегти ✅', 'select_car_for_record')], [Markup.button.callback('Скасувати ❌', 'cancel_ai_record')]])
       });
     } else ctx.reply(`💡 *AI Аналіз:* ${aiData.description}`);
-  } catch (e) { ctx.reply('❌ Помилка.'); }
+  } catch (e) { 
+    console.error('📸 Photo Analysis Error:', e);
+    ctx.reply('❌ Помилка.'); 
+  }
   finally { ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id).catch(() => {}); }
 });
 
