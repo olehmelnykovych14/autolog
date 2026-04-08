@@ -3,9 +3,10 @@ import { Modal } from '../common/Common'
 import { fmt, fmtCost } from '../../utils'
 import { C, CAT, PLANS } from '../../constants'
 import html2pdf from 'html2pdf.js'
+import { useState } from 'react'
 
 export function CarReportModal({ car, historyList, userProfile, onClose }) {
-  const [downloading, setDownloading] = React.useState(false)
+  const [downloading, setDownloading] = useState(false)
   
   const records = historyList.filter(h => h.carId === car.id)
   const totalSpend = records.reduce((s, h) => s + (h.cost || 0), 0)
