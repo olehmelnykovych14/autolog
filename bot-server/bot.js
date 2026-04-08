@@ -17,8 +17,18 @@ const MERCHANT_SECRET = process.env.WAYFORPAY_MERCHANT_SECRET || 'your_merchant_
 const MERCHANT_DOMAIN = process.env.MERCHANT_DOMAIN_NAME || 'your_domain.com';
 
 // --- Firebase ---
-const serviceAccount = require("./serviceAccountKey.json");
-if (!admin.apps.length) {
+let serviceAccount;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } else {
+    serviceAccount = require("./serviceAccountKey.json");
+  }
+} catch (e) {
+  console.error("Firebase Key Error:", e.message);
+}
+
+if (!admin.apps.length && serviceAccount) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
