@@ -253,15 +253,31 @@ bot.on('photo', async (ctx) => {
     const response = await axios.get(link.href, { responseType: 'arraybuffer' });
     const buffer = Buffer.from(response.data);
     const base64 = buffer.toString('base64');
-    const prompt = `Analyze this car service receipt or dashboard. Return ONLY a JSON object in this EXACT format: { "type": "receipt", "data": { "title": "Vendor Name or Main Service", "cost": <total number>, "date": "YYYY-MM-DD", "plate": "<car plate if visible, else empty>", "garage": "<station name>" } }`;
+    const prompt = `Analyze this car service receipt or dashboard. Return ONLY a valid JSON object with this exact structure, no markdown:
+{
+  "type": "receipt",
+  "data": {
+    "title": "Service name",
+    "cost": 1000,
+    "date": "YYYY-MM-DD",
+    "plate": "AA0000AA",
+    "garage": "Service Station"
+  }
+}`;
     const result = await model.generateContent([prompt, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
     const rawText = result.response.text();
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return ctx.reply('❌ Помилка AI.');
     const aiData = JSON.parse(jsonMatch[0]);
     if (aiData.type === 'receipt') {
-      const d = aiData.data;
-      ctx.session.pendingRecord = { title: d.title || 'Сервіс', cost: d.cost || 0, date: d.date || new Date().toISOString().split('T')[0], plate: d.plate || '', garage: d.garage || 'AI' };
+      const d = aiData.data || {};
+      ctx.session.pendingRecord = { 
+        title: d.title || 'Сервіс', 
+        cost: Number(d.cost) || 0, 
+        date: (d.date && d.date !== 'YYYY-MM-DD') ? d.date : new Date().toISOString().split('T')[0], 
+        plate: d.plate && d.plate !== 'AA0000AA' ? d.plate : '', 
+        garage: d.garage && d.garage !== 'Service Station' ? d.garage : 'AI' 
+      };
       ctx.reply(`🧾 *Чек:* ${ctx.session.pendingRecord.title}\n💰 ${fmtCost(ctx.session.pendingRecord.cost)} ₴\n✅ Зберегти?`, {
         parse_mode: 'Markdown',
         ...Markup.inlineKeyboard([[Markup.button.callback('Так, зберегти ✅', 'select_car_for_record')], [Markup.button.callback('Скасувати ❌', 'cancel_ai_record')]])
