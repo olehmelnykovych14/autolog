@@ -39,8 +39,9 @@ export const askGemini = async (userInput, carList, historyList) => {
       console.error(`Error with model ${modelName}:`, error);
       const msg = error.message || "";
       
-      // Якщо це помилка "модель не знайдена" (404) або "ліміт вичерпано" (429), спробуємо наступну модель
-      if (msg.includes("404") || msg.includes("not found") || msg.includes("429") || msg.includes("quota")) {
+      // Якщо це помилка "модель не знайдена" (404), "ліміт вичерпано" (429) або "перевантаження" (503), спробуємо наступну модель
+      if (msg.includes("404") || msg.includes("not found") || msg.includes("429") || msg.includes("503") || msg.includes("500") || msg.includes("quota") || msg.includes("demand") || msg.includes("overloaded")) {
+        console.log(`Model ${modelName} busy or unavailable, trying next...`);
         continue;
       }
       
