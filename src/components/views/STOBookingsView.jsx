@@ -160,8 +160,8 @@ export function STOBookingsView({ userProfile }) {
                         </div>
 
                         <div className="mb-4">
-                          <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1"><Car size={16} className="text-gray-400"/> {b.car ? `${b.car.brand} ${b.car.model}` : 'Автомобіль'}</h4>
-                          <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest rounded">{b.car?.plate || '—'}</span>
+                          <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1"><Car size={16} className="text-gray-400"/> {b.isOffline ? b.offlineData?.brand : b.car ? `${b.car.brand} ${b.car.model}` : 'Автомобіль'}</h4>
+                          <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest rounded">{(b.isOffline ? b.offlineData?.plate : b.car?.plate) || '—'}</span>
                         </div>
 
                         <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-3 rounded-xl mb-4 line-clamp-2">
@@ -169,8 +169,8 @@ export function STOBookingsView({ userProfile }) {
                         </p>
 
                         <div className="flex flex-col gap-2 p-3 bg-gray-50/50 dark:bg-gray-700/20 rounded-xl border border-dashed border-gray-200 dark:border-gray-600/50">
-                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2"><User size={12} className="text-gray-400"/> {b.driver?.displayName || 'Анонім'}</p>
-                          {b.driver?.phone && <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2"><Phone size={12} className="text-gray-400"/> {b.driver.phone}</p>}
+                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2"><User size={12} className="text-gray-400"/> {b.isOffline ? b.offlineData?.clientName : b.driver?.displayName || 'Анонім'}</p>
+                          {(b.isOffline ? b.offlineData?.phone : b.driver?.phone) && <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2"><Phone size={12} className="text-gray-400"/> {b.isOffline ? b.offlineData.phone : b.driver.phone}</p>}
                         </div>
                       </div>
                     ))}
@@ -234,8 +234,8 @@ export function STOBookingsView({ userProfile }) {
                                  <p className="text-[10px] font-black tracking-widest text-[#5C3EFE]">{b.time}</p>
                                  {b.status === 'confirmed' ? <CheckCircle2 size={12} className="text-green-500"/> : b.status === 'pending' ? <Clock4 size={12} className="text-amber-500"/> : <XCircle size={12} className="text-gray-400"/>}
                                </div>
-                               <p className="font-bold text-gray-900 dark:text-white text-xs leading-tight line-clamp-1 pl-1" title={`${b.car?.brand} ${b.car?.model}`}>{b.car?.brand} {b.car?.model}</p>
-                               <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2 pl-1" title={b.issue}>{b.issue}</p>
+                               <p className="font-bold text-gray-900 dark:text-white text-xs leading-tight line-clamp-1 pl-1" title={b.isOffline ? b.offlineData?.brand : `${b.car?.brand} ${b.car?.model}`}>{b.isOffline ? b.offlineData?.brand : `${b.car?.brand} ${b.car?.model}`}</p>
+                               <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2 pl-1" title={b.issue}>{b.isOffline ? b.offlineData?.clientName : b.driver?.displayName} • {b.issue}</p>
                              </div>
                            ))}
                          </td>
@@ -250,12 +250,13 @@ export function STOBookingsView({ userProfile }) {
       )}
 
       {showCreateModal && <CreateBookingBySTOModal userProfile={userProfile} initialParams={createInitial} onClose={() => setShowCreateModal(false)} onSuccess={() => { setShowCreateModal(false); fetchBookings(); }} />}
-      {editingBooking && <EditBookingTimeModal booking={editingBooking} onClose={() => setEditingBooking(null)} onSuccess={() => { setEditingBooking(null); fetchBookings(); }} />}
+      {editingBooking && <ViewEditBookingModal booking={editingBooking} userProfile={userProfile} onClose={() => setEditingBooking(null)} onSuccess={() => { setEditingBooking(null); fetchBookings(); }} />}
     </div>
   )
 }
 
 function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParams }) {
+  const [mode, setMode] = useState('online') // online | offline
   const [step, setStep] = useState(1)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
@@ -263,13 +264,14 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
   const [foundCar, setFoundCar] = useState(null)
   
   const [f, setF] = useState({ date: initialParams?.date || new Date().toISOString().split('T')[0], time: initialParams?.time || '10:00', issue: '' })
+  const [off, setOff] = useState({ plate: '', brand: '', clientName: '', phone: '' })
+
   const ic = inp_cls()
 
   const handleSearch = async (e) => {
     e.preventDefault()
     if (!search.trim()) return
-    setLoading(true)
-    setErr('')
+    setLoading(true); setErr('')
     try {
       const q = query(collection(db, 'cars'), where('plate', '==', search.trim().toUpperCase()))
       const snap = await getDocs(q)
@@ -281,14 +283,13 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
         setStep(2)
       }
     } catch(e) {
-      console.error(e)
-      setErr('Помилка бази.')
+      console.error(e); setErr('Помилка пошуку.')
     } finally {
       setLoading(false)
     }
   }
 
-  const submitBooking = async (e) => {
+  const submitOnlineBooking = async (e) => {
     e.preventDefault()
     if (!f.issue || !foundCar) return
     setLoading(true)
@@ -300,8 +301,9 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
         date: f.date || 'unknown',
         time: f.time || 'unknown',
         issue: f.issue || 'Без опису',
-        status: 'confirmed', // Created by STO => automatically confirmed
+        status: 'confirmed',
         creator: 'sto',
+        isOffline: false,
         createdAt: Date.now()
       })
       onSuccess()
@@ -312,10 +314,40 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
     }
   }
 
+  const submitOfflineBooking = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await addDoc(collection(db, 'bookings'), {
+        stoId: auth.currentUser.uid,
+        userId: 'offline',
+        carId: 'offline',
+        date: f.date || 'unknown',
+        time: f.time || 'unknown',
+        issue: f.issue || 'Без опису',
+        status: 'confirmed',
+        creator: 'sto',
+        isOffline: true,
+        offlineData: off,
+        createdAt: Date.now()
+      })
+      onSuccess()
+    } catch(e) {
+      console.error(e)
+      alert("Помилка створення офлайн запису")
+      setLoading(false)
+    }
+  }
+
   return (
     <Modal title="Створити запис клієнту" onClose={onClose}>
-      {step === 1 && (
-        <form onSubmit={handleSearch} className="flex flex-col gap-4 py-2">
+      <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl mb-4 text-sm font-bold w-full">
+        <button onClick={() => setMode('online')} className={`flex-1 py-2 px-2 flex items-center justify-center gap-2 rounded-lg transition-colors ${mode === 'online' ? 'bg-white dark:bg-gray-700 text-[#5C3EFE] shadow-sm' : 'text-gray-500'}`}><User size={16}/> В AutoLog</button>
+        <button onClick={() => setMode('offline')} className={`flex-1 py-2 px-2 flex items-center justify-center gap-2 rounded-lg transition-colors ${mode === 'offline' ? 'bg-white dark:bg-gray-700 text-[#5C3EFE] shadow-sm' : 'text-gray-500'}`}><Edit3 size={16}/> Ручний (Офлайн)</button>
+      </div>
+
+      {mode === 'online' && step === 1 && (
+        <form onSubmit={handleSearch} className="flex flex-col gap-4 py-2 animate-in slide-in-from-left-4">
           <p className="text-sm text-gray-500 mb-2">Знайдіть авто клієнта за номером, щоб додати його у ваш розклад.</p>
           <Field label="Номер автомобіля">
             <div className="relative flex items-center">
@@ -330,8 +362,8 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
         </form>
       )}
 
-      {step === 2 && foundCar && (
-        <form onSubmit={submitBooking} className="flex flex-col gap-4 animate-in slide-in-from-right-4">
+      {mode === 'online' && step === 2 && foundCar && (
+        <form onSubmit={submitOnlineBooking} className="flex flex-col gap-4 animate-in slide-in-from-right-4">
           <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 p-4 rounded-xl flex items-center justify-between">
              <div className="flex items-center gap-3">
                <div className="w-10 h-10 bg-white dark:bg-gray-800 rounded-lg flex items-center justify-center shadow-sm text-indigo-500 border border-indigo-100 dark:border-indigo-800"><Car size={20}/></div>
@@ -361,47 +393,177 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
           </PrimaryBtn>
         </form>
       )}
+
+      {mode === 'offline' && (
+        <form onSubmit={submitOfflineBooking} className="flex flex-col gap-4 animate-in slide-in-from-right-4">
+          <p className="text-xs text-gray-500 mb-2">Цей запис не буде прив'язано до системи і сповіщення не надсилатимуться. Лише для вашого обліку.</p>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Марка та Модель *">
+              <input value={off.brand} onChange={e => setOff({...off, brand: e.target.value})} className={ic} placeholder="VW Golf" required/>
+            </Field>
+            <Field label="Номер авто *">
+              <input value={off.plate} onChange={e => setOff({...off, plate: e.target.value.toUpperCase()})} className={`${ic} uppercase font-mono`} placeholder="AA0000AA" required/>
+            </Field>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Ім'я клієнта *">
+              <input value={off.clientName} onChange={e => setOff({...off, clientName: e.target.value})} className={ic} placeholder="Андрій" required/>
+            </Field>
+            <Field label="Телефон клієнта">
+              <input value={off.phone} onChange={e => setOff({...off, phone: e.target.value})} className={ic} placeholder="+380..."/>
+            </Field>
+          </div>
+
+          <div className="mx-[-1.5rem] my-2 border-t border-gray-100 dark:border-gray-800"></div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Дата візиту *">
+              <input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className={ic} required/>
+            </Field>
+            <Field label="Час *">
+              <input type="time" value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} required/>
+            </Field>
+          </div>
+
+          <Field label="Суть звернення *">
+            <textarea value={f.issue} onChange={e => setF({...f, issue: e.target.value})} className={`${ic} resize-none h-20`} placeholder="Заміна мастила" required></textarea>
+          </Field>
+
+          <PrimaryBtn type="submit" disabled={loading} className="w-full py-4 justify-center text-base mt-2 shadow-indigo-500/20">
+            {loading ? <Loader2 className="animate-spin" size={20}/> : 'Зберегти офлайн запис'}
+          </PrimaryBtn>
+        </form>
+      )}
     </Modal>
   )
 }
 
-function EditBookingTimeModal({ booking, onClose, onSuccess }) {
-  const [f, setF] = useState({ date: booking.date || '', time: booking.time || '' })
+function ViewEditBookingModal({ booking, userProfile, onClose, onSuccess }) {
+  const [f, setF] = useState({ date: booking.date || '', time: booking.time || '', issue: booking.issue || '' })
   const [loading, setLoading] = useState(false)
+  
+  const [completeMode, setCompleteMode] = useState(false)
+  const [cost, setCost] = useState('')
+  const [mileage, setMileage] = useState('')
+
   const ic = inp_cls()
 
-  const submit = async (e) => {
+  const submitEdit = async (e) => {
     e.preventDefault()
     setLoading(true)
     try {
       await updateDoc(doc(db, 'bookings', booking.id), {
         date: f.date,
-        time: f.time
+        time: f.time,
+        issue: f.issue
       })
       onSuccess()
-    } catch(e) {
-      console.error(e)
-      alert('Помилка оновлення часу')
-    } finally {
-      setLoading(false)
-    }
+    } catch(e) { console.error(e); alert('Помилка'); setLoading(false) }
+  }
+
+  const completeOrder = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      if (!booking.isOffline && booking.carId && booking.userId) {
+         await addDoc(collection(db, 'history'), {
+           title: f.issue || 'Сервісні роботи',
+           cost: Number(cost) || 0,
+           mileage: Number(mileage) || 0,
+           category: 'maintenance',
+           date: f.date || new Date().toISOString().split('T')[0],
+           garage: userProfile?.stoName || 'СТО AutoLog',
+           carId: booking.carId,
+           userId: booking.userId,
+           createdAt: Date.now(),
+           status: 'verified',
+           source: 'sto_booking_completion',
+           stoId: auth.currentUser.uid
+         })
+      }
+      await updateDoc(doc(db, 'bookings', booking.id), { status: 'completed' })
+      onSuccess()
+    } catch(e) { console.error(e); alert('Помилка завершення'); setLoading(false) }
+  }
+
+  if (completeMode) {
+    return (
+      <Modal title="Завершити замовлення 🏁" onClose={onClose}>
+        <form onSubmit={completeOrder} className="flex flex-col gap-4 animate-in zoom-in-95">
+          <p className="text-sm text-gray-500 mb-2">Введіть суму та пробіг. {booking.isOffline ? 'Запис буде закрито та переміщено в архів.' : 'Ці дані будуть додані в офіційну сервісну історію автомобіля клієнта.'}</p>
+          <Field label="Вартість ремонту (₴)">
+            <input type="number" min="0" value={cost} onChange={e => setCost(e.target.value)} className={ic} placeholder="Напр. 1500" required/>
+          </Field>
+          <Field label="Поточний пробіг авто (км)">
+            <input type="number" min="0" value={mileage} onChange={e => setMileage(e.target.value)} className={ic} placeholder="Напр. 125000" required/>
+          </Field>
+          <div className="flex gap-3 mt-4">
+            <button type="button" disabled={loading} onClick={() => setCompleteMode(false)} className={`flex-1 py-3 font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors`}>Назад</button>
+            <PrimaryBtn type="submit" disabled={loading} className="flex-1 py-3 justify-center bg-green-500 hover:bg-green-600 shadow-green-500/20">
+              {loading ? <Loader2 className="animate-spin" size={20}/> : 'ПІДТВЕРДИТИ'}
+            </PrimaryBtn>
+          </div>
+        </form>
+      </Modal>
+    )
   }
 
   return (
-    <Modal title="Редагувати дату та час" onClose={onClose}>
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Нова дата візиту">
-            <input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className={ic} required/>
-          </Field>
-          <Field label="Новий час">
-            <input type="time" value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} required/>
-          </Field>
+    <Modal title="Картка запису" onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl flex items-start gap-4 border border-gray-100 dark:border-gray-700">
+           <div className="w-12 h-12 rounded-full bg-[#5C3EFE]/10 text-[#5C3EFE] flex items-center justify-center shrink-0">
+             <User size={24} />
+           </div>
+           <div className="flex-1">
+             <div className="flex justify-between items-start">
+               <div>
+                  <p className="font-black text-gray-900 dark:text-white text-lg leading-none">{booking.isOffline ? booking.offlineData?.clientName : booking.driver?.displayName || 'Анонімний'}</p>
+                  <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-1">{booking.isOffline ? booking.offlineData?.phone : booking.driver?.phone || 'Немає номеру'}</p>
+               </div>
+               {booking.isOffline && <span className="bg-orange-100 text-orange-600 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest">Офлайн</span>}
+             </div>
+             
+             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+               <div className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
+                 <Car size={16} className="text-gray-400" />
+                 {booking.isOffline ? booking.offlineData?.brand : booking.car ? `${booking.car.brand} ${booking.car.model}` : 'Автомобіль'}
+               </div>
+               <span className="font-mono text-xs font-black bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">
+                 {(booking.isOffline ? booking.offlineData?.plate : booking.car?.plate) || '—'}
+               </span>
+             </div>
+           </div>
         </div>
-        <PrimaryBtn type="submit" disabled={loading} className="w-full py-4 justify-center text-base mt-4 shadow-indigo-500/20">
-          {loading ? <Loader2 className="animate-spin" size={20}/> : 'ЗБЕРЕГТИ ЗМІНИ'}
-        </PrimaryBtn>
-      </form>
+
+        <form onSubmit={submitEdit} className="flex flex-col gap-4 mt-2">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Дата візиту">
+              <input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className={ic} required/>
+            </Field>
+            <Field label="Час">
+              <input type="time" value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} required/>
+            </Field>
+          </div>
+          <Field label="Суть роботи">
+             <textarea value={f.issue} onChange={e => setF({...f, issue: e.target.value})} className={`${ic} resize-none h-20`} required></textarea>
+          </Field>
+          
+          <PrimaryBtn type="submit" disabled={loading} className="w-full py-3.5 justify-center text-sm shadow-indigo-500/20">
+            {loading ? <Loader2 className="animate-spin" size={20}/> : 'ЗБЕРЕГТИ ЗМІНИ В ЗАПИСІ'}
+          </PrimaryBtn>
+        </form>
+
+        {booking.status === 'confirmed' && (
+          <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+             <button onClick={() => setCompleteMode(true)} className="w-full py-4 rounded-xl font-black text-sm text-green-500 bg-green-50 dark:bg-green-500/10 hover:bg-green-100 dark:hover:bg-green-500/20 flex items-center justify-center gap-2 transition-colors border border-green-200 dark:border-green-500/20">
+               <CheckCircle2 size={20} /> ЗАВЕРШИТИ ЗАМОВЛЕННЯ 🏁
+             </button>
+          </div>
+        )}
+      </div>
     </Modal>
   )
 }
