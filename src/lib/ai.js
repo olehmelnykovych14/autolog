@@ -26,28 +26,47 @@ export const askGemini = async (userInput, carList, historyList) => {
 
   const prompt = `${context}\n\nКлієнт: ${userInput}\nМеханік:`;
 
-  // Список моделей, які ми будемо пробувати по черзі
-  const modelsToTry = ["gemini-flash-latest", "gemini-pro-latest", "gemini-2.0-flash", "gemini-pro"];
+  // Список найбільш стабільних та нових моделей Gemini
+  const modelsToTry = [
+    "gemini-1.5-flash", 
+    "gemini-1.5-pro", 
+    "gemini-2.0-flash-exp", 
+    "gemini-pro",
+    "gemini-flash-latest"
+  ];
   
   for (const modelName of modelsToTry) {
     try {
+      console.log(`🤖 AI is trying model: ${modelName}...`);
       const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
       const response = await result.response;
       return response.text();
     } catch (error) {
-      console.error(`Error with model ${modelName}:`, error);
-      const msg = error.message || "";
+      const msg = (error.message || String(error)).toLowerCase();
+      console.warn(`⚠️ Model ${modelName} failed:`, msg);
       
-      // Якщо це помилка "модель не знайдена" (404), "ліміт вичерпано" (429) або "перевантаження" (503), спробуємо наступну модель
-      if (msg.includes("404") || msg.includes("not found") || msg.includes("429") || msg.includes("503") || msg.includes("500") || msg.includes("quota") || msg.includes("demand") || msg.includes("overloaded")) {
-        console.log(`Model ${modelName} busy or unavailable, trying next...`);
+      // Більш широка перевірка на тимчасові помилки (404, 429, 503, 500, перевантаження)
+      const isTemporary = 
+        msg.includes("404") || 
+        msg.includes("not found") || 
+        msg.includes("429") || 
+        msg.includes("503") || 
+        msg.includes("500") || 
+        msg.includes("quota") || 
+        msg.includes("demand") || 
+        msg.includes("overloaded") ||
+        msg.includes("busy") ||
+        msg.includes("limit");
+
+      if (isTemporary) {
+        console.log(`🔄 Switching to next model because of temporary error in ${modelName}...`);
         continue;
       }
       
-      return `Помилка зв'язку з AI (${modelName}): ${msg}`;
+      return `Помилка зв'язку з AI (${modelName}): ${error.message || 'Unknown error'}`;
     }
   }
 
-  return "Помилка: Не вдалося знайти жодну доступну модель (Gemini 1.5 або Pro). Перевірте налаштування API ключа.";
+  return "Помилка: Всі доступні моделі Gemini тимчасово перевантажені або недоступні. Спробуйте через хвилину.";
 };
