@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react'
 import { LayoutDashboard } from 'lucide-react'
 import { auth, db } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { doc, getDoc, getDocs, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore'
+import { doc, getDoc, getDocs, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, onSnapshot } from 'firebase/firestore'
 
 // Context & Constants
 import { ThemeCtx } from './context/ThemeContext'
@@ -47,6 +47,7 @@ export default function App() {
   const [showReport, setShowReport] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
   const [incomingTransfer, setIncomingTransfer] = useState(null)
+  const [bookingNotifications, setBookingNotifications] = useState([])
   
   const tabRef = useRef(tab)
   useEffect(() => { tabRef.current = tab }, [tab])
@@ -107,6 +108,48 @@ export default function App() {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!currentUser || !userProfile) {
+      setBookingNotifications([])
+      return
+    }
+    const isSto = userProfile.accountType === 'sto'
+    const q = isSto 
+       ? query(collection(db, 'bookings'), where('stoId', '==', currentUser.uid))
+       : query(collection(db, 'bookings'), where('userId', '==', currentUser.uid))
+
+    const unsub = onSnapshot(q, async snap => {
+       const list = []
+       for(const d of snap.docs) {
+          const b = { id: d.id, ...d.data() }
+          if (isSto) {
+             if (b.status === 'pending') list.push(b)
+          } else {
+             // For drivers, show confirmed/rejected as notifications
+             if (b.status === 'confirmed' || b.status === 'rejected') list.push(b)
+          }
+       }
+       list.sort((a,b) => b.createdAt - a.createdAt)
+       
+       for (const b of list) {
+         if (isSto && b.carId) {
+             try {
+               const cSnap = await getDoc(doc(db, 'cars', String(b.carId)))
+               if (cSnap.exists()) b.car = cSnap.data()
+             } catch(e){}
+         }
+         if (!isSto && b.stoId) {
+             try {
+               const sSnap = await getDoc(doc(db, 'users', String(b.stoId)))
+               if (sSnap.exists()) b.sto = sSnap.data()
+             } catch(e){}
+         }
+       }
+       setBookingNotifications(list)
+    })
+    return () => unsub()
+  }, [currentUser, userProfile])
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
@@ -268,7 +311,7 @@ export default function App() {
       <div className={`flex h-screen w-full font-sans overflow-hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
         <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin} userProfile={userProfile} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} onLogout={() => signOut(auth)} />
         <div className="flex flex-1 flex-col overflow-hidden relative">
-          <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} />
+          <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} bookingNotifications={bookingNotifications} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setTab={setTab} />
           <main className={`flex-1 flex flex-col min-h-0 overflow-hidden relative ${tab === 'ai' ? 'bg-white dark:bg-gray-800' : 'bg-[#F8FAFC] dark:bg-gray-950'}`}>
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
               <div className="max-w-7xl mx-auto space-y-6 pb-12">

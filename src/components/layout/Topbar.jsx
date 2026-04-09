@@ -3,9 +3,10 @@ import { Sun, Moon, Bell, ChevronDown, Check, X, ShieldCheck, Clock, AlertCircle
 import { ThemeCtx } from '../../context/ThemeContext'
 import { C } from '../../constants'
 
-export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu }) {
+export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu, setTab }) {
   const [showInbox, setShowInbox] = useState(false)
   const isSto = userProfile?.accountType === 'sto'
+  const totalNotifications = pendingApprovals.length + bookingNotifications.length
 
   return (
     <header className="sticky top-0 z-[50] flex items-center justify-between px-6 py-6 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl">
@@ -37,18 +38,18 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
         <div className="flex items-center bg-gray-50 dark:bg-gray-900 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800">
           <button onClick={() => setDark(!isDark)} className="p-2.5 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-all text-gray-400 hover:text-[#5C3EFE] shadow-sm hover:shadow-indigo-500/10 active:scale-90">{isDark ? <Sun size={18} /> : <Moon size={18} />}</button>
           <div className="relative">
-            <button onClick={() => setShowInbox(!showInbox)} className={`p-2.5 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-all text-gray-400 hover:text-[#5C3EFE] shadow-sm hover:shadow-indigo-500/10 active:scale-90 ${pendingApprovals.length > 0 ? 'text-[#5C3EFE]' : ''}`}>
+            <button onClick={() => setShowInbox(!showInbox)} className={`p-2.5 rounded-xl hover:bg-white dark:hover:bg-gray-800 transition-all text-gray-400 hover:text-[#5C3EFE] shadow-sm hover:shadow-indigo-500/10 active:scale-90 ${totalNotifications > 0 ? 'text-[#5C3EFE]' : ''}`}>
               <Bell size={18} />
-              {pendingApprovals.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-950"></span>}
+              {totalNotifications > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-gray-950 animate-pulse"></span>}
             </button>
             {showInbox && (
               <div className="absolute top-full right-0 mt-4 w-72 sm:w-80 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-50 animate-in slide-in-from-top-4">
                 <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
                   <h3 className="font-bold text-gray-900 dark:text-white">Сповіщення</h3>
-                  <span className="px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded-full">{pendingApprovals.length}</span>
+                  <span className="px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded-full">{totalNotifications}</span>
                 </div>
-                <div className="max-h-80 overflow-y-auto no-scrollbar">
-                  {pendingApprovals.length === 0 ? (
+                <div className="max-h-[22rem] overflow-y-auto custom-scrollbar">
+                  {totalNotifications === 0 ? (
                     <div className="p-10 text-center flex flex-col items-center gap-3">
                       <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-900 flex items-center justify-center text-gray-300">
                         <Bell size={24}/>
@@ -56,7 +57,24 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
                       <p className="text-sm text-gray-400 font-medium tracking-tight">Поки що немає нових сповіщень</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-gray-50 dark:divide-gray-700">
+                    <div className="divide-y divide-gray-50 dark:divide-gray-700 flex flex-col">
+                      {/* Booking Notifications */}
+                      {bookingNotifications.map(b => (
+                        <div key={b.id} className="p-4 bg-indigo-50/30 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors cursor-pointer" onClick={() => { setShowInbox(false); setTab(isSto ? 'sto_bookings' : 'bookings') }}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                            <p className="text-xs text-gray-500 font-medium">Нове оновлення запису</p>
+                          </div>
+                          {isSto ? (
+                            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1"><span className="text-[#5C3EFE]">Нова заявка</span> від клієнта на авто {b.car ? `${b.car.plate}` : ''}</p>
+                          ) : (
+                            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">Запис {b.status === 'confirmed' ? 'ПІДТВЕРДЖЕНО' : 'ВІДХИЛЕНО'}</p>
+                          )}
+                          <p className="text-xs text-gray-400">{b.date || 'unknown'} о {b.time || 'unknown'}</p>
+                        </div>
+                      ))}
+
+                      {/* Approval Notifications */}
                       {pendingApprovals.map(p => (
                         <div key={p.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors">
                           <p className="text-xs text-gray-500 mb-1">Новий сервіс від <span className="font-bold text-[#5C3EFE]">{p.stoName}</span></p>

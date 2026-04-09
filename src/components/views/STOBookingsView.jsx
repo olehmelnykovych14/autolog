@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, User, Phone, CheckCircle2, XCircle, Clock4, Car, Plus, Search, Info, Loader2 } from 'lucide-react'
-import { collection, query, where, getDocs, doc, getDoc, addDoc } from 'firebase/firestore'
+import { Calendar, User, Phone, CheckCircle2, XCircle, Clock4, Car, Plus, Search, Info, Loader2, Edit3 } from 'lucide-react'
+import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
 
@@ -8,6 +8,7 @@ export function STOBookingsView({ userProfile }) {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [editingBooking, setEditingBooking] = useState(null)
 
   useEffect(() => {
     fetchBookings()
@@ -124,6 +125,9 @@ export function STOBookingsView({ userProfile }) {
                          <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-[#5C3EFE] uppercase bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
                            <Calendar size={12}/> {b.date?.split('-').reverse().join('.')} • {b.time}
                          </div>
+                         <button onClick={(e) => { e.stopPropagation(); setEditingBooking(b) }} className="p-1.5 text-gray-400 hover:text-[#5C3EFE] hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded flex-shrink-0 transition-colors">
+                           <Edit3 size={14} />
+                         </button>
                       </div>
 
                       <div className="mb-4">
@@ -149,6 +153,7 @@ export function STOBookingsView({ userProfile }) {
       </div>
 
       {showCreateModal && <CreateBookingBySTOModal userProfile={userProfile} onClose={() => setShowCreateModal(false)} onSuccess={() => { setShowCreateModal(false); fetchBookings(); }} />}
+      {editingBooking && <EditBookingTimeModal booking={editingBooking} onClose={() => setEditingBooking(null)} onSuccess={() => { setEditingBooking(null); fetchBookings(); }} />}
     </div>
   )
 }
@@ -259,6 +264,47 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess }) {
           </PrimaryBtn>
         </form>
       )}
+    </Modal>
+  )
+}
+
+function EditBookingTimeModal({ booking, onClose, onSuccess }) {
+  const [f, setF] = useState({ date: booking.date || '', time: booking.time || '' })
+  const [loading, setLoading] = useState(false)
+  const ic = inp_cls()
+
+  const submit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      await updateDoc(doc(db, 'bookings', booking.id), {
+        date: f.date,
+        time: f.time
+      })
+      onSuccess()
+    } catch(e) {
+      console.error(e)
+      alert('Помилка оновлення часу')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Modal title="Редагувати дату та час" onClose={onClose}>
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Нова дата візиту">
+            <input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className={ic} required/>
+          </Field>
+          <Field label="Новий час">
+            <input type="time" value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} required/>
+          </Field>
+        </div>
+        <PrimaryBtn type="submit" disabled={loading} className="w-full py-4 justify-center text-base mt-4 shadow-indigo-500/20">
+          {loading ? <Loader2 className="animate-spin" size={20}/> : 'ЗБЕРЕГТИ ЗМІНИ'}
+        </PrimaryBtn>
+      </form>
     </Modal>
   )
 }
