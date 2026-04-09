@@ -122,7 +122,7 @@ export function CarReportModal({ car, historyList, userProfile, onClose }) {
                   <tr key={r.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/50 transition-colors">
                     <td className="px-4 py-4">
                       <p className="font-bold text-gray-900 dark:text-white">{r.date?.split('-').reverse().join('.')}</p>
-                      <p className="text-[10px] text-gray-400">{fmt(r.mileage)} км</p>
+                      <p className="text-[10px] text-gray-400">{r.mileage ? `${fmt(r.mileage)} км` : '—'}</p>
                     </td>
                     <td className="px-4 py-4">
                       <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">{r.title}</p>

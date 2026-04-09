@@ -99,7 +99,17 @@ export function PublicReportView({ carId }) {
       <div className="max-w-3xl mx-auto mt-8 px-4 sm:px-6">
         <div className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col sm:flex-row items-center gap-6">
           <div className="w-24 h-24 rounded-[2rem] bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-[#5C3EFE] shrink-0 border-2 border-indigo-100 dark:border-indigo-800/50 overflow-hidden relative">
-            {logo ? <img src={logo} alt={car.brand} className="w-16 h-16 object-contain opacity-80" /> : <ShieldCheck size={40}/>}
+            {logo && (
+              <img 
+                src={logo} 
+                alt={car.brand} 
+                className="w-16 h-16 object-contain opacity-80" 
+                onError={(e) => { e.target.style.display = 'none'; e.target.nextElementSibling.style.display = 'flex'; }}
+              />
+            )}
+            <div className={`w-full h-full items-center justify-center ${logo ? 'hidden' : 'flex'}`}>
+              <span className="text-4xl font-black text-indigo-400/50 dark:text-indigo-400/30 uppercase">{car.brand?.[0] || '?'}</span>
+            </div>
           </div>
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-3xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">{car.brand} {car.model}</h3>
@@ -138,7 +148,7 @@ export function PublicReportView({ carId }) {
                   <tr key={r.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors">
                     <td className="px-5 py-5 whitespace-nowrap">
                       <p className="font-bold text-gray-900 dark:text-white">{r.date?.split('-').reverse().join('.')}</p>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">{fmt(r.mileage)} км</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">{r.mileage ? `${fmt(r.mileage)} км` : '—'}</p>
                     </td>
                     <td className="px-5 py-5">
                       <p className="font-bold text-gray-800 dark:text-gray-200 mb-1.5 leading-tight">{r.title}</p>
