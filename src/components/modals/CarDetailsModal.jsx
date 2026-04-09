@@ -12,20 +12,38 @@ export function CarDetailsModal({ car, onClose, onGoService, onGoReport, onGoTra
   const logo = getBrandLogo(car.brand)
 
   const handleShare = async () => {
-    setIsSharing(true)
+    const shareUrl = `${window.location.origin}/share/${car.id}`
+    
+    // Копіюємо безпечно спочатку (поки контекст кліку миші активний)
     try {
-      if (!car.isPublic) {
-        await updateDoc(doc(db, 'cars', car.id), { isPublic: true })
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl)
+      } else {
+        const textArea = document.createElement("textarea")
+        textArea.value = shareUrl
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
       }
-      const shareUrl = `${window.location.origin}/share/${car.id}`
-      await navigator.clipboard.writeText(shareUrl)
       setIsCopied(true)
       setTimeout(() => setIsCopied(false), 3000)
     } catch (e) {
-      console.error(e)
-      alert("Не вдалося скопіювати посилання")
+      console.error('Clipboard error:', e)
+      alert("Скопіюйте посилання вручну: " + shareUrl)
     }
-    setIsSharing(false)
+
+    // Робимо авто публічним фоном
+    if (!car.isPublic) {
+      setIsSharing(true)
+      try {
+        await updateDoc(doc(db, 'cars', car.id), { isPublic: true })
+      } catch(e) {
+        console.error('DB Share update error:', e)
+      }
+      setIsSharing(false)
+    }
   }
 
   return (
