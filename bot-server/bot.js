@@ -173,6 +173,40 @@ app.post('/api/webhook/wayforpay', async (req, res) => {
   res.json(responseData);
 });
 
+// --- API: Public Share Report ---
+app.get('/api/share/:carId', async (req, res) => {
+  const { carId } = req.params;
+  try {
+    const carDoc = await db.collection('cars').doc(carId).get();
+    if (!carDoc.exists) return res.status(404).json({ error: 'Car not found' });
+    
+    const carData = carDoc.data();
+    if (!carData.isPublic) return res.status(403).json({ error: 'This report is private' });
+
+    // Fetch history
+    const historySnap = await db.collection('history').where('carId', '==', carId).get();
+    const historyData = historySnap.docs.map(d => ({ ...d.data(), id: d.id }));
+
+    // Fetch owner profile to display name
+    let userProfile = null;
+    if (carData.userId) {
+      const userDoc = await db.collection('users').doc(carData.userId).get();
+      if (userDoc.exists) {
+        userProfile = userDoc.data();
+      }
+    }
+
+    res.json({
+      car: { id: carDoc.id, ...carData },
+      historyList: historyData,
+      userProfile: userProfile
+    });
+  } catch (e) {
+    console.error('Share Fetch Error:', e);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
 // --- Helpers ---
 const fmtCost = (v) => v ? v.toLocaleString() : '0';
 const normalizePlate = (p) => {

@@ -3,9 +3,30 @@ import { Info, FileText, Share2, ClipboardList, TrendingUp, X } from 'lucide-rea
 import { Modal, PrimaryBtn } from '../common/Common'
 import { fmt, getBrandLogo } from '../../utils'
 import { C } from '../../constants'
+import { db } from '../../firebase'
+import { doc, updateDoc } from 'firebase/firestore'
 
 export function CarDetailsModal({ car, onClose, onGoService, onGoReport, onGoTransfer }) {
+  const [isCopied, setIsCopied] = React.useState(false)
+  const [isSharing, setIsSharing] = React.useState(false)
   const logo = getBrandLogo(car.brand)
+
+  const handleShare = async () => {
+    setIsSharing(true)
+    try {
+      if (!car.isPublic) {
+        await updateDoc(doc(db, 'cars', car.id), { isPublic: true })
+      }
+      const shareUrl = `${window.location.origin}/share/${car.id}`
+      await navigator.clipboard.writeText(shareUrl)
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 3000)
+    } catch (e) {
+      console.error(e)
+      alert("Не вдалося скопіювати посилання")
+    }
+    setIsSharing(false)
+  }
 
   return (
     <Modal title="Деталі автомобіля" onClose={onClose}>
@@ -67,12 +88,15 @@ export function CarDetailsModal({ car, onClose, onGoService, onGoReport, onGoTra
           <button onClick={() => { onGoService(); onClose(); }} className="w-full py-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl font-black text-sm hover:bg-indigo-100 transition-all flex items-center justify-center gap-3 border border-indigo-100 dark:border-indigo-800/50 shadow-sm active:scale-95">
             <ClipboardList size={18} /> ПЕРЕГЛЯНУТИ СЕРВІСНУ ІСТОРІЮ
           </button>
+          <button onClick={onGoReport} className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-sm hover:bg-gray-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-gray-400/20 active:scale-95 mt-2">
+            <TrendingUp size={18} /> ГЕНЕРУВАТИ ЗВІТ
+          </button>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={onGoReport} className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black text-sm hover:bg-gray-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-gray-400/20 active:scale-95">
-              <TrendingUp size={18} /> ГЕНЕРУВАТИ ЗВІТ
-            </button>
             <button onClick={onGoTransfer} className="flex-1 py-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl font-black text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 active:scale-95">
-              <Share2 size={18} /> ПЕРЕДАТИ АВТО
+              <ClipboardList size={18} /> ТРАНСФЕР АВТО
+            </button>
+            <button onClick={handleShare} disabled={isSharing} className={`flex-1 py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 border active:scale-95 ${isCopied ? 'bg-green-500 text-white border-green-500' : 'bg-white dark:bg-gray-800 text-[#5C3EFE] border-indigo-100 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30'}`}>
+              <Share2 size={18} /> {isSharing ? 'ЗАЧЕКАЙТЕ...' : (isCopied ? 'СКОПІЙОВАНО!' : 'ПОДІЛИТИСЯ')}
             </button>
           </div>
         </div>

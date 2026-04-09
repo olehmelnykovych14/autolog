@@ -22,6 +22,7 @@ import { PlansView, STOPricingView } from './components/views/PlansView'
 import { SettingsView } from './components/views/SettingsView'
 import { AdminView } from './components/views/AdminView'
 import { STODashboardView } from './components/views/STODashboardView'
+import { PublicReportView } from './components/views/PublicReportView'
 
 // Modals
 import { CarDetailsModal } from './components/modals/CarDetailsModal'
@@ -247,6 +248,13 @@ export default function App() {
         </div>
       </div>
     )
+  }
+
+  const isSharedRoute = window.location.pathname.startsWith('/share/')
+  const sharedCarId = isSharedRoute ? window.location.pathname.split('/')[2] : null
+
+  if (isSharedRoute && sharedCarId) {
+    return <PublicReportView carId={sharedCarId} />
   }
 
   if (currentUser === null) {
