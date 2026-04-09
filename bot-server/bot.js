@@ -2,11 +2,29 @@ require('dotenv').config();
 const { Telegraf, session } = require('telegraf');
 const admin = require('firebase-admin');
 const fs = require('fs');
+const path = require('path');
 
-const serviceAccount = require('./serviceAccountKey.json');
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+let serviceAccount;
+const keyPath = path.join(__dirname, 'serviceAccountKey.json');
+
+try {
+  if (fs.existsSync(keyPath)) {
+    serviceAccount = require(keyPath);
+    console.log('📦 Using service account from file.');
+  } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    console.log('☁️ Using service account from environment variables.');
+  } else {
+    throw new Error('No Firebase service account credentials found!');
+  }
+
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+} catch (err) {
+  console.error('❌ CRITICAL ERROR initializing Firebase Admin:', err.message);
+  process.exit(1); 
+}
 
 const db = admin.firestore();
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -63,20 +81,6 @@ bot.on('contact', async (ctx) => {
   }
 });
 
-// AI Record logic (simplified context)
-bot.action(/select_car_(.+)/, async (ctx) => {
-  const carDocId = ctx.match[1];
-  try {
-    const carSnap = await db.collection('cars').doc(carDocId).get();
-    const carData = carSnap.data();
-    await db.collection('history').add({ ...ctx.session.pendingRecord, carId: carDocId, userId: ctx.userId, createdAt: Date.now() });
-    await ctx.editMessageText(`✅ Збережено для *${carData.brand}*!`, { parse_mode: 'Markdown' });
-    await ctx.reply('Головне меню:', mainMenu);
-  } catch (e) { ctx.reply('❌ Помилка.'); }
-});
-
-bot.action('cancel_ai_record', (ctx) => ctx.editMessageText('❌ Скасовано.'));
-
 // --- Background Listeners (Serverless Telegram Push) ---
 db.collection('bookings').onSnapshot(async (snap) => {
   for (const change of snap.docChanges()) {
@@ -85,7 +89,7 @@ db.collection('bookings').onSnapshot(async (snap) => {
       const bId = change.doc.id;
 
       if (change.type === 'added') {
-        // 1. Сповіщення СТО про нове бронювання від водія
+        // 1. Нова заявка ДЛЯ СТО від водія
         if (bData.status === 'pending' && !bData.notifiedSTO) {
           await change.doc.ref.update({ notifiedSTO: true });
           const stoDoc = await db.collection('users').doc(String(bData.stoId)).get();
@@ -94,20 +98,23 @@ db.collection('bookings').onSnapshot(async (snap) => {
             const driverDoc = await db.collection('users').doc(String(bData.userId)).get();
             bot.telegram.sendMessage(
               stoDoc.data().telegramId, 
-              `📅 *Нова заявка на ремонт!*\n\nКлієнт: *${driverDoc.exists ? driverDoc.data().displayName : 'Клієнт'}*\nАвто: *${carDoc.exists ? carDoc.data().brand + ' ' + carDoc.data().plate : 'Невідомо'}*\nЧас: *${bData.date} ${bData.time}*\nПроблема: ${bData.issue}`,
+              `📅 *Нова заявка на ремонт!*\n\nКлієнт: *${driverDoc.exists ? (driverDoc.data().displayName || 'Клієнт') : 'Клієнт'}*\nАвто: *${carDoc.exists ? (carDoc.data().brand + ' ' + carDoc.data().plate) : 'Невідомо'}*\nЧас: *${bData.date} ${bData.time}*\nПроблема: ${bData.issue}`,
               { parse_mode: 'Markdown' }
             ).catch(e => console.error('STO notify error:', e));
           }
         }
 
-        // 2. Сповіщення водія про те, що СТО самостійно додало запис
+        // 2. СТО додало запис (сповіщення ВОДІЮ)
         if (bData.status === 'confirmed' && bData.creator === 'sto' && !bData.notifiedClient) {
           await change.doc.ref.update({ notifiedClient: true });
           const driverDoc = await db.collection('users').doc(String(bData.userId)).get();
           if (driverDoc.exists && driverDoc.data().telegramId) {
+            const stoDoc = await db.collection('users').doc(String(bData.stoId)).get();
+            const stoName = stoDoc.exists ? (stoDoc.data().stoName || 'AutoLog') : 'AutoLog';
+            
             bot.telegram.sendMessage(
               driverDoc.data().telegramId, 
-              `✅ СТО додало запис для вас!\n\n📅 Дата: *${bData.date}*\n⏰ Час: *${bData.time}*\n🛠 Робота: *${bData.issue}*`, 
+              `✅ СТО *${stoName}* додало вас у графік!\n\n📅 Дата: *${bData.date}*\n⏰ Час: *${bData.time}*\n🛠 Робота: *${bData.issue}*`, 
               { parse_mode: 'Markdown' }
             ).catch(e => console.error('Client notify error:', e));
           }
@@ -118,26 +125,29 @@ db.collection('bookings').onSnapshot(async (snap) => {
         const driverDoc = await db.collection('users').doc(String(bData.userId)).get();
         if (driverDoc.exists && driverDoc.data().telegramId) {
           const tid = driverDoc.data().telegramId;
-          
+          const stoDoc = await db.collection('users').doc(String(bData.stoId)).get();
+          const stoName = stoDoc.exists ? (stoDoc.data().stoName || 'AutoLog') : 'AutoLog';
+
           if (bData.status === 'confirmed' && !bData.notifiedConfirmed) {
             await change.doc.ref.update({ notifiedConfirmed: true });
-            bot.telegram.sendMessage(tid, `✅ Ваш запис підтверджено!\n📅 ${bData.date} о ${bData.time}`, { parse_mode: 'Markdown' }).catch(e => null);
+            bot.telegram.sendMessage(tid, `✅ Ваш запис на СТО *${stoName}* підтверджено!\n📅 ${bData.date} о ${bData.time}`, { parse_mode: 'Markdown' }).catch(e => null);
           }
           
           if (bData.status === 'rejected' && !bData.notifiedRejected) {
             await change.doc.ref.update({ notifiedRejected: true });
-            bot.telegram.sendMessage(tid, `❌ Ваш запис було відхилено.`, { parse_mode: 'Markdown' }).catch(e => null);
+            bot.telegram.sendMessage(tid, `❌ Ваш запис на СТО *${stoName}* було відхилено.`, { parse_mode: 'Markdown' }).catch(e => null);
           }
         }
       }
     } catch (e) {
-      console.error('[BOT ERROR] Error processing change:', e);
+      console.error('[BOT ERROR] Processing change:', e);
     }
   }
 });
 
-bot.launch();
-console.log('🤖 AutoLog Bot started with Firestore Listeners...');
+bot.launch().then(() => {
+  console.log('🤖 AutoLog Bot started with Firestore Listeners...');
+});
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
