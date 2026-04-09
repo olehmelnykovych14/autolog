@@ -10,6 +10,8 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
   const [name, setName] = useState(currentUser?.displayName || '')
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
+  const [stoName, setStoName] = useState('')
+  const [stoAddress, setStoAddress] = useState('')
   const [avatar, setAvatar] = useState('')
   const [saving, setSaving] = useState(false)
   const [tgLoading, setTgLoading] = useState(false)
@@ -19,6 +21,8 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
     if (userProfile) {
       setPhone(userProfile.phone || '')
       setCity(userProfile.city || '')
+      setStoName(userProfile.stoName || '')
+      setStoAddress(userProfile.stoAddress || '')
       setAvatar(userProfile.avatarBase64 || '')
     }
   }, [userProfile])
@@ -63,6 +67,10 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
         await updateProfile(currentUser, { displayName: name })
       }
       const up = { ...userProfile, phone, city, avatarBase64: avatar }
+      if (userProfile?.accountType === 'sto') {
+        up.stoName = stoName
+        up.stoAddress = stoAddress
+      }
       await setDoc(doc(db, 'users', currentUser.uid), up, { merge: true })
       setUserProfile(up)
       alert('Профіль оновлено!')
@@ -133,6 +141,21 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
               </div>
             </Field>
           </div>
+
+          {userProfile?.accountType === 'sto' && (
+            <div className="space-y-6 pt-6 border-t border-gray-50 dark:border-gray-700/50">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-4 text-[#5C3EFE]">Дані СТО</h3>
+              <Field label="Назва СТО">
+                <input value={stoName} onChange={e => setStoName(e.target.value)} className={ic} placeholder="AutoService Group" />
+              </Field>
+              <Field label="Адреса СТО">
+                <div className="relative flex items-center">
+                  <MapPin className="absolute left-4 text-gray-400" size={18} />
+                  <input value={stoAddress} onChange={e => setStoAddress(e.target.value)} className={`${ic} !pl-12`} placeholder="Київ, вул. Світла, 1" />
+                </div>
+              </Field>
+            </div>
+          )}
 
           <div className="pt-6 border-t border-gray-50 dark:border-gray-700/50 mt-8">
             <PrimaryBtn onClick={save} disabled={saving} className="w-full py-4 justify-center text-base">
