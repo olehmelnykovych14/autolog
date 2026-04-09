@@ -107,7 +107,7 @@ export function STOBookingsView({ userProfile }) {
     <div className="flex flex-col gap-6 max-w-[90rem] mx-auto w-full pt-4 px-4 sm:px-6 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-1 tracking-tight">Розклад та Записи <span className="text-[10px] text-indigo-400 font-normal ml-2">v09.04.20:58</span></h1>
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-1 tracking-tight">Розклад та Записи <span className="text-[10px] text-indigo-400 font-normal ml-2">v09.04.21:10</span></h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Контролюйте завантаженість СТО та змінюйте статуси.</p>
         </div>
         
