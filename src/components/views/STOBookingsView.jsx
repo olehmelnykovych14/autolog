@@ -228,6 +228,8 @@ export function STOBookingsView({ userProfile }) {
                            className={`border-r border-b border-gray-200 dark:border-gray-700/50 p-1 align-top h-24 min-w-[140px] transition-colors ${!slotBookings.length ? 'hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 cursor-pointer group-hover:bg-gray-50/50 dark:group-hover:bg-gray-800/50' : 'bg-gray-50/20 dark:bg-gray-800/20'}`}
                            onDragOver={onDragOver}
                            onDrop={e => {
+                              e.preventDefault();
+                              e.stopPropagation();
                               const id = e.dataTransfer.getData("text/plain")
                               if(id) { updateDoc(doc(db, 'bookings', id), { date: localISOTime, time: hourStr+':00' }).then(fetchBookings).catch(console.error) }
                            }}
