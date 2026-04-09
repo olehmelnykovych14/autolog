@@ -20,7 +20,7 @@ export function ClientBookingsView({ carList }) {
   const fetchStos = async () => {
     try {
       // Load all Business users (STOs)
-      const q = query(collection(db, 'users'), where('accountType', '==', 'sto'), where('plan', '==', 'Business'))
+      const q = query(collection(db, 'users'), where('accountType', '==', 'sto'))
       const snap = await getDocs(q)
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       setStos(list)
@@ -52,7 +52,8 @@ export function ClientBookingsView({ carList }) {
 
   const filteredStos = stos.filter(s => 
     s.stoName?.toLowerCase().includes(search.toLowerCase()) || 
-    s.stoAddress?.toLowerCase().includes(search.toLowerCase())
+    s.stoAddress?.toLowerCase().includes(search.toLowerCase()) ||
+    s.email?.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
