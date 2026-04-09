@@ -314,7 +314,7 @@ export default function App() {
           <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} bookingNotifications={bookingNotifications} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setTab={setTab} />
           <main className={`flex-1 flex flex-col min-h-0 overflow-hidden relative ${tab === 'ai' ? 'bg-white dark:bg-gray-800' : 'bg-[#F8FAFC] dark:bg-gray-950'}`}>
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
-              <div className="max-w-7xl mx-auto space-y-6 pb-12">
+              <div className={`${tab === 'sto_bookings' ? 'max-w-[120rem]' : 'max-w-7xl'} mx-auto space-y-6 pb-12`}>
                 {tab === 'dashboard' && <DashboardView carList={carList} historyList={historyList} />}
                 {tab === 'garage' && <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => setTab('plans')} />}
                 {tab === 'bookings' && <ClientBookingsView carList={carList} />}

@@ -118,7 +118,7 @@ export function STOBookingsView({ userProfile }) {
           </div>
 
           <button onClick={() => { setCreateInitial(null); setShowCreateModal(true) }} className="flex items-center gap-2 px-6 py-3 bg-[#5C3EFE] text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/20 hover:scale-105 transition-all">
-             <Plus size={20}/> Клієнту
+             <Plus size={20}/> Створити запис
           </button>
         </div>
       </div>
