@@ -207,6 +207,121 @@ app.get('/api/share/:carId', async (req, res) => {
   }
 });
 
+// --- API: B2B CRM Push Record ---
+app.post('/api/b2b/push-record', async (req, res) => {
+  const { stoId, plate, title, cost, mileage, category, date } = req.body;
+  if (!stoId || !plate) return res.status(400).json({ error: 'Missing data' });
+  
+  try {
+    const stoDoc = await db.collection('users').doc(stoId).get();
+    if (!stoDoc.exists) return res.status(404).json({ error: 'STO not found' });
+    const stoData = stoDoc.data();
+    if (stoData.accountType !== 'sto' || stoData.plan !== 'Business') return res.status(403).json({ error: 'Not a premium STO' });
+
+    // Пошук авто
+    const normalizedPlate = plate.toUpperCase().replace(/\s/g, '');
+    const carSnap = await db.collection('cars').where('plate', '==', normalizedPlate).get();
+    if (carSnap.empty) return res.status(404).json({ error: 'Car not found' });
+    
+    const carDoc = carSnap.docs[0];
+    const carData = carDoc.data();
+
+    // Створення запису напряму в історії (без підтвердження)
+    const newRecord = {
+      title,
+      cost: Number(cost) || 0,
+      mileage: Number(mileage) || 0,
+      category: category || 'other',
+      date: date || new Date().toISOString().split('T')[0],
+      garage: stoData.stoName || 'AutoLog Partner',
+      carId: carDoc.id,
+      userId: carData.userId,
+      createdAt: Date.now(),
+      status: 'verified', // Відразу підтверджено
+      source: 'sto_push',
+      stoId: stoId
+    };
+
+    const docRef = await db.collection('history').add(newRecord);
+
+    // Сповіщення водію
+    if (carData.userId) {
+      const driverDoc = await db.collection('users').doc(carData.userId).get();
+      if (driverDoc.exists && driverDoc.data().telegramId) {
+        bot.telegram.sendMessage(
+          driverDoc.data().telegramId, 
+          `🔧 *Новий сервісний запис!*\n\nСТО *${stoData.stoName || 'Партнер'}* додало запис для вашого *${carData.brand}* (${carData.plate}):\n\n📌 *${title}*\n💰 ${fmtCost(newRecord.cost)} ₴\n📅 ${newRecord.date}`,
+          { parse_mode: 'Markdown' }
+        ).catch(e => console.error('TG Driver Push Error:', e));
+      }
+    }
+
+    res.json({ success: true, recordId: docRef.id });
+  } catch(e) {
+    console.error('B2B Push Error:', e);
+    res.status(500).json({ error: 'Internal Error' });
+  }
+});
+
+// --- API: B2B Booking ---
+app.post('/api/b2b/book', async (req, res) => {
+  const { stoId, userId, carId, date, time, issue } = req.body;
+  
+  try {
+    const booking = {
+      stoId, userId, carId, date, time, issue,
+      status: 'pending',
+      createdAt: Date.now()
+    };
+    const docRef = await db.collection('bookings').add(booking);
+
+    // Знайдемо СТО
+    const stoDoc = await db.collection('users').doc(stoId).get();
+    // Знайдемо Авто та Водія для гарного тексту
+    const carDoc = await db.collection('cars').doc(carId).get();
+    const driverDoc = await db.collection('users').doc(userId).get();
+
+    if (stoDoc.exists && stoDoc.data().telegramId) {
+      bot.telegram.sendMessage(
+        stoDoc.data().telegramId, 
+        `📅 *Нова заявка на ремонт!*\n\nКлієнт: *${driverDoc.exists ? driverDoc.data().displayName || 'Клієнт' : 'Клієнт'}* (${driverDoc.exists ? driverDoc.data().email : ''})\nАвто: *${carDoc.exists ? carDoc.data().brand + ' ' + carDoc.data().plate : 'Невідомо'}*\nЧас: *${date} ${time}*\nПроблема: ${issue}`,
+        { parse_mode: 'Markdown' }
+      ).catch(e => console.error('TG Booking STO Notification Error:', e));
+    }
+
+    res.json({ success: true, bookingId: docRef.id });
+  } catch (e) {
+    res.status(500).json({ error: 'Internal Error' });
+  }
+});
+
+// --- API: Booking Status Update ---
+app.post('/api/b2b/booking-status', async (req, res) => {
+  const { bookingId, status } = req.body;
+  try {
+    const bDoc = await db.collection('bookings').doc(bookingId).get();
+    if (!bDoc.exists) return res.status(404).json({ error: 'Booking not found' });
+    await bDoc.ref.update({ status });
+
+    const bData = bDoc.data();
+    const driverDoc = await db.collection('users').doc(bData.userId).get();
+    const stoDoc = await db.collection('users').doc(bData.stoId).get();
+    
+    if (driverDoc.exists && driverDoc.data().telegramId) {
+      const stoName = stoDoc.exists ? stoDoc.data().stoName : 'СТО';
+      const msg = status === 'confirmed' 
+        ? `✅ Ваш запис на СТО *${stoName}* підтверджено!\n📅 ${bData.date} о ${bData.time}`
+        : `❌ Ваш запис на СТО *${stoName}* на ${bData.date} о ${bData.time} було відхилено.`;
+      
+      bot.telegram.sendMessage(driverDoc.data().telegramId, msg, { parse_mode: 'Markdown' })
+        .catch(e => null);
+    }
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: 'Internal Error' });
+  }
+});
+
 // --- Helpers ---
 const fmtCost = (v) => v ? v.toLocaleString() : '0';
 const normalizePlate = (p) => {

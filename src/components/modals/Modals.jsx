@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Share2, Mail, Send, Check, UserPlus, Shield, Eye, Wrench, Calendar, Activity, MapPin, Layers, FileText, ShieldCheck } from 'lucide-react'
 import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { collection, addDoc } from 'firebase/firestore'
-import { db } from '../../firebase'
+import { db, auth } from '../../firebase'
 import { C, CAT } from '../../constants'
 
 // --- TransferCarModal ---
@@ -130,20 +130,26 @@ export function AddVerifiedServiceModal({ car, userProfile, onClose, onSuccess }
     if (!f.title || !f.mileage) return
     setLoading(true)
     try {
-      await addDoc(collection(db, 'history'), {
-        ...f,
-        carId: car.id,
-        userId: car.userId,
-        status: 'pending_approval',
-        stoName: userProfile?.stoName || 'Verified STO',
-        cost: parseInt(f.cost) || 0,
-        mileage: parseInt(f.mileage),
-        createdAt: Date.now()
-      })
+      const res = await fetch('/api/b2b/push-record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stoId: userProfile?.userId || auth.currentUser?.uid,
+          plate: car.plate,
+          title: f.title,
+          cost: f.cost,
+          mileage: f.mileage,
+          category: f.category,
+          date: f.date
+        })
+      });
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Server error')
+
       onSuccess()
     } catch (e) {
       console.error(e)
-      alert('Помилка надсилання.')
+      alert('Помилка надсилання: ' + e.message)
     } finally {
       setLoading(false)
     }

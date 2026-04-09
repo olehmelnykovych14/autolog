@@ -23,6 +23,8 @@ import { SettingsView } from './components/views/SettingsView'
 import { AdminView } from './components/views/AdminView'
 import { STODashboardView } from './components/views/STODashboardView'
 import { PublicReportView } from './components/views/PublicReportView'
+import { ClientBookingsView } from './components/views/ClientBookingsView'
+import { STOBookingsView } from './components/views/STOBookingsView'
 
 // Modals
 import { CarDetailsModal } from './components/modals/CarDetailsModal'
@@ -112,8 +114,8 @@ export default function App() {
 
   useEffect(() => {
     if (!userProfile) return
-    const isStoTab = ['sto', 'sto_plans'].includes(tab)
-    const isOwnerTab = ['dashboard', 'garage', 'service', 'plans', 'ai', 'team'].includes(tab)
+    const isStoTab = ['sto', 'sto_bookings', 'sto_plans'].includes(tab)
+    const isOwnerTab = ['dashboard', 'garage', 'bookings', 'service', 'plans', 'ai', 'team'].includes(tab)
     
     if (isStoTab && userProfile.accountType !== 'sto') {
       setTab('dashboard')
@@ -272,6 +274,7 @@ export default function App() {
               <div className="max-w-7xl mx-auto space-y-6 pb-12">
                 {tab === 'dashboard' && <DashboardView carList={carList} historyList={historyList} />}
                 {tab === 'garage' && <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => setTab('plans')} />}
+                {tab === 'bookings' && <ClientBookingsView carList={carList} />}
                 {tab === 'service' && <HistoryView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />}
                 {tab === 'ai' && <AIView carList={carList} historyList={historyList} userProfile={userProfile} onUpdateAIUsage={onUpdateAIUsage} onGoPlans={() => setTab('plans')} />}
                 {tab === 'team' && <TeamView teamMembers={teamMembers} limit={TEAM_LIMIT} onRemove={id => setTeamMembers(p => p.filter(m => m.id !== id))} onInvite={() => setShowInviteModal(true)} />}
@@ -279,6 +282,7 @@ export default function App() {
                 {tab === 'settings' && <SettingsView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} />}
                 {tab === 'admin' && isAdmin && <AdminView />}
                 {tab === 'sto' && userProfile?.accountType === 'sto' && <STODashboardView userProfile={userProfile} setTab={setTab} />}
+                {tab === 'sto_bookings' && userProfile?.accountType === 'sto' && <STOBookingsView userProfile={userProfile} />}
                 {tab === 'sto_plans' && userProfile?.accountType === 'sto' && <STOPricingView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} setTab={setTab} />}
               </div>
             </div>
