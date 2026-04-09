@@ -162,7 +162,7 @@ export function STOBookingsView({ userProfile }) {
                         <div className="mb-4">
                           <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
                             <Car size={16} className="text-gray-400"/> 
-                            {b.isOffline ? (b.offlineData?.brand || 'Офлайн авто') : (b.car ? `${b.car.brand || ''} ${b.car.model || ''}`.trim() : 'Автомобіль')}
+                            {b.isOffline ? (b.offlineData?.brand || 'Офлайн авто') : (`${b.carBrand || b.car?.brand || ''} ${b.carModel || b.car?.model || ''}`.trim() || 'Автомобіль')}
                           </h4>
                           <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest rounded">
                             {(b.isOffline ? b.offlineData?.plate : b.car?.plate) || '—'}
@@ -246,8 +246,8 @@ export function STOBookingsView({ userProfile }) {
                                  <p className="text-[10px] font-black tracking-widest text-[#5C3EFE]">{b.time}</p>
                                  {b.status === 'confirmed' ? <CheckCircle2 size={12} className="text-green-500"/> : b.status === 'pending' ? <Clock4 size={12} className="text-amber-500"/> : <XCircle size={12} className="text-gray-400"/>}
                                </div>
-                               <p className="font-bold text-gray-900 dark:text-white text-xs leading-tight line-clamp-1 pl-1" title={b.isOffline ? b.offlineData?.brand : (b.car ? `${b.car.brand || ''} ${b.car.model || ''}`.trim() : 'Автомобіль')}>
-                                 {b.isOffline ? (b.offlineData?.brand || 'Офлайн авто') : (b.car ? `${b.car.brand || ''} ${b.car.model || ''}`.trim() : 'Автомобіль')}
+                               <p className="font-bold text-gray-900 dark:text-white text-xs leading-tight line-clamp-1 pl-1" title={b.isOffline ? b.offlineData?.brand : (`${b.carBrand || b.car?.brand || ''} ${b.carModel || b.car?.model || ''}`.trim() || 'Автомобіль')}>
+                                 {b.isOffline ? (b.offlineData?.brand || 'Офлайн авто') : (`${b.carBrand || b.car?.brand || ''} ${b.carModel || b.car?.model || ''}`.trim() || 'Автомобіль')}
                                </p>
                                <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2 pl-1" title={b.issue}>{b.isOffline ? b.offlineData?.clientName : b.driver?.displayName} • {b.issue}</p>
                              </div>
@@ -312,6 +312,8 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
         stoId: auth.currentUser.uid,
         userId: foundCar.userId || 'unclaimed',
         carId: foundCar.id || 'unknown',
+        carBrand: foundCar.brand || '',
+        carModel: foundCar.model || '',
         date: f.date || 'unknown',
         time: f.time || 'unknown',
         issue: f.issue || 'Без опису',
@@ -543,7 +545,7 @@ function ViewEditBookingModal({ booking, userProfile, onClose, onSuccess }) {
              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
                <div className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white">
                  <Car size={16} className="text-gray-400" />
-                 {booking.isOffline ? (booking.offlineData?.brand || 'Офлайн авто') : (booking.car ? `${booking.car.brand || ''} ${booking.car.model || ''}`.trim() : 'Автомобіль')}
+                 {booking.isOffline ? (booking.offlineData?.brand || 'Офлайн авто') : (`${booking.carBrand || booking.car?.brand || ''} ${booking.carModel || booking.car?.model || ''}`.trim() || 'Автомобіль')}
                </div>
                <span className="font-mono text-xs font-black bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">
                  {(booking.isOffline ? booking.offlineData?.plate : booking.car?.plate) || '—'}
