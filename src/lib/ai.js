@@ -26,22 +26,23 @@ export const askGemini = async (userInput, carList, historyList) => {
 
   const prompt = `${context}\n\nКлієнт: ${userInput}\nМеханік:`;
 
-  // Список найбільш стабільних та нових моделей Gemini
+  // Список найбільш стабільних моделей Gemini 1.5
   const modelsToTry = [
     "gemini-1.5-flash", 
     "gemini-1.5-pro", 
-    "gemini-2.0-flash-exp", 
-    "gemini-pro",
-    "gemini-flash-latest"
+    "gemini-1.5-flash-8b",
+    "gemini-1.5-flash-latest"
   ];
   
   for (const modelName of modelsToTry) {
     try {
-      console.log(`🤖 AI is trying model: ${modelName}...`);
+      console.log(`🤖 AI is checking: ${modelName}...`);
       const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      return response.text();
+      const text = response.text();
+      console.log(`✅ AI success with model: ${modelName}`);
+      return text;
     } catch (error) {
       const msg = (error.message || String(error)).toLowerCase();
       console.warn(`⚠️ Model ${modelName} failed:`, msg);
