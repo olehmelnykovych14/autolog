@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, User, Phone, CheckCircle2, XCircle, Clock4, Car, Plus, Search, Info, Loader2, Edit3 } from 'lucide-react'
+import { Calendar as CalIcon, User, Phone, CheckCircle2, XCircle, Clock4, Car, Plus, Search, Info, Loader2, Edit3, LayoutDashboard as LayoutBoard, ChevronLeft, ChevronRight } from 'lucide-react'
 import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
@@ -8,7 +8,27 @@ export function STOBookingsView({ userProfile }) {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createInitial, setCreateInitial] = useState(null)
   const [editingBooking, setEditingBooking] = useState(null)
+  
+  const [viewMode, setViewMode] = useState('calendar') // 'kanban' | 'calendar'
+  const [weekOffset, setWeekOffset] = useState(0)
+
+  // Helper for Calendar Math
+  const getWeekDays = () => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const day = today.getDay() || 7; // 1=Mon..7=Sun
+    today.setDate(today.getDate() - day + 1 + (weekOffset * 7));
+    const days = [];
+    for(let i=0; i<7; i++){
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  }
+  const weekDays = getWeekDays();
 
   useEffect(() => {
     fetchBookings()
@@ -87,85 +107,162 @@ export function STOBookingsView({ userProfile }) {
     <div className="flex flex-col gap-6 max-w-[90rem] mx-auto w-full pt-4 px-4 sm:px-6 pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-1 tracking-tight">Kanban Записів</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Перетягуйте картки щоб змінювати статус.</p>
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-1 tracking-tight">Розклад та Записи</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Контролюйте завантаженість СТО та змінюйте статуси.</p>
         </div>
-        <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-6 py-3 bg-[#5C3EFE] text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/20 hover:scale-105 transition-all">
-           <Plus size={20}/> Створити запис клієнту
-        </button>
+        
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl w-fit shrink-0">
+            <button onClick={() => setViewMode('kanban')} className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${viewMode === 'kanban' ? 'bg-white dark:bg-gray-700 text-[#5C3EFE] shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}><LayoutBoard size={16}/> Дошка</button>
+            <button onClick={() => setViewMode('calendar')} className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${viewMode === 'calendar' ? 'bg-white dark:bg-gray-700 text-[#5C3EFE] shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}><CalIcon size={16}/> Календар</button>
+          </div>
+
+          <button onClick={() => { setCreateInitial(null); setShowCreateModal(true) }} className="flex items-center gap-2 px-6 py-3 bg-[#5C3EFE] text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/20 hover:scale-105 transition-all">
+             <Plus size={20}/> Клієнту
+          </button>
+        </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-6 mt-4 overflow-x-auto pb-8 snap-x snap-mandatory">
-         {loading ? <div className="text-gray-500 p-4">Завантаження...</div> : cols.map(c => {
-           const items = bookings.filter(b => b.status === c.id || (c.id==='pending' && b.status==='updating'))
-           return (
-             <div 
-               key={c.id} 
-               className={`flex-1 min-w-[320px] shrink-0 p-4 rounded-3xl border snap-center flex flex-col gap-4 ${c.color}`}
-               onDragOver={onDragOver}
-               onDrop={e => onDrop(e, c.id)}
-             >
-                <div className="flex items-center justify-between px-2">
-                  <h3 className={`font-black text-sm uppercase tracking-widest flex items-center gap-2 ${c.titleColor}`}>
-                    <c.icon size={16}/> {c.label}
-                  </h3>
-                  <span className="px-2.5 py-1 bg-white dark:bg-gray-900 rounded-lg text-xs font-bold text-gray-900 dark:text-white shadow-sm">{items.length}</span>
-                </div>
+      {viewMode === 'kanban' ? (
+        <div className="flex flex-col md:flex-row gap-6 mt-4 overflow-x-auto pb-8 snap-x snap-mandatory">
+           {loading ? <div className="text-gray-500 p-4">Завантаження...</div> : cols.map(c => {
+             const items = bookings.filter(b => b.status === c.id || (c.id==='pending' && b.status==='updating'))
+             return (
+               <div 
+                 key={c.id} 
+                 className={`flex-1 min-w-[320px] shrink-0 p-4 rounded-3xl border snap-center flex flex-col gap-4 ${c.color}`}
+                 onDragOver={onDragOver}
+                 onDrop={e => onDrop(e, c.id)}
+               >
+                  <div className="flex items-center justify-between px-2">
+                    <h3 className={`font-black text-sm uppercase tracking-widest flex items-center gap-2 ${c.titleColor}`}>
+                      <c.icon size={16}/> {c.label}
+                    </h3>
+                    <span className="px-2.5 py-1 bg-white dark:bg-gray-900 rounded-lg text-xs font-bold text-gray-900 dark:text-white shadow-sm">{items.length}</span>
+                  </div>
 
-                <div className="flex flex-col gap-3 min-h-[200px]">
-                  {items.map(b => (
-                    <div 
-                      key={b.id} 
-                      draggable 
-                      onDragStart={e => onDragStart(e, b.id)}
-                      className={`bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all hover:border-[#5C3EFE]/50 relative overflow-hidden group ${b.status==='updating' ? 'opacity-50' : ''}`}
-                    >
-                      <div className="absolute top-0 left-0 w-1 h-full bg-[#5C3EFE] scale-y-0 group-hover:scale-y-100 transition-transform origin-top"></div>
-                      <div className="flex items-center justify-between mb-3">
-                         <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-[#5C3EFE] uppercase bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
-                           <Calendar size={12}/> {b.date?.split('-').reverse().join('.')} • {b.time}
-                         </div>
-                         <button onClick={(e) => { e.stopPropagation(); setEditingBooking(b) }} className="p-1.5 text-gray-400 hover:text-[#5C3EFE] hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded flex-shrink-0 transition-colors">
-                           <Edit3 size={14} />
-                         </button>
+                  <div className="flex flex-col gap-3 min-h-[200px]">
+                    {items.map(b => (
+                      <div 
+                        key={b.id} 
+                        draggable 
+                        onDragStart={e => onDragStart(e, b.id)}
+                        className={`bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all hover:border-[#5C3EFE]/50 relative overflow-hidden group ${b.status==='updating' ? 'opacity-50' : ''}`}
+                      >
+                        <div className="absolute top-0 left-0 w-1 h-full bg-[#5C3EFE] scale-y-0 group-hover:scale-y-100 transition-transform origin-top"></div>
+                        <div className="flex items-center justify-between mb-3">
+                           <div className="flex items-center gap-2 text-[10px] font-black tracking-widest text-[#5C3EFE] uppercase bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md">
+                             <CalIcon size={12}/> {b.date?.split('-').reverse().join('.')} • {b.time}
+                           </div>
+                           <button onClick={(e) => { e.stopPropagation(); setEditingBooking(b) }} className="p-1.5 text-gray-400 hover:text-[#5C3EFE] hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded flex-shrink-0 transition-colors">
+                             <Edit3 size={14} />
+                           </button>
+                        </div>
+
+                        <div className="mb-4">
+                          <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1"><Car size={16} className="text-gray-400"/> {b.car ? `${b.car.brand} ${b.car.model}` : 'Автомобіль'}</h4>
+                          <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest rounded">{b.car?.plate || '—'}</span>
+                        </div>
+
+                        <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-3 rounded-xl mb-4 line-clamp-2">
+                          {b.issue}
+                        </p>
+
+                        <div className="flex flex-col gap-2 p-3 bg-gray-50/50 dark:bg-gray-700/20 rounded-xl border border-dashed border-gray-200 dark:border-gray-600/50">
+                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2"><User size={12} className="text-gray-400"/> {b.driver?.displayName || 'Анонім'}</p>
+                          {b.driver?.phone && <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2"><Phone size={12} className="text-gray-400"/> {b.driver.phone}</p>}
+                        </div>
                       </div>
+                    ))}
+                    {items.length === 0 && <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700/50 rounded-2xl opacity-50"><p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Порожньо</p></div>}
+                  </div>
+               </div>
+             )
+           })}
+        </div>
+      ) : (
+        <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-right-4">
+          <div className="flex flex-wrap sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-4">
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button onClick={() => setWeekOffset(p=>p-1)} className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"><ChevronLeft size={16}/></button>
+              <button onClick={() => setWeekOffset(0)} className="flex-1 sm:flex-none px-4 py-2 text-sm font-bold border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300">Поточний тиждень</button>
+              <button onClick={() => setWeekOffset(p=>p+1)} className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"><ChevronRight size={16}/></button>
+            </div>
+            <p className="font-bold text-gray-900 dark:text-white text-lg lg:text-xl w-full sm:w-auto text-center sm:text-right">{weekDays[0].getDate()} {weekDays[0].toLocaleString('uk',{month:'short'})} — {weekDays[6].getDate()} {weekDays[6].toLocaleString('uk',{month:'short'})}</p>
+          </div>
 
-                      <div className="mb-4">
-                        <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1"><Car size={16} className="text-gray-400"/> {b.car ? `${b.car.brand} ${b.car.model}` : 'Автомобіль'}</h4>
-                        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest rounded">{b.car?.plate || '—'}</span>
-                      </div>
+          <div className="overflow-x-auto custom-scrollbar border border-gray-200 dark:border-gray-800 rounded-[2rem] bg-white dark:bg-gray-900 shadow-sm relative max-h-[70vh]">
+            <table className="w-full text-sm min-w-[900px] border-collapse relative">
+               <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800 z-20 shadow-sm">
+                 <tr>
+                   <th className="p-4 border-r border-b border-gray-200 dark:border-gray-700/50 text-left w-20 sticky left-0 z-30 bg-gray-50 dark:bg-gray-800">Час</th>
+                   {weekDays.map(d => {
+                      const dStart = new Date(d); dStart.setHours(0,0,0,0);
+                      const tStart = new Date(); tStart.setHours(0,0,0,0);
+                      const today = dStart.getTime() === tStart.getTime();
+                      return (
+                       <th key={d.toString()} className={`p-4 border-r border-b border-gray-200 dark:border-gray-700/50 text-center uppercase tracking-widest ${today ? 'text-[#5C3EFE] bg-indigo-50/50 dark:bg-indigo-900/20' : 'text-gray-500'}`}>
+                         <span className="block text-[10px] font-black">{d.toLocaleString('uk',{weekday:'short'})}</span>
+                         <span className={`block text-xl font-black mt-0.5 ${today ? 'text-[#5C3EFE]' : 'text-gray-900 dark:text-white'}`}>{d.getDate()}</span>
+                       </th>
+                      )
+                   })}
+                 </tr>
+               </thead>
+               <tbody>
+                 {[...Array(24)].map((_, i) => (
+                   <tr key={i} className="group">
+                     <td className="p-2 border-r border-b border-gray-200 dark:border-gray-700/50 text-center font-bold text-gray-400 bg-gray-50 dark:bg-gray-800/20 sticky left-0 z-10">
+                       {String(i).padStart(2,'0')}:00
+                     </td>
+                     {weekDays.map(d => {
+                       const tzOffset = d.getTimezoneOffset() * 60000;
+                       const localISOTime = (new Date(d.getTime() - tzOffset)).toISOString().split('T')[0];
+                       const hourStr = String(i).padStart(2,'0');
+                       const slotBookings = bookings.filter(b => b.date === localISOTime && b.time?.startsWith(hourStr + ':'));
+                       
+                       return (
+                         <td 
+                           key={d.toString()} 
+                           onClick={() => !slotBookings.length && (setCreateInitial({ date: localISOTime, time: hourStr+':00' }), setShowCreateModal(true))}
+                           className={`border-r border-b border-gray-200 dark:border-gray-700/50 p-1 align-top h-24 min-w-[140px] transition-colors ${!slotBookings.length ? 'hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 cursor-pointer group-hover:bg-gray-50/50 dark:group-hover:bg-gray-800/50' : 'bg-gray-50/20 dark:bg-gray-800/20'}`}
+                         >
+                           {slotBookings.map(b => (
+                             <div onClick={e => { e.stopPropagation(); setEditingBooking(b) }} key={b.id} className="cursor-pointer hover:scale-[1.02] active:scale-95 p-3 rounded-2xl mb-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-1 transition-all group/item hover:border-indigo-300 dark:hover:border-indigo-600 relative overflow-hidden">
+                               <div className="absolute top-0 left-0 w-1 h-full bg-[#5C3EFE]"></div>
+                               <div className="flex justify-between items-start pl-1">
+                                 <p className="text-[10px] font-black tracking-widest text-[#5C3EFE]">{b.time}</p>
+                                 {b.status === 'confirmed' ? <CheckCircle2 size={12} className="text-green-500"/> : b.status === 'pending' ? <Clock4 size={12} className="text-amber-500"/> : <XCircle size={12} className="text-gray-400"/>}
+                               </div>
+                               <p className="font-bold text-gray-900 dark:text-white text-xs leading-tight line-clamp-1 pl-1" title={`${b.car?.brand} ${b.car?.model}`}>{b.car?.brand} {b.car?.model}</p>
+                               <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2 pl-1" title={b.issue}>{b.issue}</p>
+                             </div>
+                           ))}
+                         </td>
+                       )
+                     })}
+                   </tr>
+                 ))}
+               </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-                      <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-3 rounded-xl mb-4 line-clamp-2">
-                        {b.issue}
-                      </p>
-
-                      <div className="flex flex-col gap-2 p-3 bg-gray-50/50 dark:bg-gray-700/20 rounded-xl border border-dashed border-gray-200 dark:border-gray-600/50">
-                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2"><User size={12} className="text-gray-400"/> {b.driver?.displayName || 'Анонім'}</p>
-                        {b.driver?.phone && <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2"><Phone size={12} className="text-gray-400"/> {b.driver.phone}</p>}
-                      </div>
-                    </div>
-                  ))}
-                  {items.length === 0 && <div className="flex-1 flex items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700/50 rounded-2xl opacity-50"><p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Порожньо</p></div>}
-                </div>
-             </div>
-           )
-         })}
-      </div>
-
-      {showCreateModal && <CreateBookingBySTOModal userProfile={userProfile} onClose={() => setShowCreateModal(false)} onSuccess={() => { setShowCreateModal(false); fetchBookings(); }} />}
+      {showCreateModal && <CreateBookingBySTOModal userProfile={userProfile} initialParams={createInitial} onClose={() => setShowCreateModal(false)} onSuccess={() => { setShowCreateModal(false); fetchBookings(); }} />}
       {editingBooking && <EditBookingTimeModal booking={editingBooking} onClose={() => setEditingBooking(null)} onSuccess={() => { setEditingBooking(null); fetchBookings(); }} />}
     </div>
   )
 }
 
-function CreateBookingBySTOModal({ userProfile, onClose, onSuccess }) {
+function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParams }) {
   const [step, setStep] = useState(1)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [foundCar, setFoundCar] = useState(null)
   
-  const [f, setF] = useState({ date: new Date().toISOString().split('T')[0], time: '10:00', issue: '' })
+  const [f, setF] = useState({ date: initialParams?.date || new Date().toISOString().split('T')[0], time: initialParams?.time || '10:00', issue: '' })
   const ic = inp_cls()
 
   const handleSearch = async (e) => {
