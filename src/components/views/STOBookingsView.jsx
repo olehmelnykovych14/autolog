@@ -226,15 +226,20 @@ export function STOBookingsView({ userProfile }) {
                            key={d.toString()} 
                            onClick={() => !slotBookings.length && (setCreateInitial({ date: localISOTime, time: hourStr+':00' }), setShowCreateModal(true))}
                            className={`border-r border-b border-gray-200 dark:border-gray-700/50 p-1 align-top h-24 min-w-[140px] transition-colors ${!slotBookings.length ? 'hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 cursor-pointer group-hover:bg-gray-50/50 dark:group-hover:bg-gray-800/50' : 'bg-gray-50/20 dark:bg-gray-800/20'}`}
+                           onDragOver={onDragOver}
+                           onDrop={e => {
+                              const id = e.dataTransfer.getData("text/plain")
+                              if(id) { updateDoc(doc(db, 'bookings', id), { date: localISOTime, time: hourStr+':00' }).then(fetchBookings).catch(console.error) }
+                           }}
                          >
                            {slotBookings.map(b => (
-                             <div onClick={e => { e.stopPropagation(); setEditingBooking(b) }} key={b.id} className="cursor-pointer hover:scale-[1.02] active:scale-95 p-3 rounded-2xl mb-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-1 transition-all group/item hover:border-indigo-300 dark:hover:border-indigo-600 relative overflow-hidden">
+                             <div draggable onDragStart={e => onDragStart(e, b.id)} onClick={e => { e.stopPropagation(); setEditingBooking(b) }} key={b.id} className="cursor-pointer hover:scale-[1.02] active:scale-95 p-3 rounded-2xl mb-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col gap-1 transition-all group/item hover:border-indigo-300 dark:hover:border-indigo-600 relative overflow-hidden">
                                <div className="absolute top-0 left-0 w-1 h-full bg-[#5C3EFE]"></div>
                                <div className="flex justify-between items-start pl-1">
                                  <p className="text-[10px] font-black tracking-widest text-[#5C3EFE]">{b.time}</p>
                                  {b.status === 'confirmed' ? <CheckCircle2 size={12} className="text-green-500"/> : b.status === 'pending' ? <Clock4 size={12} className="text-amber-500"/> : <XCircle size={12} className="text-gray-400"/>}
                                </div>
-                               <p className="font-bold text-gray-900 dark:text-white text-xs leading-tight line-clamp-1 pl-1" title={b.isOffline ? b.offlineData?.brand : `${b.car?.brand} ${b.car?.model}`}>{b.isOffline ? b.offlineData?.brand : `${b.car?.brand} ${b.car?.model}`}</p>
+                               <p className="font-bold text-gray-900 dark:text-white text-xs leading-tight line-clamp-1 pl-1" title={b.isOffline ? b.offlineData?.brand : String(`${b.car?.brand||''} ${b.car?.model||''}`).trim() || 'Автомобіль'}>{b.isOffline ? b.offlineData?.brand : String(`${b.car?.brand||''} ${b.car?.model||''}`).trim() || 'Автомобіль'}</p>
                                <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2 pl-1" title={b.issue}>{b.isOffline ? b.offlineData?.clientName : b.driver?.displayName} • {b.issue}</p>
                              </div>
                            ))}
@@ -561,6 +566,13 @@ function ViewEditBookingModal({ booking, userProfile, onClose, onSuccess }) {
              <button onClick={() => setCompleteMode(true)} className="w-full py-4 rounded-xl font-black text-sm text-green-500 bg-green-50 dark:bg-green-500/10 hover:bg-green-100 dark:hover:bg-green-500/20 flex items-center justify-center gap-2 transition-colors border border-green-200 dark:border-green-500/20">
                <CheckCircle2 size={20} /> ЗАВЕРШИТИ ЗАМОВЛЕННЯ 🏁
              </button>
+          </div>
+        )}
+
+        {booking.status === 'pending' && (
+          <div className="pt-2 border-t border-gray-100 dark:border-gray-800 flex gap-3">
+             <button type="button" onClick={async () => { setLoading(true); await updateDoc(doc(db, 'bookings', booking.id), { status: 'rejected' }).then(onSuccess).catch(e => {console.error(e); setLoading(false)}) }} disabled={loading} className="flex-1 py-4 flex items-center justify-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl font-black text-sm transition-colors border border-red-100"><XCircle size={18}/> Відхилити</button>
+             <button type="button" onClick={async () => { setLoading(true); await updateDoc(doc(db, 'bookings', booking.id), { status: 'confirmed' }).then(onSuccess).catch(e => {console.error(e); setLoading(false)}) }} disabled={loading} className="flex-1 py-4 flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white shadow-green-500/20 shadow-xl rounded-xl font-black text-sm transition-colors border border-green-600"><CheckCircle2 size={18}/> Підтвердити</button>
           </div>
         )}
       </div>
