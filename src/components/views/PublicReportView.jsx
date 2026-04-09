@@ -18,7 +18,7 @@ export function PublicReportView({ carId }) {
         const carSnap = await getDoc(carRef)
         
         if (!carSnap.exists()) {
-          setError('Автомобіль не знайдено.')
+          setError(`АВТО З ID [${carId}] ТРАНЗИТОМ ЧЕРЕЗ FIREBASE НЕ ЗНАЙДЕНО`)
           setLoading(false)
           return
         }
@@ -49,7 +49,7 @@ export function PublicReportView({ carId }) {
         setLoading(false)
       } catch (e) {
         console.error("Помилка завантаження публічного звіту:", e)
-        setError('Помилка доступу до бази даних. Ймовірно, Firebase блокує доступ.')
+        setError(`FIREBASE PERMISSION ERROR: ${e.message}`)
         setLoading(false)
       }
     }
