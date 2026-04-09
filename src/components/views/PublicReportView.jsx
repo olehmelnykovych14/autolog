@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ShieldCheck, Activity } from 'lucide-react'
+import { db } from '../../firebase'
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { fmt, fmtCost, getBrandLogo } from '../../utils'
 import { CAT } from '../../constants'
 
@@ -12,17 +14,30 @@ export function PublicReportView({ carId }) {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(`/api/share/${carId}`)
-        if (!res.ok) {
-          if (res.status === 404) throw new Error('Автомобіль не знайдено.')
-          if (res.status === 403) throw new Error('Цей звіт є приватним і доступний лише власнику.')
-          throw new Error('Помилка сервера.')
+        const carRef = doc(db, 'cars', carId)
+        const carSnap = await getDoc(carRef)
+        
+        if (!carSnap.exists()) {
+          setError('Автомобіль не знайдено.')
+          setLoading(false)
+          return
         }
 
-        const data = await res.json()
-        setCar(data.car)
+        const carData = { id: carSnap.id, ...carSnap.data() }
+        
+        if (!carData.isPublic) {
+          setError('Цей звіт є приватним і доступний лише власнику.')
+          setLoading(false)
+          return
+        }
 
-        const hList = data.historyList || []
+        setCar(carData)
+
+        // Fetch history
+        const historyQ = query(collection(db, 'history'), where('carId', '==', carId))
+        const histSnap = await getDocs(historyQ)
+        const hList = histSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        
         hList.sort((a, b) => {
           const dA = new Date(a.date).getTime()
           const dB = new Date(b.date).getTime()
@@ -34,7 +49,7 @@ export function PublicReportView({ carId }) {
         setLoading(false)
       } catch (e) {
         console.error("Помилка завантаження публічного звіту:", e)
-        setError(e.message || 'Помилка доступу до бази даних.')
+        setError('Помилка доступу до бази даних. Ймовірно, Firebase блокує доступ.')
         setLoading(false)
       }
     }
