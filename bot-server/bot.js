@@ -459,6 +459,69 @@ bot.action(/save_to_car_(.+)/, async (ctx) => {
 
 bot.action('cancel_ai_record', (ctx) => ctx.editMessageText('❌ Скасовано.'));
 
+// --- Background Listeners (Serverless Telegram Push) ---
+db.collection('bookings').onSnapshot(async (snap) => {
+  for (const change of snap.docChanges()) {
+    const bData = change.doc.data();
+    
+    if (change.type === 'added') {
+      // Сповіщення СТО про нове бронювання від водія
+      if (bData.status === 'pending' && !bData.notifiedSTO) {
+        await change.doc.ref.update({ notifiedSTO: true });
+        
+        const stoDoc = await db.collection('users').doc(bData.stoId).get();
+        const carDoc = await db.collection('cars').doc(bData.carId).get();
+        const driverDoc = await db.collection('users').doc(bData.userId).get();
+
+        if (stoDoc.exists && stoDoc.data().telegramId) {
+          bot.telegram.sendMessage(
+            stoDoc.data().telegramId, 
+            `📅 *Нова заявка на ремонт!*\n\nКлієнт: *${driverDoc.exists ? driverDoc.data().displayName || 'Клієнт' : 'Клієнт'}*\nАвто: *${carDoc.exists ? carDoc.data().brand + ' ' + carDoc.data().plate : 'Невідомо'}*\nЧас: *${bData.date} ${bData.time}*\nПроблема: ${bData.issue}`,
+            { parse_mode: 'Markdown' }
+          ).catch(e => console.error(e));
+        }
+      }
+      
+      // Сповіщення водія про те, що СТО самостійно додало запис
+      if (bData.status === 'confirmed' && bData.creator === 'sto' && !bData.notifiedClient) {
+        await change.doc.ref.update({ notifiedClient: true, notifiedConfirmed: true });
+        
+        const driverDoc = await db.collection('users').doc(bData.userId).get();
+        const stoDoc = await db.collection('users').doc(bData.stoId).get();
+        
+        if (driverDoc.exists && driverDoc.data().telegramId) {
+          const stoName = stoDoc.exists ? stoDoc.data().stoName : 'СТО';
+          bot.telegram.sendMessage(
+            driverDoc.data().telegramId, 
+            `✅ СТО *${stoName}* створило запис для вас!\n📅 ${bData.date} о ${bData.time}\n📌 ${bData.issue}`, 
+            { parse_mode: 'Markdown' }
+          ).catch(e => null);
+        }
+      }
+    }
+
+    if (change.type === 'modified') {
+      // Сповіщення водію, якщо статус заявки змінено СТО
+      const driverDoc = await db.collection('users').doc(bData.userId).get();
+      const stoDoc = await db.collection('users').doc(bData.stoId).get();
+      
+      if (driverDoc.exists && driverDoc.data().telegramId) {
+        const stoName = stoDoc.exists ? stoDoc.data().stoName : 'СТО';
+        
+        if (bData.status === 'confirmed' && !bData.notifiedConfirmed) {
+          await change.doc.ref.update({ notifiedConfirmed: true });
+          bot.telegram.sendMessage(driverDoc.data().telegramId, `✅ Ваш запис на СТО *${stoName}* підтверджено!\n📅 ${bData.date} о ${bData.time}`, { parse_mode: 'Markdown' }).catch(e => null);
+        }
+        
+        if (bData.status === 'rejected' && !bData.notifiedRejected) {
+          await change.doc.ref.update({ notifiedRejected: true });
+          bot.telegram.sendMessage(driverDoc.data().telegramId, `❌ Ваш запис на СТО *${stoName}* було відхилено.`, { parse_mode: 'Markdown' }).catch(e => null);
+        }
+      }
+    }
+  }
+});
+
 // --- Server Launch ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`📡 Server port: ${PORT}`));
