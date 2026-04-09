@@ -26,18 +26,18 @@ export const askGemini = async (userInput, carList, historyList) => {
 
   const prompt = `${context}\n\nКлієнт: ${userInput}\nМеханік:`;
 
-  // Список найбільш стабільних моделей Gemini 1.5
+  // Список найбільш стабільних моделей Gemini
   const modelsToTry = [
     "gemini-1.5-flash", 
     "gemini-1.5-pro", 
-    "gemini-1.5-flash-8b",
-    "gemini-1.5-flash-latest"
+    "gemini-1.0-pro" // Найнадійніший бекап
   ];
   
   for (const modelName of modelsToTry) {
     try {
-      console.log(`🤖 AI is checking: ${modelName}...`);
-      const model = genAI.getGenerativeModel({ model: modelName });
+      console.log(`🤖 AI is checking (v1): ${modelName}...`);
+      // Примусово використовуємо стабільну версію v1, щоб уникнути 404 у v1beta
+      const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
       const result = await model.generateContent(prompt);
       const response = await result.response;
       const text = response.text();
@@ -47,27 +47,22 @@ export const askGemini = async (userInput, carList, historyList) => {
       const msg = (error.message || String(error)).toLowerCase();
       console.warn(`⚠️ Model ${modelName} failed:`, msg);
       
-      // Більш широка перевірка на тимчасові помилки (404, 429, 503, 500, перевантаження)
       const isTemporary = 
         msg.includes("404") || 
-        msg.includes("not found") || 
         msg.includes("429") || 
         msg.includes("503") || 
         msg.includes("500") || 
         msg.includes("quota") || 
         msg.includes("demand") || 
         msg.includes("overloaded") ||
-        msg.includes("busy") ||
-        msg.includes("limit");
+        msg.includes("busy");
 
       if (isTemporary) {
-        console.log(`🔄 Switching to next model because of temporary error in ${modelName}...`);
         continue;
       }
       
       return `Помилка зв'язку з AI (${modelName}): ${error.message || 'Unknown error'}`;
     }
   }
-
   return "Помилка: Всі доступні моделі Gemini тимчасово перевантажені або недоступні. Спробуйте через хвилину.";
 };
