@@ -177,20 +177,16 @@ function BookingRequestModal({ sto, carList, onClose, onSuccess }) {
     if (!f.carId || !f.date || !f.issue) return
     setLoading(true)
     try {
-      const res = await fetch('/api/b2b/book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stoId: sto.id,
-          userId: auth.currentUser?.uid,
-          carId: f.carId,
-          date: f.date,
-          time: f.time,
-          issue: f.issue
-        })
+      await addDoc(collection(db, 'bookings'), {
+        stoId: sto.id,
+        userId: auth.currentUser?.uid,
+        carId: f.carId,
+        date: f.date,
+        time: f.time,
+        issue: f.issue,
+        status: 'pending',
+        createdAt: Date.now()
       })
-      const data = await res.json()
-      if (!data.success) throw new Error("Серверна помилка")
       onSuccess()
     } catch (e) {
       console.error(e)

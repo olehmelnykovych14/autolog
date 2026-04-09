@@ -130,22 +130,20 @@ export function AddVerifiedServiceModal({ car, userProfile, onClose, onSuccess }
     if (!f.title || !f.mileage) return
     setLoading(true)
     try {
-      const res = await fetch('/api/b2b/push-record', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stoId: userProfile?.userId || auth.currentUser?.uid,
-          plate: car.plate,
-          title: f.title,
-          cost: f.cost,
-          mileage: f.mileage,
-          category: f.category,
-          date: f.date
-        })
+      await addDoc(collection(db, 'history'), {
+        title: f.title,
+        cost: Number(f.cost) || 0,
+        mileage: Number(f.mileage) || 0,
+        category: f.category || 'other',
+        date: f.date || new Date().toISOString().split('T')[0],
+        garage: userProfile?.stoName || 'AutoLog Partner',
+        carId: car.id,
+        userId: car.userId,
+        createdAt: Date.now(),
+        status: 'verified',
+        source: 'sto_push',
+        stoId: userProfile?.userId || auth.currentUser?.uid
       });
-      const data = await res.json()
-      if (!data.success) throw new Error(data.error || 'Server error')
-
       onSuccess()
     } catch (e) {
       console.error(e)

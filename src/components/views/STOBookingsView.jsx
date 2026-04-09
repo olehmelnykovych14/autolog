@@ -45,11 +45,8 @@ export function STOBookingsView({ userProfile }) {
   const updateStatus = async (bookingId, status) => {
     try {
       setBookings(p => p.map(b => b.id === bookingId ? { ...b, status: 'updating' } : b))
-      await fetch('/api/b2b/booking-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId, status })
-      })
+      const { updateDoc } = await import('firebase/firestore')
+      await updateDoc(doc(db, 'bookings', bookingId), { status })
       setBookings(p => p.map(b => b.id === bookingId ? { ...b, status } : b))
     } catch (e) {
       console.error(e)
