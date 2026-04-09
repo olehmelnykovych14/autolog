@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Calendar, Clock, MapPin, Search, ChevronRight, CheckCircle2, XCircle, Clock4, Info, ShieldCheck } from 'lucide-react'
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, addDoc } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { PrimaryBtn, Modal, Field, inp_cls } from '../common/Common'
 

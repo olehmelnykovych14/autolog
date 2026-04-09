@@ -185,11 +185,11 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess }) {
     try {
       await addDoc(collection(db, 'bookings'), {
         stoId: auth.currentUser.uid,
-        userId: foundCar.userId,
-        carId: foundCar.id,
-        date: f.date,
-        time: f.time,
-        issue: f.issue,
+        userId: foundCar.userId || 'unclaimed',
+        carId: foundCar.id || 'unknown',
+        date: f.date || 'unknown',
+        time: f.time || 'unknown',
+        issue: f.issue || 'Без опису',
         status: 'confirmed', // Created by STO => automatically confirmed
         creator: 'sto',
         createdAt: Date.now()
