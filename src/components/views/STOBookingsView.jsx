@@ -24,12 +24,20 @@ export function STOBookingsView({ userProfile }) {
         const b = { id: d.id, ...d.data() }
         
         // Fetch detailed driver data
-        const driverSnap = await getDoc(doc(db, 'users', b.userId))
-        if (driverSnap.exists()) b.driver = driverSnap.data()
+        if (b.userId) {
+          try {
+            const driverSnap = await getDoc(doc(db, 'users', String(b.userId)))
+            if (driverSnap.exists()) b.driver = driverSnap.data()
+          } catch(err) { console.error('Driver fetch error:', err) }
+        }
         
         // Fetch detailed car data
-        const carSnap = await getDoc(doc(db, 'cars', b.carId))
-        if (carSnap.exists()) b.car = carSnap.data()
+        if (b.carId) {
+          try {
+            const carSnap = await getDoc(doc(db, 'cars', String(b.carId)))
+            if (carSnap.exists()) b.car = carSnap.data()
+          } catch(err) { console.error('Car fetch error:', err) }
+        }
         
         list.push(b)
       }
