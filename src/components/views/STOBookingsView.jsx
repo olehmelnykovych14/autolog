@@ -32,7 +32,7 @@ export function STOBookingsView({ userProfile }) {
 
   useEffect(() => {
     fetchBookings()
-  }, [])
+  }, [weekOffset])
 
   const fetchBookings = async () => {
     if (!auth.currentUser) return
@@ -85,7 +85,7 @@ export function STOBookingsView({ userProfile }) {
   }
 
   const onDragStart = (e, bookingId) => {
-    e.dataTransfer.setData('bookingId', bookingId)
+    e.dataTransfer.setData('text/plain', bookingId)
   }
 
   const onDragOver = (e) => {
@@ -160,8 +160,13 @@ export function STOBookingsView({ userProfile }) {
                         </div>
 
                         <div className="mb-4">
-                          <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1"><Car size={16} className="text-gray-400"/> {b.isOffline ? b.offlineData?.brand : b.car ? `${b.car.brand} ${b.car.model}` : 'Автомобіль'}</h4>
-                          <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest rounded">{(b.isOffline ? b.offlineData?.plate : b.car?.plate) || '—'}</span>
+                          <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-1">
+                            <Car size={16} className="text-gray-400"/> 
+                            {b.isOffline ? (b.offlineData?.brand || 'Офлайн авто') : (b.car ? `${b.car.brand} ${b.car.model}` : 'Автомобіль')}
+                          </h4>
+                          <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest rounded">
+                            {(b.isOffline ? b.offlineData?.plate : b.car?.plate) || '—'}
+                          </span>
                         </div>
 
                         <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 p-3 rounded-xl mb-4 line-clamp-2">
@@ -241,7 +246,9 @@ export function STOBookingsView({ userProfile }) {
                                  <p className="text-[10px] font-black tracking-widest text-[#5C3EFE]">{b.time}</p>
                                  {b.status === 'confirmed' ? <CheckCircle2 size={12} className="text-green-500"/> : b.status === 'pending' ? <Clock4 size={12} className="text-amber-500"/> : <XCircle size={12} className="text-gray-400"/>}
                                </div>
-                               <p className="font-bold text-gray-900 dark:text-white text-xs leading-tight line-clamp-1 pl-1" title={b.isOffline ? b.offlineData?.brand : String(`${b.car?.brand||''} ${b.car?.model||''}`).trim() || 'Автомобіль'}>{b.isOffline ? b.offlineData?.brand : String(`${b.car?.brand||''} ${b.car?.model||''}`).trim() || 'Автомобіль'}</p>
+                               <p className="font-bold text-gray-900 dark:text-white text-xs leading-tight line-clamp-1 pl-1" title={b.isOffline ? b.offlineData?.brand : (b.car ? `${b.car.brand} ${b.car.model}` : 'Автомобіль')}>
+                                 {b.isOffline ? (b.offlineData?.brand || 'Офлайн авто') : (b.car ? `${b.car.brand} ${b.car.model}` : 'Автомобіль')}
+                               </p>
                                <p className="text-[10px] text-gray-500 dark:text-gray-400 line-clamp-2 pl-1" title={b.issue}>{b.isOffline ? b.offlineData?.clientName : b.driver?.displayName} • {b.issue}</p>
                              </div>
                            ))}
