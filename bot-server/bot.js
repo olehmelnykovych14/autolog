@@ -3,6 +3,13 @@ const { Telegraf, session } = require('telegraf');
 const admin = require('firebase-admin');
 const fs = require('fs');
 const path = require('path');
+const express = require('express');
+
+// Health check server for Render
+const app = express();
+const port = process.env.PORT || 10000;
+app.get('/', (req, res) => res.send('AutoLog Bot is active! 🤖'));
+app.listen(port, () => console.log(`🌍 Health check server listening on port ${port}`));
 
 let serviceAccount;
 const keyPath = path.join(__dirname, 'serviceAccountKey.json');
