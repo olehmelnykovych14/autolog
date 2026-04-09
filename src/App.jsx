@@ -81,10 +81,10 @@ export default function App() {
           }
 
           const carSnap = await getDocs(query(collection(db, 'cars'), where('userId', '==', user.uid)))
-          setCarList(carSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+          setCarList(carSnap.docs.map(d => ({ ...d.data(), id: d.id })))
 
           const histSnap = await getDocs(query(collection(db, 'history'), where('userId', '==', user.uid)))
-          const hList = histSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+          const hList = histSnap.docs.map(d => ({ ...d.data(), id: d.id }))
           hList.sort((a, b) => {
             const dA = new Date(a.date).getTime()
             const dB = new Date(b.date).getTime()

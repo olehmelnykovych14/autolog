@@ -174,7 +174,7 @@ function AddCarModal({ onClose, onAdd, isLimited, onGoPlans }) {
   const submit = e => {
     e.preventDefault()
     if (isLimited) return
-    onAdd({ ...f, id: Date.now(), mileage: parseInt(f.mileage) || 0 })
+    onAdd({ ...f, mileage: parseInt(f.mileage) || 0 })
     onClose()
   }
 
