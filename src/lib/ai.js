@@ -3,6 +3,12 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim();
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
+if (API_KEY) {
+  console.log(`🤖 AI Initialized with key starting with: ${API_KEY.substring(0, 4)}...`);
+} else {
+  console.warn("🤖 AI: API_KEY is missing!");
+}
+
 export const askGemini = async (userInput, carList, historyList) => {
   if (!genAI) {
     return "Помилка: API Ключ не налаштований. Додайте VITE_GEMINI_API_KEY у .env.local або налаштування Vercel.";
