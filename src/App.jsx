@@ -42,7 +42,10 @@ export default function App() {
   const [mode, setMode] = useState('landing') // 'landing' | 'auth'
   const [col, setCol] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
-  const [isDark, setDark] = useState(false)
+  const [isDark, setDark] = useState(() => {
+    const stored = localStorage.getItem('theme')
+    return stored ? stored === 'dark' : false
+  })
   const [carList, setCarList] = useState([])
   const [historyList, setHistoryList] = useState([])
   const [selectedCar, setSelectedCar] = useState(null)
@@ -128,13 +131,14 @@ export default function App() {
           if (isSto) {
              if (b.status === 'pending') list.push(b)
           } else {
-             // For drivers, show confirmed/rejected as notifications
              if (b.status === 'confirmed' || b.status === 'rejected') list.push(b)
           }
        }
-       list.sort((a,b) => b.createdAt - a.createdAt)
+       // Filter unread
+       const unread = list.filter(b => !b.readByRecipient)
+       unread.sort((a,b) => b.createdAt - a.createdAt)
        
-       for (const b of list) {
+       for (const b of unread) {
          if (isSto && b.carId) {
              try {
                const cSnap = await getDoc(doc(db, 'cars', String(b.carId)))
@@ -148,13 +152,32 @@ export default function App() {
              } catch(e){}
          }
        }
-       setBookingNotifications(list)
+       setBookingNotifications(unread)
     })
     return () => unsub()
   }, [currentUser, userProfile])
 
+  const markNotificationAsRead = async (id) => {
+    if (!currentUser) return
+    try {
+      await updateDoc(doc(db, 'bookings', id), { readByRecipient: true })
+    } catch (e) { console.error(e) }
+  }
+
+  const markAllNotificationsAsRead = async () => {
+    if (!currentUser || bookingNotifications.length === 0) return
+    const batch = writeBatch(db)
+    bookingNotifications.forEach(b => {
+      batch.update(doc(db, 'bookings', b.id), { readByRecipient: true })
+    })
+    try {
+      await batch.commit()
+    } catch (e) { console.error(e) }
+  }
+
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
+    localStorage.setItem('theme', isDark ? 'dark' : 'light')
   }, [isDark])
 
   useEffect(() => {
@@ -316,7 +339,7 @@ export default function App() {
       <div className={`flex h-screen w-full font-sans overflow-hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
         <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin} userProfile={userProfile} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} onLogout={() => signOut(auth)} />
         <div className="flex flex-1 flex-col overflow-hidden relative">
-          <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} bookingNotifications={bookingNotifications} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setTab={setTab} />
+          <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} bookingNotifications={bookingNotifications} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setTab={setTab} onMarkRead={markNotificationAsRead} onMarkAllRead={markAllNotificationsAsRead} />
           <main className={`flex-1 flex flex-col min-h-0 overflow-hidden relative ${tab === 'ai' ? 'bg-white dark:bg-gray-800' : 'bg-[#F8FAFC] dark:bg-gray-950'}`}>
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
               <div className={`${tab === 'sto_bookings' ? 'max-w-[120rem]' : 'max-w-7xl'} mx-auto space-y-6 pb-12`}>

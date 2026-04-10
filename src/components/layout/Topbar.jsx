@@ -3,7 +3,7 @@ import { Sun, Moon, Bell, ChevronDown, Check, X, ShieldCheck, Clock, AlertCircle
 import { ThemeCtx } from '../../context/ThemeContext'
 import { C } from '../../constants'
 
-export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu, setTab }) {
+export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu, setTab, onMarkRead, onMarkAllRead }) {
   const [showInbox, setShowInbox] = useState(false)
   const isSto = userProfile?.accountType === 'sto'
   const totalNotifications = pendingApprovals.length + bookingNotifications.length
@@ -45,8 +45,13 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
             {showInbox && (
               <div className="absolute top-full right-0 mt-4 w-72 sm:w-80 bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 overflow-hidden z-50 animate-in slide-in-from-top-4">
                 <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
-                  <h3 className="font-bold text-gray-900 dark:text-white">Сповіщення</h3>
-                  <span className="px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded-full">{totalNotifications}</span>
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-bold text-gray-900 dark:text-white">Сповіщення</h3>
+                    <span className="px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded-full">{totalNotifications}</span>
+                  </div>
+                  {totalNotifications > 0 && (
+                    <button onClick={(e) => { e.stopPropagation(); onMarkAllRead(); }} className="text-[10px] font-black text-[#5C3EFE] hover:text-indigo-700 transition-colors uppercase tracking-widest">Прочитати всі</button>
+                  )}
                 </div>
                 <div className="max-h-[22rem] overflow-y-auto custom-scrollbar">
                   {totalNotifications === 0 ? (
@@ -60,10 +65,15 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
                     <div className="divide-y divide-gray-50 dark:divide-gray-700 flex flex-col">
                       {/* Booking Notifications */}
                       {bookingNotifications.map(b => (
-                        <div key={b.id} className="p-4 bg-indigo-50/30 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors cursor-pointer" onClick={() => { setShowInbox(false); setTab(isSto ? 'sto_bookings' : 'bookings') }}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                            <p className="text-xs text-gray-500 font-medium">Нове оновлення запису</p>
+                        <div key={b.id} className="group p-4 bg-indigo-50/30 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors cursor-pointer relative" onClick={() => { setShowInbox(false); setTab(isSto ? 'sto_bookings' : 'bookings') }}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                              <p className="text-xs text-gray-500 font-medium">Нове оновлення запису</p>
+                            </div>
+                            <button onClick={(e) => { e.stopPropagation(); onMarkRead(b.id); }} className="opacity-0 group-hover:opacity-100 p-1.5 bg-white dark:bg-gray-800 text-[#5C3EFE] rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm hover:bg-indigo-50 transition-all">
+                              <Check size={12} />
+                            </button>
                           </div>
                           {isSto ? (
                             <p className="text-sm font-bold text-gray-900 dark:text-white mb-1"><span className="text-[#5C3EFE]">Нова заявка</span> від клієнта на авто {b.car ? `${b.car.plate}` : ''}</p>
