@@ -5,7 +5,7 @@ const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 export const askGemini = async (userInput, carList, historyList) => {
   if (!genAI) {
-    return "Помилка: API Ключ не налаштований. Додайте VITE_GEMINI_API_KEY у .env.local";
+    return "Помилка: API Ключ не налаштований. Додайте VITE_GEMINI_API_KEY у .env.local або налаштування Vercel.";
   }
 
   const context = `
@@ -19,18 +19,17 @@ export const askGemini = async (userInput, carList, historyList) => {
   const prompt = `${context}\n\nКлієнт: ${userInput}\nМеханік:`;
   const delay = ms => new Promise(res => setTimeout(res, ms));
 
-  // Список моделей для черги (від найшвидшої до найнадійнішої)
-  const models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"];
+  // Використовуємо -latest версії для максимальної стабільності
+  const models = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest", "gemini-pro"];
   
   let lastErrorMsg = "";
 
   for (const modelName of models) {
-    let attempts = 3;
+    let attempts = 2;
     while (attempts > 0) {
       try {
-        console.log(`🤖 AI checking model: ${modelName} (${4 - attempts} attempt)...`);
-        // Використовуємо стабільну версію v1
-        const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
+        console.log(`🤖 AI trying: ${modelName}...`);
+        const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(prompt);
         const response = await result.response;
         return response.text();
@@ -39,28 +38,24 @@ export const askGemini = async (userInput, carList, historyList) => {
         lastErrorMsg = error.message || String(error);
         const msg = lastErrorMsg.toLowerCase();
         
-        // Якщо модель не знайдена (404), відразу переходимо до наступної
         if (msg.includes("404") || msg.includes("not found")) {
-          console.warn(`❌ Model ${modelName} not available, skipping...`);
+          console.warn(`❌ Model ${modelName} not found.`);
           break;
         }
 
-        // Якщо сервер зайнятий, чекаємо і пробуємо знову
         const isTemporary = 
           msg.includes("429") || msg.includes("503") || msg.includes("500") || 
           msg.includes("quota") || msg.includes("overloaded") || msg.includes("busy");
 
         if (isTemporary && attempts > 0) {
-          console.warn(`⏳ Server busy, retrying in 1.5s...`);
-          await delay(1500);
+          console.warn(`⏳ Busy, retrying...`);
+          await delay(1000);
           continue;
         }
-        
-        console.warn(`⚠️ Model ${modelName} failed, moving on to next.`);
         break; 
       }
     }
   }
 
-  return `Помилка: Не вдалося отримати відповідь. Технічна причина: ${lastErrorMsg}. \n\n**Порада:** Спробуйте перевантажити сторінку через хвилину.`;
+  return `Помилка AI. Технічна причина: ${lastErrorMsg}. \n\n**Важливо:** Переконайтеся, що ви оновили API Ключ у налаштуваннях (Environment Variables) на **Vercel** або **Render** та зробили пере-деплой (Redeploy).`;
 };
