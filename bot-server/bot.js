@@ -7,27 +7,62 @@ const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // --- AI Setup ---
-const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const API_KEY = (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "").trim();
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
+if (API_KEY) {
+  console.log(`🤖 BOT AI: Initialized with key starting with: ${API_KEY.substring(0, 4)}...`);
+} else {
+  console.warn("🤖 BOT AI: API_KEY is missing in Environment Variables!");
+}
+
 const askGemini = async (prompt, isImage = false, base64 = null) => {
-  if (!genAI) return "API Ключ не підключено.";
-  const models = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-pro"];
+  if (!API_KEY) return "Помилка: API Ключ не знайдено в налаштуваннях сервера.";
   
-  for (const modelName of models) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      let result;
-      if (isImage && base64) {
-        result = await model.generateContent([prompt, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
-      } else {
-        result = await model.generateContent(prompt);
+  const models = ["gemini-1.5-flash", "gemini-pro"];
+  const promptText = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
+
+  // 1. Спроба через SDK
+  if (genAI) {
+    for (const modelName of models) {
+      try {
+        console.log(`🤖 BOT AI (SDK) trying: ${modelName}...`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        let result;
+        if (isImage && base64) {
+          result = await model.generateContent([promptText, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
+        } else {
+          result = await model.generateContent(promptText);
+        }
+        return result.response.text();
+      } catch (e) {
+        console.warn(`⚠️ BOT SDK failed for ${modelName}: ${e.message}`);
       }
-      return result.response.text();
-    } catch (e) {
-      console.warn(`⚠️ Bot AI fallback: ${modelName} failed...`);
-      if (modelName === models[models.length - 1]) throw e;
     }
+  }
+
+  // 2. План Б: Прямий FETCH
+  console.log("🚀 BOT AI: SDK failed. Switching to direct HTTP fallback...");
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    const payload = {
+      contents: [{
+        parts: isImage ? [
+          { text: promptText },
+          { inlineData: { mimeType: "image/jpeg", data: base64 } }
+        ] : [{ text: promptText }]
+      }]
+    };
+
+    const response = await axios.post(url, payload);
+    const data = response.data;
+    
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "AI повернув порожню відповідь.";
+
+  } catch (error) {
+    const msg = error.response?.data?.error?.message || error.message;
+    console.error("❌ BOT AI Direct Error:", msg);
+    return `Помилка AI: ${msg}. Перевірте налаштування ключа в Google AI Studio.`;
   }
 };
 
