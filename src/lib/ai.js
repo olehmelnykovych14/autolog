@@ -28,11 +28,10 @@ export const askGemini = async (userInput, carList, historyList) => {
 
   const delay = ms => new Promise(res => setTimeout(res, ms));
 
-  // Список найбільш стабільних моделей Gemini
   const modelsToTry = [
     "gemini-1.5-flash", 
     "gemini-1.5-pro", 
-    "gemini-1.0-pro" 
+    "gemini-pro"
   ];
   
   let lastErrorMsg = "";
@@ -42,7 +41,8 @@ export const askGemini = async (userInput, carList, historyList) => {
     while (retries > 0) {
       try {
         console.log(`🤖 AI checking model: ${modelName} (${4 - retries} attempt)...`);
-        const model = genAI.getGenerativeModel({ model: modelName });
+        // Force v1 for all models to avoid v1beta 404 issues
+        const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
@@ -53,6 +53,12 @@ export const askGemini = async (userInput, carList, historyList) => {
         lastErrorMsg = error.message || String(error);
         const msg = lastErrorMsg.toLowerCase();
         
+        // If model not found (404), don't retry, just move to next model
+        if (msg.includes("404") || msg.includes("not found")) {
+          console.warn(`❌ Model ${modelName} not available (404), skipping...`);
+          break;
+        }
+
         const isTemporary = 
           msg.includes("429") || 
           msg.includes("503") || 
@@ -68,10 +74,10 @@ export const askGemini = async (userInput, carList, historyList) => {
           continue;
         }
         
-        console.warn(`⚠️ Model ${modelName} failed or exhausted, moving on:`, msg);
+        console.warn(`⚠️ Model ${modelName} failed, moving on:`, msg);
         break; 
       }
     }
   }
-  return `Помилка: Не вдалося отримати відповідь від AI. Технічна причина: ${lastErrorMsg}. Спробуйте оновити сторінку або перевірте API Ключ.`;
+  return `Помилка: Не вдалося отримати відповідь від AI. Причина: МОДЕЛІ ПЕРЕВАНТАЖЕНІ. (${lastErrorMsg}). Спробуйте через 30 секунд.`;
 };
