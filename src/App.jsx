@@ -33,11 +33,13 @@ import { TransferCarModal, InviteMemberModal } from './components/modals/Modals'
 
 // Auth
 import { AuthScreen } from './components/auth/AuthScreen'
+import { LandingView } from './components/views/LandingView'
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(undefined)
   const [userProfile, setUserProfile] = useState(null)
   const [tab, setTab] = useState('dashboard')
+  const [mode, setMode] = useState('landing') // 'landing' | 'auth'
   const [col, setCol] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [isDark, setDark] = useState(false)
@@ -303,7 +305,10 @@ export default function App() {
   }
 
   if (currentUser === null) {
-    return <AuthScreen isDark={isDark} setDark={setDark} />
+    if (mode === 'landing') {
+      return <LandingView onLogin={() => setMode('auth')} />
+    }
+    return <AuthScreen isDark={isDark} setDark={setDark} onBack={() => setMode('landing')} />
   }
 
   return (

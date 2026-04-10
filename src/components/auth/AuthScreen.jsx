@@ -5,7 +5,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfi
 import { doc, setDoc } from 'firebase/firestore'
 import { C } from '../../constants'
 
-export function AuthScreen({ isDark, setDark }) {
+export function AuthScreen({ isDark, setDark, onBack }) {
   const [isLogin, setIsLogin] = useState(true)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -76,6 +76,12 @@ export function AuthScreen({ isDark, setDark }) {
   return (
     <div className={`flex min-h-screen w-full font-sans bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
       <div className="flex-1 flex flex-col justify-center p-6 relative">
+        {onBack && (
+          <button onClick={onBack} className="absolute top-6 left-6 flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-indigo-600 transition-all">
+            <ArrowRight className="rotate-180" size={18} />
+            Повернутися
+          </button>
+        )}
         <button onClick={() => setDark(d => !d)} className="absolute top-6 right-6 w-10 h-10 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center border border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-700">
           {isDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
