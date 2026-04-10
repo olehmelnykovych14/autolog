@@ -26,43 +26,49 @@ export const askGemini = async (userInput, carList, historyList) => {
 
   const prompt = `${context}\n\nКлієнт: ${userInput}\nМеханік:`;
 
+  const delay = ms => new Promise(res => setTimeout(res, ms));
+
   // Список найбільш стабільних моделей Gemini
   const modelsToTry = [
     "gemini-1.5-flash", 
     "gemini-1.5-pro", 
-    "gemini-1.0-pro" // Найнадійніший бекап
+    "gemini-1.0-pro" 
   ];
   
   for (const modelName of modelsToTry) {
-    try {
-      console.log(`🤖 AI is checking (v1): ${modelName}...`);
-      // Примусово використовуємо стабільну версію v1, щоб уникнути 404 у v1beta
-      const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-      console.log(`✅ AI success with model: ${modelName}`);
-      return text;
-    } catch (error) {
-      const msg = (error.message || String(error)).toLowerCase();
-      console.warn(`⚠️ Model ${modelName} failed:`, msg);
-      
-      const isTemporary = 
-        msg.includes("404") || 
-        msg.includes("429") || 
-        msg.includes("503") || 
-        msg.includes("500") || 
-        msg.includes("quota") || 
-        msg.includes("demand") || 
-        msg.includes("overloaded") ||
-        msg.includes("busy");
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        console.log(`🤖 AI checking model: ${modelName} (${4 - retries} attempt)...`);
+        const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        console.log(`✅ AI success with model: ${modelName}`);
+        return text;
+      } catch (error) {
+        retries--;
+        const msg = (error.message || String(error)).toLowerCase();
+        
+        const isTemporary = 
+          msg.includes("429") || 
+          msg.includes("503") || 
+          msg.includes("500") || 
+          msg.includes("quota") || 
+          msg.includes("demand") || 
+          msg.includes("overloaded") ||
+          msg.includes("busy");
 
-      if (isTemporary) {
-        continue;
+        if (isTemporary && retries > 0) {
+          console.warn(`⏳ Model ${modelName} busy, retrying in 1.5s...`);
+          await delay(1500);
+          continue;
+        }
+        
+        console.warn(`⚠️ Model ${modelName} failed or exhausted, moving on:`, msg);
+        break; // Move to next model in the outer loop
       }
-      
-      return `Помилка зв'язку з AI (${modelName}): ${error.message || 'Unknown error'}`;
     }
   }
-  return "Помилка: Всі доступні моделі Gemini тимчасово перевантажені або недоступні. Спробуйте через хвилину.";
+  return "Помилка: Всі доступні моделі Gemini тимчасово перевантажені або недоступні. Спробуйте через декілька секунд.";
 };
