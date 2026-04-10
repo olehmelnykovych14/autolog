@@ -3,62 +3,53 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim();
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
-if (API_KEY) {
-  console.log(`🤖 AI: Checked key prefix: ${API_KEY.substring(0, 4)}...`);
-}
+// Функція-детектор: перевіряє, що взагалі бачить цей ключ
+const checkModels = async () => {
+  if (!API_KEY) return;
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${API_KEY}`);
+    const data = await res.json();
+    console.log("🛠 AI DIAGNOSTIC: Доступні моделі для вашого ключа:", data.models?.map(m => m.name) || "ЖОДНОЇ (Ключ недійсний)");
+  } catch (e) {
+    console.error("🛠 AI DIAGNOSTIC ERROR:", e);
+  }
+};
+checkModels();
 
 export const askGemini = async (userInput, carList, historyList) => {
-  if (!API_KEY) {
-    return "Помилка: API Ключ не налаштований у Vercel/Vite.";
-  }
+  if (!API_KEY) return "Помилка: API Ключ не знайдено!";
 
-  const context = `
-Ти — професійний автомеханік AutoLog AI. 
-Користувач має такі авто: ${JSON.stringify(carList)}.
-Історія обслуговування: ${JSON.stringify(historyList)}.
-Надавай поради українською, лаконічно, використовуючи Markdown.
-    `;
+  const promptText = `Ти автомеханік. Авто: ${JSON.stringify(carList)}. Питання: ${userInput}`;
 
-  const promptText = `${context}\n\nКлієнт: ${userInput}\nМеханік:`;
-
-  // --- Спроба 1: SDK (Сучасні моделі) ---
-  const models = ["gemini-1.5-flash", "gemini-1.5-pro"];
+  // Список моделей для тесту
+  const models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"];
   
   for (const modelName of models) {
     try {
-      console.log(`🤖 AI (SDK) trying: ${modelName}...`);
       const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(promptText);
       return result.response.text();
     } catch (e) {
-      console.warn(`⚠️ SDK failed for ${modelName}: ${e.message}`);
+      console.warn(`🤖 SDK Error (${modelName}):`, e.message);
     }
   }
 
-  // --- Спроба 2: Прямий FETCH (План Б) ---
-  console.log("🚀 AI: SDK failed. Switching to direct HTTP fallback...");
+  // Fallback
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }]
-        })
+        body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
       }
     );
 
     const data = await response.json();
-    if (response.ok) {
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || "AI повернув порожню відповідь.";
-    }
+    if (response.ok) return data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    console.error("❌ AI Direct Fetch Error:", data);
-    const errDetail = data.error?.message || response.statusText;
-    return `Помилка AI (404/Direct): ${errDetail}. \n\n**Важливо:** Якщо ви бачите це повідомлення, перевірте кабінет Google AI Studio — можливо, ваш ключ не активований для цього проекту.`;
-
+    return `❌ КЛЮЧ НЕМАЄ ДОСТУПУ (404). \n\n**РІШЕННЯ:** Зайдіть на aistudio.google.com і створіть НОВИЙ ключ у НОВОМУ проекті ("Create API key in new project"). Поточний ключ не працює з Gemini.`;
   } catch (error) {
-    return `Критична помилка мережі AI: ${error.message}`;
+    return "Помилка мережі AI.";
   }
 };
