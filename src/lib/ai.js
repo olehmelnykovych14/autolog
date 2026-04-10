@@ -35,12 +35,14 @@ export const askGemini = async (userInput, carList, historyList) => {
     "gemini-1.0-pro" 
   ];
   
+  let lastErrorMsg = "";
+
   for (const modelName of modelsToTry) {
     let retries = 3;
     while (retries > 0) {
       try {
         console.log(`🤖 AI checking model: ${modelName} (${4 - retries} attempt)...`);
-        const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
+        const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
@@ -48,7 +50,8 @@ export const askGemini = async (userInput, carList, historyList) => {
         return text;
       } catch (error) {
         retries--;
-        const msg = (error.message || String(error)).toLowerCase();
+        lastErrorMsg = error.message || String(error);
+        const msg = lastErrorMsg.toLowerCase();
         
         const isTemporary = 
           msg.includes("429") || 
@@ -66,9 +69,9 @@ export const askGemini = async (userInput, carList, historyList) => {
         }
         
         console.warn(`⚠️ Model ${modelName} failed or exhausted, moving on:`, msg);
-        break; // Move to next model in the outer loop
+        break; 
       }
     }
   }
-  return "Помилка: Всі доступні моделі Gemini тимчасово перевантажені або недоступні. Спробуйте через декілька секунд.";
+  return `Помилка: Не вдалося отримати відповідь від AI. Технічна причина: ${lastErrorMsg}. Спробуйте оновити сторінку або перевірте API Ключ.`;
 };
