@@ -19,11 +19,11 @@ export function LandingView({ onLogin }) {
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'bg-white/90 backdrop-blur-xl border-b border-gray-100 py-3 shadow-sm' : 'bg-transparent py-6'}`}>
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-              <img src="/logo.png" alt="AutoLog" className="w-5 h-5 object-contain brightness-0 invert" />
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center shadow-lg border border-gray-100 overflow-hidden">
+              <img src="/logo.png" alt="AutoLog" className="w-8 h-8 object-contain" />
             </div>
-            <span className="text-xl font-black tracking-tight text-gray-900">AutoLog</span>
+            <span className="text-2xl font-black tracking-tight text-gray-900">AutoLog</span>
           </div>
           
           <div className="hidden lg:flex items-center gap-10">

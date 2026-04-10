@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Car, Mail, Lock, User, MapPin, ClipboardList, ShieldCheck, Sun, Moon, Send, LayoutDashboard } from 'lucide-react'
+import { Car, Mail, Lock, User, MapPin, ClipboardList, ShieldCheck, Sun, Moon, Send, LayoutDashboard, ArrowRight } from 'lucide-react'
 import { auth, db } from '../../firebase'
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
