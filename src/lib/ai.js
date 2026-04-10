@@ -28,34 +28,35 @@ export const askGemini = async (userInput, carList, historyList) => {
 
   const delay = ms => new Promise(res => setTimeout(res, ms));
 
-  const modelsToTry = [
-    "gemini-1.5-flash", 
-    "gemini-1.5-pro", 
-    "gemini-pro"
+  const variants = [
+    { name: "gemini-1.5-flash", version: "v1" },
+    { name: "gemini-1.5-flash", version: "v1beta" },
+    { name: "gemini-1.5-flash-8b", version: "v1" },
+    { name: "gemini-1.5-pro", version: "v1" },
+    { name: "gemini-2.0-flash-exp", version: "v1beta" }
   ];
   
   let lastErrorMsg = "";
 
-  for (const modelName of modelsToTry) {
-    let retries = 3;
+  for (const variant of variants) {
+    let retries = 2; // Менше ретраїв, щоб швидше перебрати варіанти
     while (retries > 0) {
       try {
-        console.log(`🤖 AI checking model: ${modelName} (${4 - retries} attempt)...`);
-        // Force v1 for all models to avoid v1beta 404 issues
-        const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1' });
+        console.log(`🤖 AI trying: ${variant.name} (${variant.version})...`);
+        const model = genAI.getGenerativeModel({ model: variant.name }, { apiVersion: variant.version });
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
-        console.log(`✅ AI success with model: ${modelName}`);
+        console.log(`✅ AI success with: ${variant.name}`);
         return text;
       } catch (error) {
         retries--;
         lastErrorMsg = error.message || String(error);
         const msg = lastErrorMsg.toLowerCase();
         
-        // If model not found (404), don't retry, just move to next model
+        // Якщо модель не знайдена, відразу переходимо до наступного варіанту
         if (msg.includes("404") || msg.includes("not found")) {
-          console.warn(`❌ Model ${modelName} not available (404), skipping...`);
+          console.warn(`❌ ${variant.name} (${variant.version}) not found.`);
           break;
         }
 
@@ -69,15 +70,15 @@ export const askGemini = async (userInput, carList, historyList) => {
           msg.includes("busy");
 
         if (isTemporary && retries > 0) {
-          console.warn(`⏳ Model ${modelName} busy, retrying in 1.5s...`);
-          await delay(1500);
+          console.warn(`⏳ Busy, retrying in 1s...`);
+          await delay(1000);
           continue;
         }
         
-        console.warn(`⚠️ Model ${modelName} failed, moving on:`, msg);
+        console.warn(`⚠️ Failed variant:`, msg);
         break; 
       }
     }
   }
-  return `Помилка: Не вдалося отримати відповідь від AI. Причина: МОДЕЛІ ПЕРЕВАНТАЖЕНІ. (${lastErrorMsg}). Спробуйте через 30 секунд.`;
+  return `Помилка AI. Причина: МОДЕЛІ НЕДОСТУПНІ. (Остання помилка: ${lastErrorMsg}). Будь ласка, перевірте версію API в Google AI Studio.`;
 };
