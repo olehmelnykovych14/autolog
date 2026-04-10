@@ -1,9 +1,35 @@
-require('dotenv').config();
-const { Telegraf, session } = require('telegraf');
+const { Telegraf, session, Markup } = require('telegraf');
 const admin = require('firebase-admin');
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const axios = require('axios');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+// --- AI Setup ---
+const API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+
+const askGemini = async (prompt, isImage = false, base64 = null) => {
+  if (!genAI) return "API Ключ не підключено.";
+  const models = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-pro"];
+  
+  for (const modelName of models) {
+    try {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      let result;
+      if (isImage && base64) {
+        result = await model.generateContent([prompt, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
+      } else {
+        result = await model.generateContent(prompt);
+      }
+      return result.response.text();
+    } catch (e) {
+      console.warn(`⚠️ Bot AI fallback: ${modelName} failed...`);
+      if (modelName === models[models.length - 1]) throw e;
+    }
+  }
+};
 
 // Health check server for Render
 const app = express();
@@ -17,20 +43,16 @@ const keyPath = path.join(__dirname, 'serviceAccountKey.json');
 try {
   if (fs.existsSync(keyPath)) {
     serviceAccount = require(keyPath);
-    console.log('📦 Using service account from file.');
   } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    console.log('☁️ Using service account from environment variables.');
   } else {
     throw new Error('No Firebase service account credentials found!');
   }
-
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+  if (!admin.apps.length) {
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  }
 } catch (err) {
-  console.error('❌ CRITICAL ERROR initializing Firebase Admin:', err.message);
-  process.exit(1); 
+  console.error('❌ Firebase Init Error:', err.message);
 }
 
 const db = admin.firestore();
@@ -38,65 +60,191 @@ const bot = new Telegraf(process.env.BOT_TOKEN);
 
 bot.use(session());
 
-const mainMenu = {
-  reply_markup: {
-    keyboard: [
-      ['🚗 Мої Автомобілі', '📅 Мої Записи'],
-      ['💳 Баланс та Оплати', '⚙️ Налаштування']
-    ],
-    resize_keyboard: true
-  }
-};
+// middleware to find User in DB
+bot.use(async (ctx, next) => {
+  if (!ctx.from) return next();
+  const tid = ctx.from.id.toString();
+  try {
+    const snap = await db.collection('users').where('telegramId', '==', tid).get();
+    if (!snap.empty) {
+      ctx.userData = snap.docs[0].data();
+      ctx.userId = snap.docs[0].id;
+    }
+  } catch (e) { console.error('Middleware error:', e); }
+  return next();
+});
+
+const mainMenu = Markup.keyboard([
+  ['🚗 Мої Автомобілі', '📅 Мої Записи'],
+  ['💰 Витрати', '🧾 Додати запис (AI)'],
+  ['⚙️ Налаштування', '❓ Допомога']
+]).resize();
+
+// --- Helpers ---
+const fmtCost = (v) => v ? Number(v).toLocaleString('uk-UA') : '0';
 
 bot.start(async (ctx) => {
-  const telegramId = ctx.from.id;
-  const snap = await db.collection('users').where('telegramId', '==', telegramId).get();
-  
-  if (snap.empty) {
-    ctx.reply('Привіт! Ви ще не зареєстровані в AutoLog. Будь ласка, вкажіть ваш номер телефону для реєстрації:', {
-      reply_markup: {
-        keyboard: [[{ text: '📱 Поділитися контактом', request_contact: true }]],
-        resize_keyboard: true,
-        one_time_keyboard: true
-      }
-    });
-  } else {
-    ctx.reply('З поверненням до AutoLog!', mainMenu);
+  if (ctx.userData) {
+    return ctx.reply(`З поверненням, ${ctx.userData.displayName || 'водій'}! 👋`, mainMenu);
   }
+  ctx.reply('Привіт! Ви ще не зареєстровані в AutoLog. Будь ласка, вкажіть ваш номер телефону для реєстрації:', {
+    reply_markup: {
+      keyboard: [[{ text: '📱 Поділитися контактом', request_contact: true }]],
+      resize_keyboard: true,
+      one_time_keyboard: true
+    }
+  });
 });
 
 bot.on('contact', async (ctx) => {
   const phone = ctx.message.contact.phone_number.replace('+', '');
-  const telegramId = ctx.from.id;
+  const telegramId = ctx.from.id.toString();
   const displayName = ctx.from.first_name + (ctx.from.last_name ? ' ' + ctx.from.last_name : '');
   
   const snap = await db.collection('users').where('phone', '==', phone).get();
   
   if (!snap.empty) {
-    const userDoc = snap.docs[0];
-    await userDoc.ref.update({ telegramId, displayName });
-    ctx.reply('✅ Ваш аккаунт синхронізовано з Telegram!', mainMenu);
+    await snap.docs[0].ref.update({ telegramId, displayName });
+    ctx.reply('✅ Ваш аккаунт синхронізовано!', mainMenu);
   } else {
-    await db.collection('users').add({
-      phone,
-      telegramId,
-      displayName,
-      role: 'driver',
-      createdAt: Date.now()
-    });
-    ctx.reply('✅ Ви успішно зареєстровані в AutoLog!', mainMenu);
+    await db.collection('users').add({ phone, telegramId, displayName, role: 'driver', createdAt: Date.now() });
+    ctx.reply('✅ Ви успішно зареєстровані!', mainMenu);
   }
 });
 
-// --- Background Listeners (Serverless Telegram Push) ---
+bot.hears('🚗 Мої Автомобілі', async (ctx) => {
+  if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
+  const snap = await db.collection('cars').where('userId', '==', ctx.userId).get();
+  if (snap.empty) return ctx.reply('Ваш гараж порожній.');
+  let text = `🚗 *Ваш Гараж:*\n\n`;
+  snap.forEach(d => {
+    const c = d.data();
+    text += `📍 *${c.brand} ${c.model || ''}*\n🔢 Номер: \`${c.plate}\`\n\n`;
+  });
+  ctx.reply(text, { parse_mode: 'Markdown' });
+});
+
+bot.hears('📅 Мої Записи', async (ctx) => {
+  if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
+  const snap = await db.collection('history').where('userId', '==', ctx.userId).get();
+  if (snap.empty) return ctx.reply('Записів не знайдено.');
+  const records = snap.docs.map(d => d.data()).sort((a,b) => b.createdAt - a.createdAt).slice(0, 5);
+  let text = `📅 *Останні записи:*\n\n`;
+  records.forEach(r => {
+    text += `🔹 *${r.title}* (${r.date})\n💰 ${fmtCost(r.cost)} ₴\n\n`;
+  });
+  ctx.reply(text, { parse_mode: 'Markdown' });
+});
+
+bot.hears('💰 Витрати', async (ctx) => {
+  if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
+  const snap = await db.collection('history').where('userId', '==', ctx.userId).get();
+  let total = 0;
+  snap.forEach(d => total += (Number(d.data().cost) || 0));
+  ctx.reply(`💰 *Загальні витрати:*\n\nВи витратили: *${fmtCost(total)} ₴*`, { parse_mode: 'Markdown' });
+});
+
+bot.hears('❓ Допомога', (ctx) => {
+  ctx.reply('❓ *Як користуватися:*\n\n1. Просто напишіть мені будь-яке питання про авто.\n2. Надішліть **фото чека з СТО**, і я автоматично додам його у вашу історію.', { parse_mode: 'Markdown' });
+});
+
+bot.hears('🧾 Додати запис (AI)', (ctx) => ctx.reply('📸 Надішліть фото чека СТО. Я проаналізую його автоматично.'));
+
+bot.on('photo', async (ctx) => {
+  if (!ctx.userId) return ctx.reply('❌ Будь ласка, спочатку зареєструйтесь.');
+  const loading = await ctx.reply('🤖 Аналізую чек через AI...');
+  
+  try {
+    const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+    const link = await ctx.telegram.getFileLink(fileId);
+    const response = await axios.get(link.href, { responseType: 'arraybuffer' });
+    const buffer = Buffer.from(response.data);
+    const base64 = buffer.toString('base64');
+
+    const prompt = `Аналізуй цей чек СТО. Поверни ТІЛЬКИ JSON:
+{
+  "title": "Назва сервісу коротко",
+  "cost": 1500,
+  "date": "YYYY-MM-DD",
+  "plate": "НОМЕР_АВТО",
+  "mileage": 120000
+}`;
+
+    const aiResponse = await askGemini(prompt, true, base64);
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("AI didn't return valid JSON");
+    
+    const data = JSON.parse(jsonMatch[0]);
+    ctx.session.pendingRecord = {
+      title: data.title || 'Автосервіс',
+      cost: Number(data.cost) || 0,
+      date: data.date || new Date().toISOString().split('T')[0],
+      km: data.mileage || 0,
+      status: 'verified'
+    };
+
+    const text = `✅ *Чек розпізнано!*\n\n🛠 Робота: *${ctx.session.pendingRecord.title}*\n💰 Сума: *${fmtCost(ctx.session.pendingRecord.cost)} ₴*\n📅 Дата: *${ctx.session.pendingRecord.date}*\n\n*Куди зберегти цей запис?*`;
+    
+    // Get user cars for buttons
+    const carsSnap = await db.collection('cars').where('userId', '==', ctx.userId).get();
+    if (carsSnap.empty) {
+      return ctx.reply(text + "\n\n⚠️ У вас немає доданих авто. Додайте авто в додатку.", { parse_mode: 'Markdown' });
+    }
+
+    const buttons = carsSnap.docs.map(d => [Markup.button.callback(`🚗 ${d.data().brand} (${d.data().plate})`, `save_rec_${d.id}`)]);
+    buttons.push([Markup.button.callback('❌ Скасувати', 'cancel_rec')]);
+
+    ctx.reply(text, { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) });
+
+  } catch (e) {
+    console.error('Photo error:', e);
+    ctx.reply('❌ Не вдалося розпізнати чек. Спробуйте інше фото або додайте вручну.');
+  } finally {
+    ctx.telegram.deleteMessage(ctx.chat.id, loading.message_id).catch(() => {});
+  }
+});
+
+bot.action(/save_rec_(.+)/, async (ctx) => {
+  const carId = ctx.match[1];
+  if (!ctx.session.pendingRecord) return ctx.answerCbQuery('Дані застаріли');
+  
+  try {
+    await db.collection('history').add({
+      ...ctx.session.pendingRecord,
+      carId,
+      userId: ctx.userId,
+      createdAt: Date.now()
+    });
+    ctx.editMessageText('✅ Запис успішно додано в історію вашого авто!');
+  } catch (e) {
+    ctx.reply('❌ Помилка збереження.');
+  }
+});
+
+bot.action('cancel_rec', (ctx) => ctx.editMessageText('❌ Скасовано.'));
+
+// AI Mechanic Chat (Catch-all for text)
+bot.on('text', async (ctx) => {
+  if (ctx.message.text.startsWith('/')) return; // ignore other cmds
+  if (!ctx.userId) return; // ignore unregistered users for chat or keep it?
+  
+  const wait = await ctx.reply('🤔 Думаю...');
+  try {
+    const response = await askGemini(`Ти — AI Механік AutoLog. Клієнт питає: "${ctx.message.text}". Дай коротку професійну пораду українською.`);
+    ctx.reply(response, { parse_mode: 'Markdown' });
+  } catch (e) {
+    ctx.reply('Ой, я трохи втомився. Спробуй пізніше! 😴');
+  } finally {
+    ctx.telegram.deleteMessage(ctx.chat.id, wait.message_id).catch(() => {});
+  }
+});
+
+// Notifications listener
 db.collection('bookings').onSnapshot(async (snap) => {
   for (const change of snap.docChanges()) {
     try {
       const bData = change.doc.data();
-      const bId = change.doc.id;
-
       if (change.type === 'added') {
-        // 1. Нова заявка ДЛЯ СТО від водія
         if (bData.status === 'pending' && !bData.notifiedSTO) {
           await change.doc.ref.update({ notifiedSTO: true });
           const stoDoc = await db.collection('users').doc(String(bData.stoId)).get();
@@ -105,56 +253,16 @@ db.collection('bookings').onSnapshot(async (snap) => {
             const driverDoc = await db.collection('users').doc(String(bData.userId)).get();
             bot.telegram.sendMessage(
               stoDoc.data().telegramId, 
-              `📅 *Нова заявка на ремонт!*\n\nКлієнт: *${driverDoc.exists ? (driverDoc.data().displayName || 'Клієнт') : 'Клієнт'}*\nАвто: *${carDoc.exists ? (carDoc.data().brand + ' ' + carDoc.data().plate) : 'Невідомо'}*\nЧас: *${bData.date} ${bData.time}*\nПроблема: ${bData.issue}`,
+              `📅 *Нова заявка!*\nКлієнт: *${driverDoc.exists ? (driverDoc.data().displayName || 'Клієнт') : 'Клієнт'}*\nАвто: *${carDoc.exists ? (carDoc.data().brand + ' ' + carDoc.data().plate) : 'Невідомо'}*\nПроблема: ${bData.issue}`,
               { parse_mode: 'Markdown' }
-            ).catch(e => console.error('STO notify error:', e));
-          }
-        }
-
-        // 2. СТО додало запис (сповіщення ВОДІЮ)
-        if (bData.status === 'confirmed' && bData.creator === 'sto' && !bData.notifiedClient) {
-          await change.doc.ref.update({ notifiedClient: true });
-          const driverDoc = await db.collection('users').doc(String(bData.userId)).get();
-          if (driverDoc.exists && driverDoc.data().telegramId) {
-            const stoDoc = await db.collection('users').doc(String(bData.stoId)).get();
-            const stoName = stoDoc.exists ? (stoDoc.data().stoName || 'AutoLog') : 'AutoLog';
-            
-            bot.telegram.sendMessage(
-              driverDoc.data().telegramId, 
-              `✅ СТО *${stoName}* додало вас у графік!\n\n📅 Дата: *${bData.date}*\n⏰ Час: *${bData.time}*\n🛠 Робота: *${bData.issue}*`, 
-              { parse_mode: 'Markdown' }
-            ).catch(e => console.error('Client notify error:', e));
+            ).catch(() => null);
           }
         }
       }
-
-      if (change.type === 'modified') {
-        const driverDoc = await db.collection('users').doc(String(bData.userId)).get();
-        if (driverDoc.exists && driverDoc.data().telegramId) {
-          const tid = driverDoc.data().telegramId;
-          const stoDoc = await db.collection('users').doc(String(bData.stoId)).get();
-          const stoName = stoDoc.exists ? (stoDoc.data().stoName || 'AutoLog') : 'AutoLog';
-
-          if (bData.status === 'confirmed' && !bData.notifiedConfirmed) {
-            await change.doc.ref.update({ notifiedConfirmed: true });
-            bot.telegram.sendMessage(tid, `✅ Ваш запис на СТО *${stoName}* підтверджено!\n📅 ${bData.date} о ${bData.time}`, { parse_mode: 'Markdown' }).catch(e => null);
-          }
-          
-          if (bData.status === 'rejected' && !bData.notifiedRejected) {
-            await change.doc.ref.update({ notifiedRejected: true });
-            bot.telegram.sendMessage(tid, `❌ Ваш запис на СТО *${stoName}* було відхилено.`, { parse_mode: 'Markdown' }).catch(e => null);
-          }
-        }
-      }
-    } catch (e) {
-      console.error('[BOT ERROR] Processing change:', e);
-    }
+    } catch (e) {}
   }
 });
 
-bot.launch().then(() => {
-  console.log('🤖 AutoLog Bot started with Firestore Listeners...');
-});
-
+bot.launch().then(() => console.log('🤖 AutoLog Bot is Online & Smart!'));
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
