@@ -4,64 +4,61 @@ const API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim();
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 if (API_KEY) {
-  console.log(`🤖 AI Initialized with key starting with: ${API_KEY.substring(0, 4)}...`);
-} else {
-  console.warn("🤖 AI: API_KEY is missing!");
+  console.log(`🤖 AI: Checked key prefix: ${API_KEY.substring(0, 4)}...`);
 }
 
 export const askGemini = async (userInput, carList, historyList) => {
-  if (!genAI) {
-    return "Помилка: API Ключ не налаштований. Додайте VITE_GEMINI_API_KEY у .env.local або налаштування Vercel.";
+  if (!API_KEY) {
+    return "Помилка: API Ключ не налаштований у Vercel/Vite.";
   }
 
   const context = `
 Ти — професійний автомеханік AutoLog AI. 
 Користувач має такі авто: ${JSON.stringify(carList)}.
 Історія обслуговування: ${JSON.stringify(historyList)}.
-Твоя задача: надавати чіткі, професійні поради українською мовою. 
-Використовуй Markdown, списки та жирний текст. Будь ввічливим.
+Надавай поради українською, лаконічно, використовуючи Markdown.
     `;
 
-  const prompt = `${context}\n\nКлієнт: ${userInput}\nМеханік:`;
-  const delay = ms => new Promise(res => setTimeout(res, ms));
+  const promptText = `${context}\n\nКлієнт: ${userInput}\nМеханік:`;
 
-  // Використовуємо -latest версії для максимальної стабільності
-  const models = ["gemini-1.5-flash-latest", "gemini-1.5-pro-latest", "gemini-pro"];
+  // --- Спроба 1: SDK (Сучасні моделі) ---
+  const models = ["gemini-1.5-flash", "gemini-1.5-pro"];
   
-  let lastErrorMsg = "";
-
   for (const modelName of models) {
-    let attempts = 2;
-    while (attempts > 0) {
-      try {
-        console.log(`🤖 AI trying: ${modelName}...`);
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        return response.text();
-      } catch (error) {
-        attempts--;
-        lastErrorMsg = error.message || String(error);
-        const msg = lastErrorMsg.toLowerCase();
-        
-        if (msg.includes("404") || msg.includes("not found")) {
-          console.warn(`❌ Model ${modelName} not found.`);
-          break;
-        }
-
-        const isTemporary = 
-          msg.includes("429") || msg.includes("503") || msg.includes("500") || 
-          msg.includes("quota") || msg.includes("overloaded") || msg.includes("busy");
-
-        if (isTemporary && attempts > 0) {
-          console.warn(`⏳ Busy, retrying...`);
-          await delay(1000);
-          continue;
-        }
-        break; 
-      }
+    try {
+      console.log(`🤖 AI (SDK) trying: ${modelName}...`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(promptText);
+      return result.response.text();
+    } catch (e) {
+      console.warn(`⚠️ SDK failed for ${modelName}: ${e.message}`);
     }
   }
 
-  return `Помилка AI. Технічна причина: ${lastErrorMsg}. \n\n**Важливо:** Переконайтеся, що ви оновили API Ключ у налаштуваннях (Environment Variables) на **Vercel** або **Render** та зробили пере-деплой (Redeploy).`;
+  // --- Спроба 2: Прямий FETCH (План Б) ---
+  console.log("🚀 AI: SDK failed. Switching to direct HTTP fallback...");
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: promptText }] }]
+        })
+      }
+    );
+
+    const data = await response.json();
+    if (response.ok) {
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "AI повернув порожню відповідь.";
+    }
+
+    console.error("❌ AI Direct Fetch Error:", data);
+    const errDetail = data.error?.message || response.statusText;
+    return `Помилка AI (404/Direct): ${errDetail}. \n\n**Важливо:** Якщо ви бачите це повідомлення, перевірте кабінет Google AI Studio — можливо, ваш ключ не активований для цього проекту.`;
+
+  } catch (error) {
+    return `Критична помилка мережі AI: ${error.message}`;
+  }
 };
