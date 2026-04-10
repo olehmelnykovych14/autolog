@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { 
   Car, Wrench, Shield, Bot, ChevronRight, CheckCircle2, 
   Zap, Calendar, Users, ArrowRight, Smartphone, 
-  BarChart3, FileText, Bell, Sparkles, MousePointer2 
+  BarChart3, FileText, Bell, Sparkles, MousePointer2, ClipboardList
 } from 'lucide-react'
 
 export function LandingView({ onLogin }) {
