@@ -7,7 +7,7 @@ const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 const checkModels = async () => {
   if (!API_KEY) return;
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${API_KEY}`);
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`);
     const data = await res.json();
     console.log("🛠 AI DIAGNOSTIC: Доступні моделі для вашого ключа:", data.models?.map(m => m.name) || "ЖОДНОЇ (Ключ недійсний)");
   } catch (e) {
@@ -26,7 +26,7 @@ export const askGemini = async (userInput, carList, historyList) => {
   
   for (const modelName of models) {
     try {
-      const model = genAI.getGenerativeModel({ model: modelName });
+      const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
       const result = await model.generateContent(promptText);
       return result.response.text();
     } catch (e) {
@@ -37,7 +37,7 @@ export const askGemini = async (userInput, carList, historyList) => {
   // Fallback
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -27,7 +27,7 @@ const askGemini = async (prompt, isImage = false, base64 = null) => {
     for (const modelName of models) {
       try {
         console.log(`🤖 BOT AI (SDK) trying: ${modelName}...`);
-        const model = genAI.getGenerativeModel({ model: modelName });
+        const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
         let result;
         if (isImage && base64) {
           result = await model.generateContent([promptText, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
@@ -44,7 +44,7 @@ const askGemini = async (prompt, isImage = false, base64 = null) => {
   // 2. План Б: Прямий FETCH
   console.log("🚀 BOT AI: SDK failed. Switching to direct HTTP fallback...");
   try {
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
     const payload = {
       contents: [{
         parts: isImage ? [
