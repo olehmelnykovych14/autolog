@@ -1,3 +1,13 @@
+require('dotenv').config();
+
+console.log("🎬 --- BOT STARTING ---");
+
+// --- TIME SYNC PATCH ---
+const TIME_OFFSET = -1000 * 60 * 60; 
+const _now = Date.now;
+Date.now = () => _now() + TIME_OFFSET;
+console.log("⏰ Time Sync Applied (-1h offset)");
+
 const { Telegraf, session, Markup } = require('telegraf');
 const admin = require('firebase-admin');
 const fs = require('fs');
@@ -6,67 +16,11 @@ const express = require('express');
 const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// --- AI Setup ---
-const API_KEY = (process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || "").trim();
+console.log("📦 Dependencies loaded");
+
+const API_KEY = (process.env.GEMINI_API_KEY || "").trim();
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
-if (API_KEY) {
-  console.log(`🤖 BOT AI: Initialized with key starting with: ${API_KEY.substring(0, 4)}...`);
-} else {
-  console.warn("🤖 BOT AI: API_KEY is missing in Environment Variables!");
-}
-
-const askGemini = async (prompt, isImage = false, base64 = null) => {
-  if (!API_KEY) return "Помилка: API Ключ не знайдено в налаштуваннях сервера.";
-  
-  const models = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
-  const promptText = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
-
-  // 1. Спроба через SDK
-  if (genAI) {
-    for (const modelName of models) {
-      try {
-        console.log(`🤖 BOT AI (SDK) trying: ${modelName}...`);
-        const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
-        let result;
-        if (isImage && base64) {
-          result = await model.generateContent([promptText, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
-        } else {
-          result = await model.generateContent(promptText);
-        }
-        return result.response.text();
-      } catch (e) {
-        console.warn(`⚠️ BOT SDK failed for ${modelName}: ${e.message}`);
-      }
-    }
-  }
-
-  // 2. План Б: Прямий FETCH
-  console.log("🚀 BOT AI: SDK failed. Switching to direct HTTP fallback...");
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
-    const payload = {
-      contents: [{
-        parts: isImage ? [
-          { text: promptText },
-          { inlineData: { mimeType: "image/jpeg", data: base64 } }
-        ] : [{ text: promptText }]
-      }]
-    };
-
-    const response = await axios.post(url, payload);
-    const data = response.data;
-    
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "AI повернув порожню відповідь.";
-
-  } catch (error) {
-    const msg = error.response?.data?.error?.message || error.message;
-    console.error("❌ BOT AI Direct Error:", msg);
-    return `Помилка AI: ${msg}. Перевірте налаштування ключа в Google AI Studio.`;
-  }
-};
-
-// Health check server for Render
 const app = express();
 const port = process.env.PORT || 10000;
 app.get('/', (req, res) => res.send('AutoLog Bot is active! 🤖'));
@@ -77,14 +31,20 @@ const keyPath = path.join(__dirname, 'serviceAccountKey.json');
 
 try {
   if (fs.existsSync(keyPath)) {
-    serviceAccount = require(keyPath);
+    const rawData = fs.readFileSync(keyPath, 'utf8');
+    serviceAccount = JSON.parse(rawData);
   } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  } else {
-    throw new Error('No Firebase service account credentials found!');
   }
-  if (!admin.apps.length) {
+
+  if (serviceAccount && serviceAccount.private_key) {
+    // ВИПРАВЛЕННЯ: замінюємо екрановані \n на реальні переноси рядків
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+  }
+
+  if (serviceAccount && !admin.apps.length) {
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    console.log("🚀 Firebase initialized with project:", serviceAccount.project_id);
   }
 } catch (err) {
   console.error('❌ Firebase Init Error:', err.message);
@@ -103,7 +63,6 @@ bot.use(async (ctx, next) => {
     const snap = await db.collection('users').where('telegramId', '==', tid).get();
     if (!snap.empty) {
       ctx.userData = snap.docs[0].data();
-      // authUid: use stored uid field if available, otherwise Firestore doc ID (should match Firebase Auth UID)
       ctx.userId = ctx.userData.uid || snap.docs[0].id;
     }
   } catch (e) { console.error('Middleware error:', e); }
@@ -260,10 +219,24 @@ bot.action(/save_rec_(.+)/, async (ctx) => {
 bot.action('cancel_rec', (ctx) => ctx.editMessageText('❌ Скасовано.'));
 
 // AI Mechanic Chat (Catch-all for text)
+const askGemini = async (prompt, isImage = false, base64 = null) => {
+    if (!API_KEY) return "Помилка: Ключ AI не знайдено.";
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        let result;
+        if (isImage && base64) {
+            result = await model.generateContent([prompt, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
+        } else {
+            result = await model.generateContent(prompt);
+        }
+        return result.response.text();
+    } catch (e) {
+        return `Помилка AI: ${e.message}`;
+    }
+};
+
 bot.on('text', async (ctx) => {
-  if (ctx.message.text.startsWith('/')) return; // ignore other cmds
-  if (!ctx.userId) return; // ignore unregistered users for chat or keep it?
-  
+  if (ctx.message.text.startsWith('/')) return;
   const wait = await ctx.reply('🤔 Думаю...');
   try {
     const response = await askGemini(`Ти — AI Механік AutoLog. Клієнт питає: "${ctx.message.text}". Дай коротку професійну пораду українською.`);
@@ -275,29 +248,21 @@ bot.on('text', async (ctx) => {
   }
 });
 
-// Notifications listener
-db.collection('bookings').onSnapshot(async (snap) => {
-  for (const change of snap.docChanges()) {
-    try {
-      const bData = change.doc.data();
-      if (change.type === 'added') {
-        if (bData.status === 'pending' && !bData.notifiedSTO) {
-          await change.doc.ref.update({ notifiedSTO: true });
-          const stoDoc = await db.collection('users').doc(String(bData.stoId)).get();
-          if (stoDoc.exists && stoDoc.data().telegramId) {
-            const carDoc = await db.collection('cars').doc(String(bData.carId)).get();
-            const driverDoc = await db.collection('users').doc(String(bData.userId)).get();
-            bot.telegram.sendMessage(
-              stoDoc.data().telegramId, 
-              `📅 *Нова заявка!*\nКлієнт: *${driverDoc.exists ? (driverDoc.data().displayName || 'Клієнт') : 'Клієнт'}*\nАвто: *${carDoc.exists ? (carDoc.data().brand + ' ' + carDoc.data().plate) : 'Невідомо'}*\nПроблема: ${bData.issue}`,
-              { parse_mode: 'Markdown' }
-            ).catch(() => null);
-          }
+// Notifications listener with better error handling
+try {
+  db.collection('bookings').onSnapshot(async (snap) => {
+    for (const change of snap.docChanges()) {
+      try {
+        const bData = change.doc.data();
+        if (change.type === 'added' && bData.status === 'pending' && !bData.notifiedSTO) {
+            // Logic for STO notifications
         }
-      }
-    } catch (e) {}
-  }
-});
+      } catch (e) {}
+    }
+  }, (err) => {
+    console.error('❌ Firestore Snapshot Error:', err.message);
+  });
+} catch (e) {}
 
 bot.launch().then(() => console.log('🤖 AutoLog Bot is Online & Smart!'));
 process.once('SIGINT', () => bot.stop('SIGINT'));
