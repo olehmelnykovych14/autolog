@@ -91,7 +91,12 @@ export function DashboardView({ carList, historyList }) {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200/50 dark:border-gray-700/60 p-6 shadow-md shadow-gray-200/50 dark:shadow-none">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Остання активність</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Остання активність</h2>
+          <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
+            Авто в базі: {carList.length}
+          </span>
+        </div>
         <div className="overflow-x-auto -mx-6 px-6 no-scrollbar">
           <table className="w-full text-sm min-w-[600px]">
           <thead>
