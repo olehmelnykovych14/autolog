@@ -241,12 +241,25 @@ const askGemini = async (prompt, isImage = false, base64 = null) => {
 
 bot.on('text', async (ctx) => {
   if (ctx.message.text.startsWith('/')) return;
+  
+  // Ignore texts that match menu buttons to prevent AI trigger
+  const menuButtons = ['🚗 Мої Автомобілі', '📅 Мої Записи', '💰 Витрати', '❓ Допомога', '🧾 Додати запис (AI)', '⚙️ Налаштування'];
+  if (menuButtons.some(btn => ctx.message.text.includes(btn))) {
+    return; // Let the 'hears' handlers handle it
+  }
+
   const wait = await ctx.reply('🤔 Думаю...');
   try {
     const response = await askGemini(`Ти — AI Механік AutoLog. Клієнт питає: "${ctx.message.text}". Дай коротку професійну пораду українською.`);
-    ctx.reply(response, { parse_mode: 'Markdown' });
+    
+    if (response.includes('429') || response.includes('Quota exceeded')) {
+      await ctx.reply('🪫 *ШІ Механік тимчасово відпочиває* (ліміт запитів на сьогодні вичерпано). Спробуйте пізніше або скористайтеся кнопками меню знизу.', { parse_mode: 'Markdown' });
+    } else {
+      await ctx.reply(response, { parse_mode: 'Markdown' });
+    }
   } catch (e) {
-    ctx.reply('Ой, я трохи втомився. Спробуй пізніше! 😴');
+    console.error('AI Processing Error:', e.message);
+    ctx.reply('Ой, я трохи втомився. Спробуйте пізніше! 😴');
   } finally {
     ctx.telegram.deleteMessage(ctx.chat.id, wait.message_id).catch(() => {});
   }
