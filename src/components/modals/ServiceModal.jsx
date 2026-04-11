@@ -8,9 +8,9 @@ export function ServiceModal({ onClose, onSave, carList, historyList, initialDat
   const isEdit = !!initialData
 
   const getMinMileage = (cid) => {
-    const selCar = carList.find(c => c.id === parseInt(cid))
+    const selCar = carList.find(c => String(c.id) === String(cid))
     let max = selCar?.mileage || 0
-    const hist = historyList.filter(h => h.carId === parseInt(cid) && h.mileage && h.id !== initialData?.id)
+    const hist = historyList.filter(h => String(h.carId) === String(cid) && h.mileage && h.id !== initialData?.id)
     if (hist.length > 0) {
       max = Math.max(max, ...hist.map(h => h.mileage))
     }
@@ -47,7 +47,7 @@ export function ServiceModal({ onClose, onSave, carList, historyList, initialDat
     if (!f.title || !f.carId) return
     onSave({
       id: initialData?.id || Date.now(),
-      carId: parseInt(f.carId),
+      carId: String(f.carId),
       category: f.category,
       title: f.title,
       date: f.date,
