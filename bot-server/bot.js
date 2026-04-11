@@ -19,7 +19,7 @@ if (API_KEY) {
 const askGemini = async (prompt, isImage = false, base64 = null) => {
   if (!API_KEY) return "Помилка: API Ключ не знайдено в налаштуваннях сервера.";
   
-  const models = ["gemini-1.5-flash", "gemini-pro"];
+  const models = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
   const promptText = typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
 
   // 1. Спроба через SDK
@@ -44,7 +44,7 @@ const askGemini = async (prompt, isImage = false, base64 = null) => {
   // 2. План Б: Прямий FETCH
   console.log("🚀 BOT AI: SDK failed. Switching to direct HTTP fallback...");
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
     const payload = {
       contents: [{
         parts: isImage ? [
