@@ -74,7 +74,7 @@ bot.use(async (ctx, next) => {
 });
 
 const mainMenu = Markup.keyboard([
-  ['🚗 Мої Автомобілі', '📅 Мої Записи'],
+  ['🚗 Мої авто', '📅 Мої записи'],
   ['💰 Витрати', '🧾 Додати запис (AI)'],
   ['⚙️ Налаштування', '❓ Допомога']
 ]).resize();
@@ -111,7 +111,7 @@ bot.on('contact', async (ctx) => {
   }
 });
 
-bot.hears('🚗 Мої Автомобілі', async (ctx) => {
+bot.hears(/Мої авто/i, async (ctx) => {
   if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
   const snap = await db.collection('cars').where('userId', '==', ctx.userId).get();
   if (snap.empty) return ctx.reply('Ваш гараж порожній.');
@@ -123,7 +123,7 @@ bot.hears('🚗 Мої Автомобілі', async (ctx) => {
   ctx.reply(text, { parse_mode: 'Markdown' });
 });
 
-bot.hears('📅 Мої Записи', async (ctx) => {
+bot.hears(/Мої записи/i, async (ctx) => {
   if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
   const snap = await db.collection('history').where('userId', '==', ctx.userId).get();
   if (snap.empty) return ctx.reply('Записів не знайдено.');
@@ -135,7 +135,7 @@ bot.hears('📅 Мої Записи', async (ctx) => {
   ctx.reply(text, { parse_mode: 'Markdown' });
 });
 
-bot.hears('💰 Витрати', async (ctx) => {
+bot.hears(/Витрати/i, async (ctx) => {
   if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
   const snap = await db.collection('history').where('userId', '==', ctx.userId).get();
   let total = 0;
