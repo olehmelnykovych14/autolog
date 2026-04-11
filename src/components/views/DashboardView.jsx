@@ -95,10 +95,11 @@ export function DashboardView({ carList, historyList }) {
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
             {[...historyList].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5).map(r => {
-              const car = carList.find(c => c.id === r.carId)
+              const car = carList.find(c => c.id === r.carId) 
+                       || carList.find(c => r.plate && c.plate === r.plate)
               return (
                 <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td className="py-3 font-medium text-gray-900 dark:text-white">{car?.brand}</td>
+                  <td className="py-3 font-medium text-gray-900 dark:text-white">{car ? `${car.brand} ${car.model || ''}`.trim() : <span className="text-gray-400">—</span>}</td>
                   <td className="py-3">
                     <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold mr-2 ${CAT_CLR[r.category] || 'bg-gray-100 text-gray-600'}`}>{CAT[r.category]}</span>
                     <span className="text-gray-700 dark:text-gray-300">{r.title}</span>
