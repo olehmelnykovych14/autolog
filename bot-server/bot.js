@@ -82,6 +82,14 @@ const mainMenu = Markup.keyboard([
 // --- Helpers ---
 const fmtCost = (v) => v ? Number(v).toLocaleString('uk-UA') : '0';
 
+// Safe date parsing to match Dashboard logic (ignoring TZ shifts)
+const parseDateSafe = (dateStr) => {
+  if (!dateStr) return new Date();
+  if (dateStr.includes('T')) return new Date(dateStr);
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
 const getExpenseStats = (snap, carId = null) => {
   const now = new Date();
   const thisMonth = now.getMonth();
@@ -90,11 +98,10 @@ const getExpenseStats = (snap, carId = null) => {
 
   snap.forEach(d => {
     const data = d.data();
-    // Filter by carId if provided
     if (carId && String(data.carId) !== String(carId)) return;
     
     const cost = Number(data.cost) || 0;
-    const date = new Date(data.date);
+    const date = parseDateSafe(data.date);
     
     total += cost;
     if (date.getFullYear() === thisYear) {
