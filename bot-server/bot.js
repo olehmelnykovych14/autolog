@@ -2,11 +2,15 @@ require('dotenv').config();
 
 console.log("🎬 --- BOT STARTING ---");
 
-// --- TIME SYNC PATCH ---
-const TIME_OFFSET = -1000 * 60 * 60; 
+// --- SMART TIME SYNC ---
+// Render servers are NTP-synced, so we use 0 offset. 
+// For local Windows environments with clock skew, we keep -1h.
+const IS_RENDER = process.env.RENDER === 'true' || process.env.PORT;
+const TIME_OFFSET = IS_RENDER ? 0 : -1000 * 60 * 60; 
+
 const _now = Date.now;
 Date.now = () => _now() + TIME_OFFSET;
-console.log("⏰ Time Sync Applied (-1h offset)");
+console.log(`⏰ Time Sync: ${IS_RENDER ? 'Disabled (Render Mode)' : 'Enabled (-1h Local)'}`);
 
 const { Telegraf, session, Markup } = require('telegraf');
 const admin = require('firebase-admin');
