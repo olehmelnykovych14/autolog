@@ -336,9 +336,9 @@ export default function App() {
 
   return (
     <ThemeCtx.Provider value={isDark}>
-      <div className={`flex min-h-screen lg:h-screen w-full font-sans overflow-x-hidden lg:overflow-hidden bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
+      <div className={`flex min-h-screen lg:h-[100dvh] w-full font-sans overflow-x-hidden lg:overflow-hidden bg-white dark:bg-gray-950 text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
         <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin} userProfile={userProfile} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} onLogout={() => signOut(auth)} />
-        <div className="flex flex-1 flex-col min-h-0 relative bg-gray-50 dark:bg-gray-900">
+        <div className="flex flex-1 flex-col min-h-0 relative bg-white dark:bg-gray-950">
           <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} bookingNotifications={bookingNotifications} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setTab={setTab} onMarkRead={markNotificationAsRead} onMarkAllRead={markAllNotificationsAsRead} />
           <main className={`flex-1 flex flex-col min-h-0 relative ${tab === 'ai' ? 'bg-white dark:bg-gray-800' : 'bg-[#F8FAFC] dark:bg-gray-950'}`}>
             {tab === 'ai' 
