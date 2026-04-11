@@ -336,11 +336,11 @@ export default function App() {
 
   return (
     <ThemeCtx.Provider value={isDark}>
-      <div className={`flex h-screen w-full font-sans overflow-hidden bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
+      <div className={`flex min-h-screen lg:h-screen w-full font-sans overflow-x-hidden lg:overflow-hidden bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
         <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin} userProfile={userProfile} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} onLogout={() => signOut(auth)} />
-        <div className="flex flex-1 flex-col overflow-hidden relative">
+        <div className="flex flex-1 flex-col min-h-0 relative bg-gray-50 dark:bg-gray-900">
           <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} bookingNotifications={bookingNotifications} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setTab={setTab} onMarkRead={markNotificationAsRead} onMarkAllRead={markAllNotificationsAsRead} />
-          <main className={`flex-1 flex flex-col min-h-0 overflow-hidden relative ${tab === 'ai' ? 'bg-white dark:bg-gray-800' : 'bg-[#F8FAFC] dark:bg-gray-950'}`}>
+          <main className={`flex-1 flex flex-col min-h-0 relative ${tab === 'ai' ? 'bg-white dark:bg-gray-800' : 'bg-[#F8FAFC] dark:bg-gray-950'}`}>
             {tab === 'ai' 
               ? <AIView carList={carList} historyList={historyList} userProfile={userProfile} onUpdateAIUsage={onUpdateAIUsage} onGoPlans={() => setTab('plans')} />
               : <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
