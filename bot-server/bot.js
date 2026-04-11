@@ -90,15 +90,26 @@ const parseDateSafe = (dateStr) => {
   return new Date(y, m - 1, d);
 };
 
-const getExpenseStats = (snap, carId = null) => {
+const getExpenseStats = (snap, carId = null, carPlate = null) => {
   const now = new Date();
   const thisMonth = now.getMonth();
   const thisYear = now.getFullYear();
   let total = 0, monthly = 0, yearly = 0;
 
+  const targetCarId = carId ? String(carId).toLowerCase() : null;
+  const targetPlate = carPlate ? String(carPlate).trim().toLowerCase() : null;
+
   snap.forEach(d => {
     const data = d.data();
-    if (carId && String(data.carId) !== String(carId)) return;
+    const recordCarId = data.carId ? String(data.carId).toLowerCase() : null;
+    const recordPlate = data.plate ? String(data.plate).trim().toLowerCase() : null;
+
+    // Filter logic matches DashboardView logic: by ID or by Plate
+    if (targetCarId) {
+      const matchesId = recordCarId === targetCarId;
+      const matchesPlate = targetPlate && recordPlate === targetPlate;
+      if (!matchesId && !matchesPlate) return;
+    }
     
     const cost = Number(data.cost) || 0;
     const date = parseDateSafe(data.date);
@@ -193,7 +204,7 @@ bot.action(/exp_car_(.+)/, async (ctx) => {
   
   if (!carSnap.exists) return ctx.answerCbQuery('Автомобіль не знайдено');
   const car = carSnap.data();
-  const stats = getExpenseStats(historySnap, carId);
+  const stats = getExpenseStats(historySnap, carId, car.plate);
 
   let text = `💰 *Витрати для ${car.brand} (${car.plate}):*\n\n`;
   text += `📅 Поточний місяць: *${fmtCost(stats.monthly)} ₴*\n`;
