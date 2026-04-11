@@ -127,10 +127,16 @@ bot.hears(/Мої записи/i, async (ctx) => {
   if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
   const snap = await db.collection('history').where('userId', '==', ctx.userId).get();
   if (snap.empty) return ctx.reply('Записів не знайдено.');
-  const records = snap.docs.map(d => d.data()).sort((a,b) => b.createdAt - a.createdAt).slice(0, 5);
-  let text = `📅 *Останні записи:*\n\n`;
+  
+  // Sort by actual service date (descending)
+  const records = snap.docs.map(d => d.data())
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 5);
+
+  let text = `📅 *Останні записи:* (сортування за датою)\n\n`;
   records.forEach(r => {
-    text += `🔹 *${r.title}* (${r.date})\n💰 ${fmtCost(r.cost)} ₴\n\n`;
+    const displayDate = r.date ? r.date.split('-').reverse().join('.') : '??.??.????';
+    text += `🔹 *${r.title}* (${displayDate})\n💰 ${fmtCost(r.cost)} ₴\n\n`;
   });
   ctx.reply(text, { parse_mode: 'Markdown' });
 });
@@ -138,9 +144,35 @@ bot.hears(/Мої записи/i, async (ctx) => {
 bot.hears(/Витрати/i, async (ctx) => {
   if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
   const snap = await db.collection('history').where('userId', '==', ctx.userId).get();
+  
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+
   let total = 0;
-  snap.forEach(d => total += (Number(d.data().cost) || 0));
-  ctx.reply(`💰 *Загальні витрати:*\n\nВи витратили: *${fmtCost(total)} ₴*`, { parse_mode: 'Markdown' });
+  let monthly = 0;
+  let yearly = 0;
+
+  snap.forEach(d => {
+    const data = d.data();
+    const cost = Number(data.cost) || 0;
+    const date = new Date(data.date);
+    
+    total += cost;
+    if (date.getFullYear() === thisYear) {
+      yearly += cost;
+      if (date.getMonth() === thisMonth) {
+        monthly += cost;
+      }
+    }
+  });
+
+  let text = `💰 *Статистика витрат:*\n\n`;
+  text += `📅 Поточний місяць: *${fmtCost(monthly)} ₴*\n`;
+  text += `🗓 Поточний рік: *${fmtCost(yearly)} ₴*\n`;
+  text += `📊 За весь час: *${fmtCost(total)} ₴*`;
+
+  ctx.reply(text, { parse_mode: 'Markdown' });
 });
 
 bot.hears('❓ Допомога', (ctx) => {
