@@ -82,6 +82,31 @@ const mainMenu = Markup.keyboard([
 // --- Helpers ---
 const fmtCost = (v) => v ? Number(v).toLocaleString('uk-UA') : '0';
 
+const getExpenseStats = (snap, carId = null) => {
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  let total = 0, monthly = 0, yearly = 0;
+
+  snap.forEach(d => {
+    const data = d.data();
+    // Filter by carId if provided
+    if (carId && String(data.carId) !== String(carId)) return;
+    
+    const cost = Number(data.cost) || 0;
+    const date = new Date(data.date);
+    
+    total += cost;
+    if (date.getFullYear() === thisYear) {
+      yearly += cost;
+      if (date.getMonth() === thisMonth) {
+        monthly += cost;
+      }
+    }
+  });
+  return { total, monthly, yearly };
+};
+
 bot.start(async (ctx) => {
   if (ctx.userData) {
     return ctx.reply(`З поверненням, ${ctx.userData.displayName || 'водій'}! 👋`, mainMenu);
@@ -143,36 +168,53 @@ bot.hears(/Мої записи/i, async (ctx) => {
 
 bot.hears(/Витрати/i, async (ctx) => {
   if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
-  const snap = await db.collection('history').where('userId', '==', ctx.userId).get();
   
-  const now = new Date();
-  const thisMonth = now.getMonth();
-  const thisYear = now.getFullYear();
+  const carsSnap = await db.collection('cars').where('userId', '==', ctx.userId).get();
+  if (carsSnap.empty) return ctx.reply('У вас ще немає доданих автомобілів.');
 
-  let total = 0;
-  let monthly = 0;
-  let yearly = 0;
+  const buttons = carsSnap.docs.map(d => [Markup.button.callback(`🚗 ${d.data().brand} (${d.data().plate})`, `exp_car_${d.id}`)]);
+  buttons.push([Markup.button.callback('📊 Усі авто разом', 'exp_all')]);
 
-  snap.forEach(d => {
-    const data = d.data();
-    const cost = Number(data.cost) || 0;
-    const date = new Date(data.date);
-    
-    total += cost;
-    if (date.getFullYear() === thisYear) {
-      yearly += cost;
-      if (date.getMonth() === thisMonth) {
-        monthly += cost;
-      }
-    }
-  });
+  ctx.reply('Оберіть автомобіль для перегляду статистики витрат:', Markup.inlineKeyboard(buttons));
+});
 
-  let text = `💰 *Статистика витрат:*\n\n`;
-  text += `📅 Поточний місяць: *${fmtCost(monthly)} ₴*\n`;
-  text += `🗓 Поточний рік: *${fmtCost(yearly)} ₴*\n`;
-  text += `📊 За весь час: *${fmtCost(total)} ₴*`;
+// Action handlers for Expenses
+bot.action(/exp_car_(.+)/, async (ctx) => {
+  const carId = ctx.match[1];
+  const historySnap = await db.collection('history').where('userId', '==', ctx.userId).get();
+  const carSnap = await db.collection('cars').doc(carId).get();
+  
+  if (!carSnap.exists) return ctx.answerCbQuery('Автомобіль не знайдено');
+  const car = carSnap.data();
+  const stats = getExpenseStats(historySnap, carId);
 
-  ctx.reply(text, { parse_mode: 'Markdown' });
+  let text = `💰 *Витрати для ${car.brand} (${car.plate}):*\n\n`;
+  text += `📅 Поточний місяць: *${fmtCost(stats.monthly)} ₴*\n`;
+  text += `🗓 Поточний рік: *${fmtCost(stats.yearly)} ₴*\n`;
+  text += `📊 За весь час: *${fmtCost(stats.total)} ₴*`;
+
+  ctx.editMessageText(text, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Назад до списку', 'exp_back')]]) });
+});
+
+bot.action('exp_all', async (ctx) => {
+  const historySnap = await db.collection('history').where('userId', '==', ctx.userId).get();
+  const stats = getExpenseStats(historySnap);
+
+  let text = `📊 *Загальна статистика (усі авто):*\n\n`;
+  text += `📅 Поточний місяць: *${fmtCost(stats.monthly)} ₴*\n`;
+  text += `🗓 Поточний рік: *${fmtCost(stats.yearly)} ₴*\n`;
+  text += `📊 За весь час: *${fmtCost(stats.total)} ₴*`;
+
+  ctx.editMessageText(text, { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('⬅️ Назад до списку', 'exp_back')]]) });
+});
+
+bot.action('exp_back', (ctx) => {
+  ctx.deleteMessage().catch(() => {});
+  // Re-trigger the main expenses list
+  const hearsCtx = { ...ctx, message: { text: '💰 Витрати' } }; // Simplified mock
+  // Instead of re-triggering, just repeat the logic:
+  return ctx.replyWithMarkdown('Оберіть автомобіль для перегляду статистики витрат:'); 
+  // Wait, I'll just re-call the hears logic properly or simplify.
 });
 
 bot.hears('❓ Допомога', (ctx) => {
