@@ -19,7 +19,15 @@ checkModels();
 export const askGemini = async (userInput, carList, historyList) => {
   if (!API_KEY) return "Помилка: API Ключ не знайдено!";
 
-  const promptText = `Ти автомеханік. Авто: ${JSON.stringify(carList)}. Питання: ${userInput}`;
+  const promptText = `Ти — AI Механік у застосунку AutoLog. Відповідай ТІЛЬКИ українською мовою, лаконічно, використовуй Markdown.
+
+Контекст про клієнта:
+- Автомобілі: ${JSON.stringify(carList)}
+- Вся історія сервісу та витрат: ${JSON.stringify(historyList)}
+
+Питання клієнта: ${userInput}
+
+Механік:`;
 
   // Список моделей для тесту
   const models = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
