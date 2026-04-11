@@ -344,7 +344,7 @@ export default function App() {
             {tab === 'ai' 
               ? <AIView carList={carList} historyList={historyList} userProfile={userProfile} onUpdateAIUsage={onUpdateAIUsage} onGoPlans={() => setTab('plans')} />
               : <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
-                  <div className={`${tab === 'sto_bookings' ? 'max-w-[120rem]' : 'max-w-7xl'} mx-auto space-y-6 pb-12`}>
+                  <div className={`${tab === 'sto_bookings' ? 'max-w-[120rem]' : 'max-w-7xl'} mx-auto space-y-6`}>
                     {tab === 'dashboard' && <DashboardView carList={carList} historyList={historyList} />}
                     {tab === 'garage' && <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => setTab('plans')} />}
                     {tab === 'bookings' && <ClientBookingsView carList={carList} />}

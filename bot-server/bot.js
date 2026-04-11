@@ -103,7 +103,8 @@ bot.use(async (ctx, next) => {
     const snap = await db.collection('users').where('telegramId', '==', tid).get();
     if (!snap.empty) {
       ctx.userData = snap.docs[0].data();
-      ctx.userId = snap.docs[0].id;
+      // authUid: use stored uid field if available, otherwise Firestore doc ID (should match Firebase Auth UID)
+      ctx.userId = ctx.userData.uid || snap.docs[0].id;
     }
   } catch (e) { console.error('Middleware error:', e); }
   return next();
