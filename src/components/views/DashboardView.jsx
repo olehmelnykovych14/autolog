@@ -101,13 +101,18 @@ export function DashboardView({ carList, historyList }) {
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
             {[...historyList].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5).map(r => {
+              const norm = p => p ? String(p).toUpperCase().replace(/P/g,'П').replace(/A/g,'А').replace(/B/g,'В').replace(/C/g,'С').replace(/E/g,'Е').replace(/H/g,'Н').replace(/K/g,'К').replace(/M/g,'М').replace(/T/g,'Т').replace(/X/g,'Х').replace(/O/g,'О').trim() : '';
+              const rPlate = norm(r.plate);
               const car = carList.find(c => String(c.id).toLowerCase() === String(r.carId).toLowerCase())
-                       || carList.find(c => r.plate && String(c.plate).trim().toLowerCase() === String(r.plate).trim().toLowerCase())
-                       || carList[0] // ГАРАНТОВАНИЙ FALLBACK: беремо першу машину, якщо іншу не знайдено
+                       || carList.find(c => rPlate && norm(c.plate) === rPlate)
+                       || carList[0];
+              
+              const carName = car ? `${car.brand}${car.model ? ' ' + car.model : ''}` : 'Авто не вказано';
+
               return (
                 <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <td className="py-3 font-medium text-gray-900 dark:text-white">
-                    {car ? `${car.brand}${car.model ? ' ' + car.model : ''}` : <span className="text-gray-300 dark:text-gray-600">не знайдено</span>}
+                    {carName}
                   </td>
                   <td className="py-3">
                     <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold mr-2 ${CAT_CLR[r.category] || 'bg-gray-100 text-gray-600'}`}>{CAT[r.category]}</span>
