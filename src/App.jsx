@@ -64,87 +64,83 @@ export default function App() {
     { id: 1, name: 'Олександр (Ви)', email: 'owner@autolog.ua', role: 'owner', status: 'active' }
   ])
   const [showInviteModal, setShowInviteModal] = useState(false)
-  const carUnsubRef = useRef(null);
-  const histUnsubRef = useRef(null);
+  
+  // --- ROBUST DATA ORCHESTRATION ---
+  const [activeMemberships, setActiveMemberships] = useState([]); 
+  const [relevantUids, setRelevantUids] = useState([]);
 
-  // --- DATA AGGREGATION FOR TEAMS ---
-  const [activeMemberships, setActiveMemberships] = useState([]); // List of ownerIds where user is active
-
+  // 1. Auth & Profile
   useEffect(() => {
-    if (!auth) {
-      setCurrentUser(null);
-      return;
-    }
-
-    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+    if (!auth) return;
+    const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (!user) {
         setUserProfile(null);
         setCarList([]);
         setHistoryList([]);
+        setRelevantUids([]);
         return;
       }
-
-      // 1. Fetch User Profile
       try {
         const snap = await getDoc(doc(db, "users", user.uid));
         if (snap.exists()) {
           const up = snap.data();
           setUserProfile(up);
           if (up.accountType === "sto") setTab("sto");
-          else setTab("dashboard");
         } else {
           setUserProfile({ phone: "", city: "", avatarBase64: "", accountType: "owner" });
-          setTab("dashboard");
         }
       } catch (e) {
-        console.error("Profile fetch error:", e);
+        console.error("Profile error:", e);
       }
-
-      // 2. Listen for Active Memberships
-      const lowerEmail = user.email.toLowerCase();
-      const inviteQuery = query(
-        collection(db, "team_invitations"),
-        where("email", "in", [user.email, lowerEmail]),
-        where("status", "==", "active")
-      );
-
-      const unsubInvites = onSnapshot(inviteQuery, async (snap) => {
-        const ownerIds = snap.docs.map((d) => d.data().ownerId).filter(Boolean);
-        const allRelevantUids = Array.from(new Set([user.uid, ...ownerIds])).filter(id => typeof id === 'string' && id).slice(0, 10);
-        setActiveMemberships(ownerIds);
-
-        // Cleanup previous listeners
-        if (carUnsubRef.current) carUnsubRef.current();
-        if (histUnsubRef.current) histUnsubRef.current();
-
-        // 3. Listen for Cars (Personal + Shared)
-        carUnsubRef.current = onSnapshot(query(collection(db, "cars"), where("userId", "in", allRelevantUids)), (carSnap) => {
-          setCarList(carSnap.docs.map((d) => ({ ...d.data(), id: d.id })));
-        });
-
-        // 4. Listen for History (Personal + Shared)
-        histUnsubRef.current = onSnapshot(query(collection(db, "history"), where("userId", "in", allRelevantUids)), (histSnap) => {
-          const hList = histSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
-          hList.sort((a, b) => {
-            const dA = new Date(a.date).getTime();
-            const dB = new Date(b.date).getTime();
-            if (dA === dB) return (b.createdAt || 0) - (a.createdAt || 0);
-            return dB - dA;
-          });
-          setHistoryList(hList);
-        });
-      });
-
-      return () => {
-        unsubInvites();
-        if (carUnsubRef.current) carUnsubRef.current();
-        if (histUnsubRef.current) histUnsubRef.current();
-      };
     });
-
-    return () => unsubAuth();
+    return () => unsub();
   }, []);
+
+  // 2. Invitation & Team Tracking
+  useEffect(() => {
+    if (!currentUser?.email) return;
+    const lowerEmail = currentUser.email.toLowerCase();
+    const q = query(
+      collection(db, "team_invitations"),
+      where("email", "in", [currentUser.email, lowerEmail]),
+      where("status", "==", "active")
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const ownerIds = snap.docs.map(d => d.data().ownerId).filter(id => typeof id === 'string' && id);
+      const uids = Array.from(new Set([currentUser.uid, ...ownerIds])).filter(Boolean);
+      setRelevantUids(uids);
+      setActiveMemberships(ownerIds);
+    });
+    return () => unsub();
+  }, [currentUser]);
+
+  // 3. Real-time Cars & History
+  useEffect(() => {
+    if (relevantUids.length === 0) {
+      setCarList([]);
+      setHistoryList([]);
+      return;
+    }
+
+    const carQ = query(collection(db, "cars"), where("userId", "in", relevantUids.slice(0, 10)));
+    const unsubCars = onSnapshot(carQ, (snap) => {
+      setCarList(snap.docs.map(d => ({ ...d.data(), id: d.id })));
+    }, (err) => console.error("Cars listener error:", err));
+
+    const histQ = query(collection(db, "history"), where("userId", "in", relevantUids.slice(0, 10)));
+    const unsubHist = onSnapshot(histQ, (snap) => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      list.sort((a, b) => (new Date(b.date) - new Date(a.date)) || (b.createdAt - a.createdAt));
+      setHistoryList(list);
+    }, (err) => console.error("History listener error:", err));
+
+    return () => {
+      unsubCars();
+      unsubHist();
+    };
+  }, [relevantUids]);
 
   useEffect(() => {
     if (!currentUser) return;
