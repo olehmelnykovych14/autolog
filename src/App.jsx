@@ -298,14 +298,20 @@ export default function App() {
     if (!currentUser) return;
     try {
       await updateDoc(doc(db, 'team_invitations', invId), { status: 'active' });
-    } catch (e) { console.error("Accept invite error:", e) }
+    } catch (e) { 
+      console.error("Accept invite error:", e);
+      throw e; 
+    }
   }
 
   const handleRejectInvite = async (invId) => {
     if (!currentUser) return;
     try {
       await deleteDoc(doc(db, 'team_invitations', invId));
-    } catch (e) { console.error("Reject invite error:", e) }
+    } catch (e) { 
+      console.error("Reject invite error:", e);
+      throw e;
+    }
   }
 
   const handleRejectService = async (svcId) => {

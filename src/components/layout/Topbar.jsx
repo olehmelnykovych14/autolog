@@ -8,9 +8,15 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
   const [processingInvites, setProcessingInvites] = useState({})
 
   const handleInviteAction = async (id, actionFn) => {
+    if (!actionFn) return
     setProcessingInvites(p => ({ ...p, [id]: true }))
     try {
+      console.log(`🎫 Action started for invite: ${id}`)
       await actionFn(id)
+      console.log(`✅ Action success for: ${id}`)
+    } catch (e) {
+      console.error(`❌ Action failed for: ${id}`, e)
+      alert(`Помилка: ${e.message || 'Не вдалося виконати дію'}`)
     } finally {
       setProcessingInvites(p => ({ ...p, [id]: false }))
     }
