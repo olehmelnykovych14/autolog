@@ -115,6 +115,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!currentUser) return;
+    const q = query(collection(db, 'team_invitations'), where('ownerId', '==', currentUser.uid));
+    const unsub = onSnapshot(q, snap => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setTeamMembers([
+        { id: 'owner', name: userProfile?.name || 'Ви', email: currentUser.email, role: 'owner', status: 'active' },
+        ...list
+      ]);
+    });
+    return () => unsub();
+  }, [currentUser, userProfile]);
+
+  useEffect(() => {
     if (!currentUser || !userProfile) {
       setBookingNotifications([])
       return
@@ -361,7 +374,18 @@ export default function App() {
             }
           </main>
         </div>
-        {showInviteModal && <InviteMemberModal limit={TEAM_LIMIT} currentCount={teamMembers.length} onClose={() => setShowInviteModal(false)} onInvite={mbr => setTeamMembers(p => [...p, mbr])} />}
+        {showInviteModal && <InviteMemberModal limit={TEAM_LIMIT} currentCount={teamMembers.length} onClose={() => setShowInviteModal(false)} onInvite={async (mbr) => {
+          try {
+            await addDoc(collection(db, 'team_invitations'), {
+              ...mbr,
+              ownerId: currentUser.uid,
+              fromName: userProfile?.displayName || userProfile?.name || 'Власник',
+              createdAt: Date.now(),
+              notified: false
+            });
+            setTeamMembers(p => [...p, mbr]);
+          } catch (e) { console.error("Invite error:", e) }
+        }} />}
         {selectedCar && !showReport && !showTransfer && <CarDetailsModal car={selectedCar} onClose={() => setSelectedCar(null)} onGoService={() => setTab('service')} onGoReport={() => setShowReport(true)} onGoTransfer={() => setShowTransfer(true)} />}
         {showReport && <CarReportModal car={selectedCar} historyList={historyList} userProfile={userProfile} onClose={() => setShowReport(false)} />}
         {showTransfer && <TransferCarModal car={selectedCar} onClose={() => setShowTransfer(false)} onTransfer={handleTransfer} />}

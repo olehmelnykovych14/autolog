@@ -26,9 +26,10 @@ const API_KEY = (process.env.GEMINI_API_KEY || "").trim();
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 const app = express();
-const port = process.env.PORT || 10000;
+const port = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('AutoLog Bot is active! 🤖'));
-app.listen(port, () => console.log(`🌍 Health check server listening on port ${port}`));
+app.get('/health', (req, res) => res.status(200).send('OK'));
+app.listen(port, () => console.log(`🌍 Render-ready server listening on port ${port}`));
 
 let serviceAccount;
 const keyPath = path.join(__dirname, 'serviceAccountKey.json');
@@ -372,21 +373,49 @@ bot.on('text', async (ctx) => {
   }
 });
 
-// Notifications listener with better error handling
+// --- AUTO NOTIFICATIONS (STO + Team) ---
 try {
+  // 1. Team Invitations Listener
+  db.collection('team_invitations').where('status', '==', 'pending').onSnapshot(snap => {
+    snap.docChanges().forEach(async (change) => {
+      if (change.type === 'added') {
+        const inv = change.doc.data();
+        if (inv.notified) return;
+
+        console.log(`✉️ New invite detected for: ${inv.email}`);
+
+        const userSnap = await db.collection('users').where('email', '==', inv.email).get();
+        if (!userSnap.empty) {
+          const user = userSnap.docs[0].data();
+          if (user.telegramId) {
+            try {
+              await bot.telegram.sendMessage(user.telegramId, 
+                `👋 *Запрошення в команду!*\n\nКористувач *${inv.fromName}* хоче додати вас до свого гаража.\n\nБудь ласка, відкрийте додаток, щоб прийняти або відхилити запит.`, 
+                { parse_mode: 'Markdown' }
+              );
+              await change.doc.ref.update({ notified: true });
+              console.log(`✅ Sent team invite to ${user.telegramId}`);
+            } catch (err) { console.error('Failed to notify team member:', err.message); }
+          }
+        }
+      }
+    });
+  });
+
+  // 2. STO Bookings (existing logic)
   db.collection('bookings').onSnapshot(async (snap) => {
     for (const change of snap.docChanges()) {
       try {
         const bData = change.doc.data();
         if (change.type === 'added' && bData.status === 'pending' && !bData.notifiedSTO) {
-            // Logic for STO notifications
+           // Logic for STO notifications (if needed)
         }
       } catch (e) {}
     }
   }, (err) => {
     console.error('❌ Firestore Snapshot Error:', err.message);
   });
-} catch (e) {}
+} catch (e) { console.error('Notification Setup Error:', e.message); }
 
 bot.launch().then(() => console.log('🤖 AutoLog Bot is Online & Smart!'));
 process.once('SIGINT', () => bot.stop('SIGINT'));
