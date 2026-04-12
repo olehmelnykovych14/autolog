@@ -64,55 +64,86 @@ export default function App() {
     { id: 1, name: 'Олександр (Ви)', email: 'owner@autolog.ua', role: 'owner', status: 'active' }
   ])
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const carUnsubRef = useRef(null);
+  const histUnsubRef = useRef(null);
+
+  // --- DATA AGGREGATION FOR TEAMS ---
+  const [activeMemberships, setActiveMemberships] = useState([]); // List of ownerIds where user is active
 
   useEffect(() => {
     if (!auth) {
-      setCurrentUser(null)
-      return
+      setCurrentUser(null);
+      return;
     }
-    const unsub = onAuthStateChanged(auth, async user => {
-      setCurrentUser(user)
-      if (user) {
-        try {
-          const snap = await getDoc(doc(db, 'users', user.uid))
-          if (snap.exists()) {
-            const up = snap.data()
-            setUserProfile(up)
-            // Ensure STO always lands on sto tab, Owners on dashboard tab
-            if (up.accountType === 'sto') {
-              setTab('sto')
-            } else {
-              setTab('dashboard')
-            }
-          } else {
-            setUserProfile({ phone: '', city: '', avatarBase64: '', accountType: 'owner' })
-            setTab('dashboard')
-          }
 
-          const carSnap = await getDocs(query(collection(db, 'cars'), where('userId', '==', user.uid)))
-          setCarList(carSnap.docs.map(d => ({ ...d.data(), id: d.id })))
-
-          const histSnap = await getDocs(query(collection(db, 'history'), where('userId', '==', user.uid)))
-          const hList = histSnap.docs.map(d => ({ ...d.data(), id: d.id }))
-          hList.sort((a, b) => {
-            const dA = new Date(a.date).getTime()
-            const dB = new Date(b.date).getTime()
-            if (dA === dB) return (b.createdAt || 0) - (a.createdAt || 0)
-            return dB - dA
-          })
-          setHistoryList(hList)
-
-        } catch (e) {
-          console.error("Firestore error:", e)
-        }
-      } else {
-        setUserProfile(null)
-        setCarList([])
-        setHistoryList([])
-        setTab('dashboard') // Reset tab on logout
+    const unsubAuth = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      if (!user) {
+        setUserProfile(null);
+        setCarList([]);
+        setHistoryList([]);
+        return;
       }
+
+      // 1. Fetch User Profile
+      try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists()) {
+          const up = snap.data();
+          setUserProfile(up);
+          if (up.accountType === "sto") setTab("sto");
+          else setTab("dashboard");
+        } else {
+          setUserProfile({ phone: "", city: "", avatarBase64: "", accountType: "owner" });
+          setTab("dashboard");
+        }
+      } catch (e) {
+        console.error("Profile fetch error:", e);
+      }
+
+      // 2. Listen for Active Memberships
+      const lowerEmail = user.email.toLowerCase();
+      const inviteQuery = query(
+        collection(db, "team_invitations"),
+        where("email", "in", [user.email, lowerEmail]),
+        where("status", "==", "active")
+      );
+
+      const unsubInvites = onSnapshot(inviteQuery, async (snap) => {
+        const ownerIds = snap.docs.map((d) => d.data().ownerId);
+        const allRelevantUids = Array.from(new Set([user.uid, ...ownerIds])).slice(0, 10);
+        setActiveMemberships(ownerIds);
+
+        // Cleanup previous listeners
+        if (carUnsubRef.current) carUnsubRef.current();
+        if (histUnsubRef.current) histUnsubRef.current();
+
+        // 3. Listen for Cars (Personal + Shared)
+        carUnsubRef.current = onSnapshot(query(collection(db, "cars"), where("userId", "in", allRelevantUids)), (carSnap) => {
+          setCarList(carSnap.docs.map((d) => ({ ...d.data(), id: d.id })));
+        });
+
+        // 4. Listen for History (Personal + Shared)
+        histUnsubRef.current = onSnapshot(query(collection(db, "history"), where("userId", "in", allRelevantUids)), (histSnap) => {
+          const hList = histSnap.docs.map((d) => ({ ...d.data(), id: d.id }));
+          hList.sort((a, b) => {
+            const dA = new Date(a.date).getTime();
+            const dB = new Date(b.date).getTime();
+            if (dA === dB) return (b.createdAt || 0) - (a.createdAt || 0);
+            return dB - dA;
+          });
+          setHistoryList(hList);
+        });
+      });
+
+      return () => {
+        unsubInvites();
+        if (carUnsubRef.current) carUnsubRef.current();
+        if (histUnsubRef.current) histUnsubRef.current();
+      };
     });
-    return () => unsub();
+
+    return () => unsubAuth();
   }, []);
 
   useEffect(() => {
