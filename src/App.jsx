@@ -53,6 +53,7 @@ export default function App() {
   const [showTransfer, setShowTransfer] = useState(false)
   const [incomingTransfer, setIncomingTransfer] = useState(null)
   const [bookingNotifications, setBookingNotifications] = useState([])
+  const [incomingInvites, setIncomingInvites] = useState([])
   
   const tabRef = useRef(tab)
   useEffect(() => { tabRef.current = tab }, [tab])
@@ -170,6 +171,15 @@ export default function App() {
     return () => unsub()
   }, [currentUser, userProfile])
 
+  useEffect(() => {
+    if (!currentUser) return;
+    const q = query(collection(db, 'team_invitations'), where('email', '==', currentUser.email), where('status', '==', 'pending'));
+    const unsub = onSnapshot(q, snap => {
+      setIncomingInvites(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [currentUser]);
+
   const markNotificationAsRead = async (id) => {
     if (!currentUser) return
     try {
@@ -279,6 +289,20 @@ export default function App() {
     } catch (e) { console.error(e) }
   }
 
+  const handleAcceptInvite = async (invId) => {
+    if (!currentUser) return;
+    try {
+      await updateDoc(doc(db, 'team_invitations', invId), { status: 'active' });
+    } catch (e) { console.error("Accept invite error:", e) }
+  }
+
+  const handleRejectInvite = async (invId) => {
+    if (!currentUser) return;
+    try {
+      await deleteDoc(doc(db, 'team_invitations', invId));
+    } catch (e) { console.error("Reject invite error:", e) }
+  }
+
   const handleRejectService = async (svcId) => {
     if (!currentUser) return
     try {
@@ -352,7 +376,7 @@ export default function App() {
       <div className={`fixed inset-0 flex font-sans overflow-hidden bg-white dark:bg-black text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
         <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin} userProfile={userProfile} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} onLogout={() => signOut(auth)} />
         <div className="flex flex-1 flex-col min-h-0 relative bg-white dark:bg-gray-950 overflow-hidden">
-          <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} bookingNotifications={bookingNotifications} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setTab={setTab} onMarkRead={markNotificationAsRead} onMarkAllRead={markAllNotificationsAsRead} />
+          <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} bookingNotifications={bookingNotifications} incomingInvites={incomingInvites} onAcceptInvite={handleAcceptInvite} onRejectInvite={handleRejectInvite} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setTab={setTab} onMarkRead={markNotificationAsRead} onMarkAllRead={markAllNotificationsAsRead} />
           <main className={`flex-1 flex flex-col min-h-0 relative overflow-hidden ${tab === 'ai' ? 'bg-white dark:bg-gray-800' : 'bg-[#F8FAFC] dark:bg-gray-950'}`}>
             {tab === 'ai' 
               ? <AIView carList={carList} historyList={historyList} userProfile={userProfile} onUpdateAIUsage={onUpdateAIUsage} onGoPlans={() => setTab('plans')} />

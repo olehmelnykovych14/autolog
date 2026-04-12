@@ -3,10 +3,10 @@ import { Sun, Moon, Bell, ChevronDown, Check, X, ShieldCheck, Clock, AlertCircle
 import { ThemeCtx } from '../../context/ThemeContext'
 import { C } from '../../constants'
 
-export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu, setTab, onMarkRead, onMarkAllRead }) {
+export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], incomingInvites=[], onAcceptInvite, onRejectInvite, onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu, setTab, onMarkRead, onMarkAllRead }) {
   const [showInbox, setShowInbox] = useState(false)
   const isSto = userProfile?.accountType === 'sto'
-  const totalNotifications = pendingApprovals.length + bookingNotifications.length
+  const totalNotifications = pendingApprovals.length + bookingNotifications.length + incomingInvites.length
 
   return (
     <header className="sticky top-0 z-[50] flex items-center justify-between px-6 py-6 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl">
@@ -63,6 +63,21 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-50 dark:divide-gray-700 flex flex-col">
+                      {/* Team Invitations */}
+                      {incomingInvites.map(inv => (
+                        <div key={inv.id} className="p-4 bg-amber-50/30 dark:bg-amber-900/10 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors">
+                          <div className="flex items-center gap-2 mb-2">
+                            <AlertCircle size={14} className="text-amber-500" />
+                            <p className="text-xs text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">Запрошення в команду</p>
+                          </div>
+                          <p className="text-sm font-bold text-gray-900 dark:text-white mb-3 leading-tight">Користувач <span className="text-[#5C3EFE]">{inv.fromName}</span> запрошує вас приєднатися до гаража.</p>
+                          <div className="flex gap-2">
+                            <button onClick={() => onAcceptInvite(inv.id)} className="flex-1 py-1.5 bg-[#5C3EFE] text-white text-[10px] font-bold rounded-lg hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20">ПРИЙНЯТИ</button>
+                            <button onClick={() => onRejectInvite(inv.id)} className="flex-1 py-1.5 bg-white dark:bg-gray-800 text-gray-400 text-[10px] font-bold rounded-lg hover:bg-red-50 hover:text-red-500 transition-all border border-gray-200 dark:border-gray-700 shadow-sm">ВІДХИЛИТИ</button>
+                          </div>
+                        </div>
+                      ))}
+
                       {/* Booking Notifications */}
                       {bookingNotifications.map(b => (
                         <div key={b.id} className="group p-4 bg-indigo-50/30 dark:bg-indigo-900/10 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors cursor-pointer relative" onClick={() => { setShowInbox(false); setTab(isSto ? 'sto_bookings' : 'bookings') }}>
