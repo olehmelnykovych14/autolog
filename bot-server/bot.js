@@ -77,7 +77,7 @@ bot.use(async (ctx, next) => {
 const mainMenu = Markup.keyboard([
   ['🚗 Мої авто', '📅 Мої записи'],
   ['💰 Витрати', '🧾 Додати запис (AI)'],
-  ['⚙️ Налаштування', '❓ Допомога']
+  ['❓ Допомога']
 ]).resize();
 
 // --- Helpers ---
@@ -351,7 +351,7 @@ bot.on('text', async (ctx) => {
   if (ctx.message.text.startsWith('/')) return;
   
   // Ignore texts that match menu buttons to prevent AI trigger
-  const menuButtons = ['🚗 Мої Автомобілі', '📅 Мої Записи', '💰 Витрати', '❓ Допомога', '🧾 Додати запис (AI)', '⚙️ Налаштування'];
+  const menuButtons = ['🚗 Мої авто', '📅 Мої записи', '💰 Витрати', '❓ Допомога', '🧾 Додати запис (AI)'];
   if (menuButtons.some(btn => ctx.message.text.includes(btn))) {
     return; // Let the 'hears' handlers handle it
   }
