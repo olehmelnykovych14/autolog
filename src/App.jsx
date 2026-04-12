@@ -172,8 +172,13 @@ export default function App() {
   }, [currentUser, userProfile])
 
   useEffect(() => {
-    if (!currentUser) return;
-    const q = query(collection(db, 'team_invitations'), where('email', '==', currentUser.email), where('status', '==', 'pending'));
+    if (!currentUser || !currentUser.email) return;
+    const lowerEmail = currentUser.email.toLowerCase();
+    const q = query(
+      collection(db, 'team_invitations'), 
+      where('email', 'in', [currentUser.email, lowerEmail]), 
+      where('status', '==', 'pending')
+    );
     const unsub = onSnapshot(q, snap => {
       setIncomingInvites(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });

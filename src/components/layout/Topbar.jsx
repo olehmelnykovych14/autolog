@@ -5,6 +5,17 @@ import { C } from '../../constants'
 
 export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], incomingInvites=[], onAcceptInvite, onRejectInvite, onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu, setTab, onMarkRead, onMarkAllRead }) {
   const [showInbox, setShowInbox] = useState(false)
+  const [processingInvites, setProcessingInvites] = useState({})
+
+  const handleInviteAction = async (id, actionFn) => {
+    setProcessingInvites(p => ({ ...p, [id]: true }))
+    try {
+      await actionFn(id)
+    } finally {
+      setProcessingInvites(p => ({ ...p, [id]: false }))
+    }
+  }
+
   const isSto = userProfile?.accountType === 'sto'
   const totalNotifications = pendingApprovals.length + bookingNotifications.length + incomingInvites.length
 
@@ -72,8 +83,20 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
                           </div>
                           <p className="text-sm font-bold text-gray-900 dark:text-white mb-3 leading-tight">Користувач <span className="text-[#5C3EFE]">{inv.fromName}</span> запрошує вас приєднатися до гаража.</p>
                           <div className="flex gap-2">
-                            <button onClick={() => onAcceptInvite(inv.id)} className="flex-1 py-1.5 bg-[#5C3EFE] text-white text-[10px] font-bold rounded-lg hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20">ПРИЙНЯТИ</button>
-                            <button onClick={() => onRejectInvite(inv.id)} className="flex-1 py-1.5 bg-white dark:bg-gray-800 text-gray-400 text-[10px] font-bold rounded-lg hover:bg-red-50 hover:text-red-500 transition-all border border-gray-200 dark:border-gray-700 shadow-sm">ВІДХИЛИТИ</button>
+                            <button 
+                              disabled={processingInvites[inv.id]}
+                              onClick={() => handleInviteAction(inv.id, onAcceptInvite)} 
+                              className={`flex-1 py-1.5 bg-[#5C3EFE] text-white text-[10px] font-bold rounded-lg transition-all shadow-lg shadow-indigo-500/20 ${processingInvites[inv.id] ? 'opacity-50 cursor-wait' : 'hover:bg-indigo-600'}`}
+                            >
+                              {processingInvites[inv.id] ? 'ОБРОБКА...' : 'ПРИЙНЯТИ'}
+                            </button>
+                            <button 
+                              disabled={processingInvites[inv.id]}
+                              onClick={() => handleInviteAction(inv.id, onRejectInvite)} 
+                              className={`flex-1 py-1.5 bg-white dark:bg-gray-800 text-gray-400 text-[10px] font-bold rounded-lg transition-all border border-gray-200 dark:border-gray-700 shadow-sm ${processingInvites[inv.id] ? 'opacity-50 cursor-wait' : 'hover:bg-red-50 hover:text-red-500'}`}
+                            >
+                              ВІДХИЛИТИ
+                            </button>
                           </div>
                         </div>
                       ))}

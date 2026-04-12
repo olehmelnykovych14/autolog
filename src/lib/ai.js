@@ -16,48 +16,65 @@ const checkModels = async () => {
 };
 checkModels();
 
-export const askGemini = async (userInput, carList, historyList) => {
+export const askGemini = async (userInput, carList, historyList, mediaData = null) => {
   if (!API_KEY) return "Помилка: API Ключ не знайдено!";
 
-  const promptText = `Ти — AI Механік у застосунку AutoLog. Відповідай ТІЛЬКИ українською мовою, лаконічно, використовуй Markdown.
+  const promptText = `Ти — Професійний AI Механік AutoLog. 
+Відповідай українською мовою, лаконічно, використовуючи Markdown.
 
-Контекст про клієнта:
+КОНТЕКСТ КОРИСТУВАЧА:
 - Автомобілі: ${JSON.stringify(carList)}
-- Вся історія сервісу та витрат: ${JSON.stringify(historyList)}
+- Історія сервісу: ${JSON.stringify(historyList)}
 
-Питання клієнта: ${userInput}
+ТВОЄ ЗАВДАННЯ:
+1. Якщо користувач надіслав ФОТО:
+   - Проаналізуй зображення (панель приладів, деталі, чеки).
+   - Дай точну діагностику або пораду.
+   - Якщо це ЧЕК, виділи суму та тип робіт.
+2. Якщо користувач надіслав ГОЛОСОВЕ або ТЕКСТ:
+   - Відповідай, враховуючи специфікації його авто (рік, модель).
+   - Давай конкретні поради щодо обслуговування.
 
-Механік:`;
+Питання: ${userInput || "Проаналізуй надіслані дані"}`;
 
-  // Список моделей для тесту
-  const models = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-flash-latest"];
-  
-  for (const modelName of models) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
-      const result = await model.generateContent(promptText);
-      return result.response.text();
-    } catch (e) {
-      console.warn(`🤖 SDK Error (${modelName}):`, e.message);
-    }
-  }
-
-  // Fallback
+  const modelName = "gemini-2.0-flash";
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+    const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
+    
+    let content;
+    if (mediaData) {
+      // mediaData expected: { data: 'base64...', mimeType: 'image/jpeg' }
+      content = [promptText, { inlineData: mediaData }];
+    } else {
+      content = promptText;
+    }
+
+    const result = await model.generateContent(content);
+    return result.response.text();
+  } catch (e) {
+    console.error(`🤖 SDK Error:`, e.message);
+    
+    // Fallback approach (Direct fetch)
+    try {
+      const parts = [{ text: promptText }];
+      if (mediaData) {
+        parts.push({ inlineData: mediaData });
       }
-    );
 
-    const data = await response.json();
-    if (response.ok) return data.candidates?.[0]?.content?.parts?.[0]?.text;
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts }] })
+        }
+      );
 
-    return `❌ КЛЮЧ НЕМАЄ ДОСТУПУ (404). \n\n**РІШЕННЯ:** Зайдіть на aistudio.google.com і створіть НОВИЙ ключ у НОВОМУ проекті ("Create API key in new project"). Поточний ключ не працює з Gemini.`;
-  } catch (error) {
-    return "Помилка мережі AI.";
+      const data = await response.json();
+      if (response.ok) return data.candidates?.[0]?.content?.parts?.[0]?.text;
+      return `❌ AI Error: ${data.error?.message || 'Unknown error'}`;
+    } catch (error) {
+      return "Помилка мережі AI.";
+    }
   }
 };
