@@ -37,7 +37,9 @@ export const askGemini = async (userInput, carList, historyList, mediaData = nul
 
 Питання: ${userInput || "Проаналізуй надіслані дані"}`;
 
-  const modelName = "gemini-2.0-flash";
+  // Пріоритетно використовуємо 1.5-flash, але деякі ключі (як ваш) вимагають "gemini-flash-latest"
+  const modelName = "gemini-1.5-flash";
+  const fallbackModel = "gemini-flash-latest";
   try {
     const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
     
@@ -52,29 +54,38 @@ export const askGemini = async (userInput, carList, historyList, mediaData = nul
     const result = await model.generateContent(content);
     return result.response.text();
   } catch (e) {
-    console.error(`🤖 SDK Error:`, e.message);
-    
-    // Fallback approach (Direct fetch)
     try {
-      const parts = [{ text: promptText }];
-      if (mediaData) {
-        parts.push({ inlineData: mediaData });
-      }
+      const model = genAI.getGenerativeModel({ model: fallbackModel }, { apiVersion: 'v1beta' });
+      const result = await model.generateContent(content);
+      return result.response.text();
+    } catch (fallbackErr) {
+      console.error(`🤖 Fallback SDK Error:`, fallbackErr.message);
+      
+      // Final Direct fetch (Direct API call as absolute fallback)
+      try {
+        const parts = [{ text: promptText }];
+        if (mediaData) parts.push({ inlineData: mediaData });
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts }] })
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${fallbackModel}:generateContent?key=${API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts }] })
+          }
+        );
+
+        const data = await response.json();
+        if (response.ok) return data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (data.error?.message?.includes('blocked')) {
+          return "🚫 **API не активовано.** \n\nВам потрібно активувати 'Generative Language API' у Google Cloud Console.";
         }
-      );
-
-      const data = await response.json();
-      if (response.ok) return data.candidates?.[0]?.content?.parts?.[0]?.text;
-      return `❌ AI Error: ${data.error?.message || 'Unknown error'}`;
-    } catch (error) {
-      return "Помилка мережі AI.";
+        
+        return `❌ AI Error: ${data.error?.message || 'Unknown error'}`;
+      } catch (error) {
+        return "Помилка мережі AI.";
+      }
     }
   }
 };
