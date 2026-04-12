@@ -110,8 +110,8 @@ export default function App() {
       );
 
       const unsubInvites = onSnapshot(inviteQuery, async (snap) => {
-        const ownerIds = snap.docs.map((d) => d.data().ownerId);
-        const allRelevantUids = Array.from(new Set([user.uid, ...ownerIds])).slice(0, 10);
+        const ownerIds = snap.docs.map((d) => d.data().ownerId).filter(Boolean);
+        const allRelevantUids = Array.from(new Set([user.uid, ...ownerIds])).filter(id => typeof id === 'string' && id).slice(0, 10);
         setActiveMemberships(ownerIds);
 
         // Cleanup previous listeners
@@ -211,7 +211,7 @@ export default function App() {
       where('status', '==', 'pending')
     );
     const unsub = onSnapshot(q, snap => {
-      setIncomingInvites(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setIncomingInvites(snap.docs.map(d => ({ ...d.data(), id: d.id })));
     });
     return () => unsub();
   }, [currentUser]);
@@ -326,9 +326,9 @@ export default function App() {
   }
 
   const handleAcceptInvite = async (invId) => {
-    if (!currentUser) return;
+    if (!currentUser || !invId) return;
     try {
-      await updateDoc(doc(db, 'team_invitations', invId), { status: 'active' });
+      await updateDoc(doc(db, 'team_invitations', String(invId)), { status: 'active' });
     } catch (e) { 
       console.error("Accept invite error:", e);
       throw e; 
@@ -336,9 +336,9 @@ export default function App() {
   }
 
   const handleRejectInvite = async (invId) => {
-    if (!currentUser) return;
+    if (!currentUser || !invId) return;
     try {
-      await deleteDoc(doc(db, 'team_invitations', invId));
+      await deleteDoc(doc(db, 'team_invitations', String(invId)));
     } catch (e) { 
       console.error("Reject invite error:", e);
       throw e;

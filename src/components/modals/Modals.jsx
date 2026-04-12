@@ -67,7 +67,6 @@ export function InviteMemberModal({ limit, currentCount, onClose, onInvite }) {
     e.preventDefault()
     if (!email.trim() || !name.trim()) return
     onInvite({
-      id: Date.now(),
       name: name.trim(),
       email: email.trim().toLowerCase(),
       role,
