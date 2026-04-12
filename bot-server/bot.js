@@ -344,13 +344,15 @@ const askGemini = async (prompt, hasMedia = false, base64 = null, mimeType = "im
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
         let result;
-        if (hasMedia && base64) {
+        // Strict check: hasMedia must be true AND base64 must be a non-empty string
+        if (hasMedia && typeof base64 === 'string' && base64.length > 0) {
             result = await model.generateContent([prompt, { inlineData: { data: base64, mimeType } }]);
         } else {
             result = await model.generateContent(prompt);
         }
         return result.response.text();
     } catch (e) {
+        console.error("Gemini API Error:", e.message);
         return `Помилка AI: ${e.message}`;
     }
 };
@@ -431,7 +433,7 @@ bot.on('text', async (ctx) => {
     const carList = []; // Could be populated via a helper if needed
     const historyList = [];
     
-    const response = await askGemini(ctx.message.text, carList, historyList);
+    const response = await askGemini(ctx.message.text);
     
     await ctx.telegram.deleteMessage(ctx.chat.id, wait.message_id).catch(() => {});
     
