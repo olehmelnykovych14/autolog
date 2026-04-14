@@ -17,7 +17,11 @@ export function HistoryView({ historyList, carList, onAddService, onUpdateServic
   const filtered = historyList.filter(h => {
     const mCar = filterCar === 'all' || String(h.carId) === String(filterCar)
     const mCat = filterCat === 'all' || String(h.category) === String(filterCat)
-    const mSch = h.title.toLowerCase().includes(search.toLowerCase()) || h.garage?.toLowerCase().includes(search.toLowerCase())
+    
+    const searchLow = search.trim().toLowerCase()
+    const mSch = searchLow === '' || 
+      (h.title && h.title.toLowerCase().includes(searchLow)) || 
+      (h.garage && h.garage.toLowerCase().includes(searchLow))
     
     let mDate = true
     const recDate = new Date(h.date || h.createdAt || 0)
@@ -54,7 +58,7 @@ export function HistoryView({ historyList, carList, onAddService, onUpdateServic
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Сервісна історія</h1>
-          <p className="text-gray-500 dark:text-gray-400 font-medium">Всього {historyList.length} зафіксовано записів</p>
+          <p className="text-gray-500 dark:text-gray-400 font-medium">Всього {filtered.length} зафіксовано записів</p>
         </div>
         <PrimaryBtn onClick={() => setShowModal(true)} className="sm:self-center">
           <Plus size={18} /> Додати сервіс
