@@ -15,11 +15,12 @@ export function HistoryView({ historyList, carList, onAddService, onUpdateServic
   const [search, setSearch] = useState('')
 
   const filtered = historyList.filter(h => {
-    // If carId is broken/NaN, the Edit Modal defaults to carList[0]. 
-    // We should do the exactly same here so the user sees consistent behavior.
-    const effectiveCarId = (h.carId && String(h.carId) !== 'NaN') 
-                           ? String(h.carId) 
-                           : String(carList[0]?.id || '')
+    // Check if the record's carId actually exists in the garage
+    const isValidCar = carList.some(c => String(c.id) === String(h.carId))
+    
+    // If it's a broken/orphaned record (e.g. "undefined", "NaN", old ID), 
+    // the Edit Modal defaults to carList[0]. We do the same here.
+    const effectiveCarId = isValidCar ? String(h.carId) : String(carList[0]?.id || '')
     
     const mCar = filterCar === 'all' || effectiveCarId === String(filterCar)
     const mCat = filterCat === 'all' || String(h.category) === String(filterCat)
