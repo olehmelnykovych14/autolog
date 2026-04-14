@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDMifGkzL3l8c_22LLXMpCFL1xyQOrlz1o",
@@ -21,6 +21,9 @@ try {
   db = getFirestore(app);
   if (typeof window !== "undefined") {
     analytics = getAnalytics(app);
+    enableMultiTabIndexedDbPersistence(db).catch(err => {
+      console.warn("Offline persistence not enabled:", err.code);
+    });
   }
 } catch (error) {
   console.error("Firebase initialization error:", error);
