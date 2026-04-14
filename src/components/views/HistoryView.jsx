@@ -15,12 +15,13 @@ export function HistoryView({ historyList, carList, onAddService, onUpdateServic
   const [search, setSearch] = useState('')
 
   const filtered = historyList.filter(h => {
-    // Fallback for old records that might have carId = NaN or be completely orphaned
-    const isOrphaned = !h.carId || String(h.carId) === 'NaN' || !carList.some(c => String(c.id) === String(h.carId))
-    const mCar = filterCar === 'all' || 
-                 String(h.carId) === String(filterCar) ||
-                 (isOrphaned && carList.length === 1 && String(carList[0].id) === String(filterCar))
+    // If carId is broken/NaN, the Edit Modal defaults to carList[0]. 
+    // We should do the exactly same here so the user sees consistent behavior.
+    const effectiveCarId = (h.carId && String(h.carId) !== 'NaN') 
+                           ? String(h.carId) 
+                           : String(carList[0]?.id || '')
     
+    const mCar = filterCar === 'all' || effectiveCarId === String(filterCar)
     const mCat = filterCat === 'all' || String(h.category) === String(filterCat)
     
     const searchLow = search.trim().toLowerCase()
