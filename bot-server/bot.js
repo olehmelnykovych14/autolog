@@ -303,7 +303,7 @@ bot.on('photo', async (ctx) => {
 
 ТВОЄ ЗАВДАННЯ:
 1. Якщо це ЧЕК СТО: проаналізуй його та поверни JSON: {"type": "receipt", "title": "...", "cost": 0, "date": "YYYY-MM-DD", "mileage": 0}.
-2. Якщо це ФОТО ПОЛОМКИ, ДЕТАЛІ або ПРИЛАДОВОЇ ПАНЕЛІ: дай розгорнуту пораду українською та поверни JSON: {"type": "advice", "text": "Твій текст поради"}. Важливо: у полі "text" обов'язково додай посилання на покупку деталі, якщо ти її ідентифікував, у форматі Markdown: [🔎 На Exist.ua](https://exist.ua/uk/search/?query=[НазваДеталі]) та [🛒 На Avto.pro](https://avto.pro/search/?q=[НазваДеталі]).
+2. Якщо це ФОТО ПОЛОМКИ, ДЕТАЛІ або ПРИЛАДОВОЇ ПАНЕЛІ: дай розгорнуту пораду українською та поверни JSON: {"type": "advice", "text": "Твій текст поради"}. Важливо: у полі "text" обов'язково додай посилання на покупку деталі, якщо ти її ідентифікував, у форматі Markdown. У самому URL посиланні замінюй пробіли на символ "+". Приклад: [🔎 На Exist.ua](https://exist.ua/uk/search/?query=[Назва+Деталі]) та [🛒 На Avto.pro](https://avto.pro/search/?q=[Назва+Деталі]).
 3. В інших випадках: просто дай коротку відповідь.`;
 
     const aiResponse = await askGemini(prompt, true, base64);
@@ -440,7 +440,7 @@ bot.on('voice', async (ctx) => {
 
     const garageContext = await getUserGarageContext(ctx.userId);
     const prompt = `Ти — AI Механік AutoLog. Користувач надіслав ГОЛОСОВЕ ПОВІДОМЛЕННЯ. Проаналізуй його та дай корисну пораду українською мовою.${garageContext} 
-ПІДБІР ЗАПЧАСТИН: Якщо ти ідентифікуєш несправну деталь (колодки, амортизатори, тощо), додай в кінці відповіді посилання на покупку: [🔎 На Exist.ua](https://exist.ua/uk/search/?query=[НазваДеталі]) та [🛒 На Avto.pro](https://avto.pro/search/?q=[НазваДеталі]).`;
+ПІДБІР ЗАПЧАСТИН: Якщо ти ідентифікуєш несправну деталь (колодки, амортизатори, тощо), додай в кінці відповіді посилання на покупку. В URL-адресі заміни всі пробіли на "+". Приклад: [🔎 На Exist.ua](https://exist.ua/uk/search/?query=[Назва+Деталі]) та [🛒 На Avto.pro](https://avto.pro/search/?q=[Назва+Деталі]).`;
     
     const aiResponse = await askGemini(prompt, true, base64, "audio/mp3");
     if (!aiResponse.startsWith("Помилка AI")) await incrementAIUsage(ctx);
@@ -473,9 +473,9 @@ bot.on('text', async (ctx) => {
     const historyList = [];
     
     const promptText = `Ти — AI Механік AutoLog. Дай професійну пораду українською мовою на запит користувача: "${ctx.message.text}".
-ПІДБІР ЗАПЧАСТИН: Якщо мова йде про ремонт або заміну конкретної деталі (гальмівні колодки, фільтри, свічки тощо), обов'язково додай в кінці відповіді посилання на покупку у форматі Markdown:
-- [🔎 Знайти "[Назва]" на Exist.ua](https://exist.ua/uk/search/?query=[Назва])
-- [🛒 Знайти на Avto.pro](https://avto.pro/search/?q=[Назва])`;
+ПІДБІР ЗАПЧАСТИН: Якщо мова йде про ремонт або заміну конкретної деталі (гальмівні колодки, фільтри, свічки тощо), обов'язково додай в кінці відповіді посилання на покупку у форматі Markdown. У самому URL посиланні замінюй пробіли на символ "+".
+- [🔎 Знайти "[Назва]" на Exist.ua](https://exist.ua/uk/search/?query=[Форматована+Назва+Без+Пробілів])
+- [🛒 Знайти на Avto.pro](https://avto.pro/search/?q=[Форматована+Назва+Без+Пробілів])`;
 
     const response = await askGemini(promptText);
     if (!response.startsWith("Помилка AI")) await incrementAIUsage(ctx);

@@ -159,7 +159,25 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
                 )}
                 {m.role === 'bot' && (
                   <div className="bg-white dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700/50 rounded-[1.5rem] rounded-tl-none px-5 py-4 text-sm text-gray-900 dark:text-gray-100 shadow-sm backdrop-blur-md">
-                    <ReactMarkdown className="markdown-content">{m.text}</ReactMarkdown>
+                    <ReactMarkdown 
+                      className="markdown-content text-sm"
+                      components={{
+                        a: ({node, ...props}) => {
+                          const isMarketplace = props.href?.includes('exist.ua') || props.href?.includes('avto.pro');
+                          if (isMarketplace) {
+                              return (
+                                 <a {...props} target="_blank" rel="noopener noreferrer" 
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-2 mr-2 bg-indigo-50 dark:bg-indigo-900/30 text-[#5C3EFE] dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl hover:bg-[#5C3EFE] hover:text-white transition-colors shadow-sm text-xs font-bold no-underline">
+                                    {props.children}
+                                 </a>
+                              );
+                          }
+                          return <a {...props} className="text-indigo-500 underline hover:text-indigo-600" target="_blank" rel="noopener noreferrer" />
+                        }
+                      }}
+                    >
+                      {m.text}
+                    </ReactMarkdown>
                     {(m.text.toLowerCase().includes('запис') || m.text.toLowerCase().includes('сто')) && (
                        <button 
                          onClick={onGoBookings}
