@@ -253,7 +253,40 @@ bot.hears('❓ Допомога', (ctx) => {
 
 bot.hears('🧾 Додати запис (AI)', (ctx) => ctx.reply('📸 Надішліть фото чека СТО. Я проаналізую його автоматично.'));
 
+const PLANS_LIMITS = { 'Free': 5, 'Premium': 100, 'Business': 9999 };
+const getCurrentMonthStr = () => new Date().toISOString().substring(0, 7);
+
+const handleAILimit = async (ctx) => {
+    if (!ctx.userData) return false;
+    const plan = ctx.userData.plan || 'Free';
+    const limit = PLANS_LIMITS[plan] || 5;
+    const currentMonth = getCurrentMonthStr();
+    let usage = ctx.userData.aiUsage || 0;
+    if (ctx.userData.lastAiResetMonth !== currentMonth) usage = 0;
+    if (usage >= limit) {
+        await ctx.reply('⚠️ *Ваш ліміт запитів до AI вичерпано!*\nПерейдіть у веб-додаток (розділ Тарифи), щоб збільшити ліміт і розблокувати Механіка.', { parse_mode: 'Markdown' });
+        return false;
+    }
+    return true;
+};
+
+const incrementAIUsage = async (ctx) => {
+    if (!ctx.userId || !ctx.userData) return;
+    const currentMonth = getCurrentMonthStr();
+    let usage = ctx.userData.aiUsage || 0;
+    if (ctx.userData.lastAiResetMonth !== currentMonth) usage = 0;
+    const newUsage = usage + 1;
+    ctx.userData.aiUsage = newUsage;
+    ctx.userData.lastAiResetMonth = currentMonth;
+    try {
+        await db.collection('users').doc(ctx.userId).update({ aiUsage: newUsage, lastAiResetMonth: currentMonth });
+    } catch (e) {
+        console.error("Limit update error:", e);
+    }
+};
+
 bot.on('photo', async (ctx) => {
+  if (!(await handleAILimit(ctx))) return;
   const loading = await ctx.reply('🤔 Аналізую фото через AI...');
   
   try {
@@ -274,6 +307,7 @@ bot.on('photo', async (ctx) => {
 3. В інших випадках: просто дай коротку відповідь.`;
 
     const aiResponse = await askGemini(prompt, true, base64);
+    if (!aiResponse.startsWith("Помилка AI")) await incrementAIUsage(ctx);
     
     // Check if it's JSON
     const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
@@ -373,6 +407,7 @@ const getUserGarageContext = async (userId) => {
 };
 
 bot.on('voice', async (ctx) => {
+  if (!(await handleAILimit(ctx))) return;
   const loading = await ctx.reply('🎤 Слухаю ваше повідомлення...');
   const oggPath = path.join(__dirname, 'temp', `${ctx.from.id}_${Date.now()}.ogg`);
   const mp3Path = oggPath.replace('.ogg', '.mp3');
@@ -407,6 +442,7 @@ bot.on('voice', async (ctx) => {
     const prompt = `Ти — AI Механік AutoLog. Користувач надіслав ГОЛОСОВЕ ПОВІДОМЛЕННЯ. Проаналізуй його та дай корисну пораду українською мовою.${garageContext}`;
     
     const aiResponse = await askGemini(prompt, true, base64, "audio/mp3");
+    if (!aiResponse.startsWith("Помилка AI")) await incrementAIUsage(ctx);
     
     const keyboard = Markup.inlineKeyboard([
       [Markup.button.callback('📅 Записатись на СТО', 'book_sto_start')]
@@ -428,12 +464,15 @@ bot.on('text', async (ctx) => {
   const menuButtons = ['🚗 Мої авто', '📅 Мої записи', '💰 Витрати', '❓ Допомога', '🧾 Додати запис (AI)'];
   if (menuButtons.some(btn => ctx.message.text.includes(btn))) return;
 
+  if (!(await handleAILimit(ctx))) return;
+
   const wait = await ctx.reply('🤔 Думаю...');
   try {
     const carList = []; // Could be populated via a helper if needed
     const historyList = [];
     
     const response = await askGemini(ctx.message.text);
+    if (!response.startsWith("Помилка AI")) await incrementAIUsage(ctx);
     
     await ctx.telegram.deleteMessage(ctx.chat.id, wait.message_id).catch(() => {});
     

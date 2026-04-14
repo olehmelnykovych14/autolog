@@ -40,17 +40,17 @@ export const askGemini = async (userInput, carList, historyList, mediaData = nul
   // Пріоритетно використовуємо 1.5-flash, але деякі ключі (як ваш) вимагають "gemini-flash-latest"
   const modelName = "gemini-1.5-flash";
   const fallbackModel = "gemini-flash-latest";
+  
+  let content;
+  if (mediaData) {
+    // mediaData expected: { data: 'base64...', mimeType: 'image/jpeg' }
+    content = [promptText, { inlineData: mediaData }];
+  } else {
+    content = promptText;
+  }
+
   try {
     const model = genAI.getGenerativeModel({ model: modelName }, { apiVersion: 'v1beta' });
-    
-    let content;
-    if (mediaData) {
-      // mediaData expected: { data: 'base64...', mimeType: 'image/jpeg' }
-      content = [promptText, { inlineData: mediaData }];
-    } else {
-      content = promptText;
-    }
-
     const result = await model.generateContent(content);
     return result.response.text();
   } catch (e) {

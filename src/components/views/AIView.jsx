@@ -19,7 +19,9 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
   const timerRef = useRef(null)
 
   const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
-  const usage = userProfile?.aiUsage || 0
+  const currentMonth = new Date().toISOString().substring(0, 7);
+  let usage = userProfile?.aiUsage || 0;
+  if (userProfile?.lastAiResetMonth !== currentMonth) usage = 0;
   const isLimited = usage >= activePlan.aiLimit
 
   useEffect(() => {
@@ -77,6 +79,15 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
 
   const send = async () => {
     if ((!input.trim() && !media) || typing) return
+    
+    if (isLimited) {
+       setMsgs(p => [...p, { 
+           role: 'bot', 
+           text: '⚠️ **Ваш ліміт запитів до AI вичерпано!**\n\nМожливість користуватись AI Механіком відновлюється щомісяця. Щоб продовжити спілкування прямо зараз, будь ласка, оновіть свій тариф у розділі Тарифи.' 
+       }])
+       return;
+    }
+
     const txt = input.trim()
     const currentMedia = media
     setInput('')
@@ -121,7 +132,7 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
           </div>
         </div>
         <div className="flex items-center gap-2">
-           <button onClick={onGoPlans} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-xl text-[9px] font-bold text-gray-500 uppercase tracking-widest hover:text-[#5C3EFE] transition-all">
+           <button onClick={onGoPlans} className={`flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-gray-900 border ${isLimited ? 'border-red-500 text-red-500' : 'border-gray-100 dark:border-gray-700 text-gray-500'} rounded-xl text-[9px] font-bold uppercase tracking-widest hover:text-[#5C3EFE] transition-all`}>
              <RefreshCcw size={12}/> {usage} / {activePlan.aiLimit}
            </button>
            <button onClick={onBack} className="p-2 text-gray-400 hover:text-indigo-500 transition-colors">

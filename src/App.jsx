@@ -250,10 +250,13 @@ export default function App() {
 
   const onUpdateAIUsage = async () => {
     if (!currentUser) return
-    const newUsage = (userProfile?.aiUsage || 0) + 1
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    let usage = userProfile?.aiUsage || 0;
+    if (userProfile?.lastAiResetMonth !== currentMonth) usage = 0;
+    const newUsage = usage + 1;
     try {
-      await updateDoc(doc(db, 'users', currentUser.uid), { aiUsage: newUsage })
-      setUserProfile(p => ({ ...p, aiUsage: newUsage }))
+      await updateDoc(doc(db, 'users', currentUser.uid), { aiUsage: newUsage, lastAiResetMonth: currentMonth });
+      setUserProfile(p => ({ ...p, aiUsage: newUsage, lastAiResetMonth: currentMonth }));
     } catch (e) { console.error(e) }
   }
 
