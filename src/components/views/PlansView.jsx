@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react'
-import { Check, Info, LayoutDashboard, Send, Wrench } from 'lucide-react'
+import { Check, Info, LayoutDashboard, Send, Wrench, ShieldCheck, Zap } from 'lucide-react'
 import { C, PLANS } from '../../constants'
 import { ThemeCtx } from '../../context/ThemeContext'
 import { doc, updateDoc } from 'firebase/firestore'
@@ -162,52 +162,143 @@ export function STOPricingView({ currentUser, userProfile, setUserProfile, setTa
     setTab('sto')
   }
 
+  const proFeatures = [
+    'Unlimited Fleet Diagnostics',
+    'Real-time Inventory Sync',
+    'Multi-user Team Access',
+    'Priority Email Support',
+  ]
+
+  const lifetimeFeatures = [
+    'All Pro Features Included',
+    'Advanced AI Diagnostics Beta',
+    'White-label Client Reports',
+    'Dedicated Account Manager',
+    'Early Access to API v3',
+  ]
+
+  const badges = [
+    { icon: '🔒', label: 'Enterprise Security' },
+    { icon: '⚡', label: '99.9% Uptime SLA' },
+    { icon: '💬', label: '24/7 Expert Support' },
+  ]
+
   return (
-    <div className="max-w-5xl mx-auto pb-12 w-full pt-10 px-4">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-4">Розблокуйте можливості Partner Garage</h1>
+    <div className="max-w-5xl mx-auto pb-16 w-full pt-8 px-4">
+      {/* Header */}
+      <div className="text-center mb-14">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800/50 text-[#5C3EFE] text-xs font-black uppercase tracking-widest mb-5">
+          <Zap size={12} /> STO Partner Program
+        </div>
+        <h1 className="text-4xl font-black text-gray-900 dark:text-white mb-4 leading-tight">
+          Unlock Premium STO Features
+        </h1>
         <p className="text-gray-500 dark:text-[#94A3B8] text-lg max-w-2xl mx-auto leading-relaxed">
-          Надавайте своїм клієнтам офіційні записи про сервіс. Усі ваші роботи залишаться в історії авто назавжди.
+          Take command of your entire service-to-operation workflow with professional tools designed for maximum efficiency and data-driven growth.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        <div className="bg-white dark:bg-[#1E293B] border border-gray-100 dark:border-gray-700 rounded-3xl p-8 flex flex-col hover:border-indigo-500/50 transition-colors shadow-sm">
-          <div className="mb-8">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Підписка Pro</h3>
-            <div className="mt-6 flex items-baseline gap-2">
-              <span className="text-5xl font-black text-gray-900 dark:text-white">$14.99</span>
-              <span className="text-gray-400 dark:text-gray-500 font-medium">/ місяць</span>
-            </div>
+      {/* Pricing Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12">
+        {/* Pro Subscription */}
+        <div className="relative bg-white dark:bg-[#0F172A] border border-gray-200 dark:border-gray-800/80 rounded-3xl p-8 flex flex-col hover:border-[#5C3EFE]/40 dark:hover:border-[#5C3EFE]/30 transition-all shadow-sm group">
+          <div className="mb-2">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">MONTHLY GROWTH</span>
           </div>
-          <ul className="flex-1 space-y-4 mb-8 text-gray-600 dark:text-gray-300 font-medium">
-            {['Безлімітне додавання верифікованих записів', 'Доступ до клієнтської бази сервісу', 'Базова аналітика вашого СТО'].map((feat, i) => (
-              <li key={i} className="flex items-center gap-3"><Check size={18} className="text-[#5C3EFE] shrink-0" /> {feat}</li>
+          <div className="mb-1">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Pro Subscription</h3>
+          </div>
+          <div className="flex items-baseline gap-2 mb-1 mt-3">
+            <span className="text-5xl font-black text-gray-900 dark:text-white">$29.99</span>
+            <span className="text-gray-400 dark:text-gray-500 font-medium">/ month</span>
+          </div>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-8">
+            Perfect for scaling shops needing advanced diagnostic logs and inventory sync.
+          </p>
+          <ul className="flex-1 space-y-3.5 mb-8">
+            {proFeatures.map((feat, i) => (
+              <li key={i} className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                <div className="w-5 h-5 rounded-full bg-[#5C3EFE]/10 flex items-center justify-center shrink-0">
+                  <Check size={12} className="text-[#5C3EFE]" />
+                </div>
+                {feat}
+              </li>
             ))}
           </ul>
-          <button onClick={() => handlePurchase('pro')} disabled={loading !== null} className="w-full py-4 text-[#5C3EFE] dark:text-white rounded-xl font-bold border border-gray-200 dark:border-gray-600 hover:bg-indigo-50 transition-all flex items-center justify-center">
-            {loading === 'pro' ? <span className="animate-spin mr-2"><LayoutDashboard size={18}/></span> : 'Оформити підписку'}
+          <button
+            onClick={() => handlePurchase('pro')}
+            disabled={loading !== null}
+            className="w-full py-4 rounded-2xl font-black text-sm border-2 border-[#5C3EFE] text-[#5C3EFE] dark:text-white hover:bg-[#5C3EFE] hover:text-white transition-all flex items-center justify-center gap-2 group-hover:bg-[#5C3EFE] group-hover:text-white"
+          >
+            {loading === 'pro'
+              ? <div className="w-5 h-5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+              : <><Zap size={16}/> Upgrade Now</>}
           </button>
         </div>
 
-        <div className="bg-gradient-to-b from-[#1c144e] to-[#0A0F24] border border-[#5C3EFE] rounded-3xl p-8 flex flex-col relative transform md:-translate-y-4 shadow-2xl">
-          <div className="absolute -top-4 right-8 bg-[#5C3EFE] text-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-wider">Оптимальний вибір</div>
-          <div className="mb-8">
-            <h3 className="text-2xl font-bold text-white mb-2">Назавжди (Lifetime)</h3>
-            <div className="mt-6 flex items-baseline gap-2">
-              <span className="text-5xl font-black text-white">$149</span>
-              <span className="text-indigo-200/50 font-medium">одноразово</span>
+        {/* Lifetime Access */}
+        <div className="relative overflow-hidden rounded-3xl p-8 flex flex-col shadow-2xl shadow-indigo-500/20"
+          style={{ background: 'linear-gradient(135deg, #1a0e3a 0%, #0e0a2a 40%, #060613 100%)', border: '1px solid rgba(92,62,254,0.4)' }}>
+          {/* Glow */}
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20"
+            style={{ background: 'radial-gradient(circle, #5C3EFE 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
+
+          <div className="relative z-10 mb-2">
+            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">ULTIMATE VALUE</span>
+          </div>
+          <div className="relative z-10 mb-1">
+            <h3 className="text-2xl font-bold text-white">Lifetime Access</h3>
+          </div>
+          <div className="relative z-10 flex items-baseline gap-2 mb-1 mt-3">
+            <span className="text-5xl font-black text-white">$299</span>
+            <div>
+              <span className="text-indigo-200/50 font-medium text-sm line-through">$420</span>
+              <span className="block text-[10px] text-indigo-300/60">The complete command center. No recurring fees, all future updates included.</span>
             </div>
           </div>
-          <ul className="flex-1 space-y-4 mb-8 text-indigo-100/90">
-            {['Усі можливості підписки Pro', 'Довічний доступ до платформи', 'Економія $60 щороку'].map((feat, i) => (
-              <li key={i} className="flex items-center gap-3"><Check size={18} className="text-[#5C3EFE] shrink-0 bg-white rounded-full p-0.5" /> {feat}</li>
+          <p className="relative z-10 text-xs text-indigo-300/50 mb-8">The complete command center. No recurring fees, all future updates included.</p>
+          
+          <ul className="relative z-10 flex-1 space-y-3.5 mb-8">
+            {lifetimeFeatures.map((feat, i) => (
+              <li key={i} className="flex items-center gap-3 text-sm text-indigo-100/90">
+                <div className="w-5 h-5 rounded-full bg-[#5C3EFE] flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/50">
+                  <Check size={11} className="text-white" />
+                </div>
+                {feat}
+              </li>
             ))}
           </ul>
-          <button onClick={() => handlePurchase('lifetime')} disabled={loading !== null} className="w-full py-4 bg-[#5C3EFE] text-white rounded-xl font-black shadow-xl shadow-indigo-500/30 hover:opacity-90 transition-all flex items-center justify-center transform hover:-translate-y-1">
-            {loading === 'lifetime' ? <span className="animate-spin mr-2"><LayoutDashboard size={18}/></span> : 'Придбати назавжди'}
+
+          <button
+            onClick={() => handlePurchase('lifetime')}
+            disabled={loading !== null}
+            className="relative z-10 w-full py-4 bg-[#5C3EFE] text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/40 hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            {loading === 'lifetime'
+              ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              : <><ShieldCheck size={16}/> Claim Lifetime License</>}
           </button>
         </div>
+      </div>
+
+      {/* Trust Badges */}
+      <div className="flex flex-wrap items-center justify-center gap-6">
+        {badges.map((b, i) => (
+          <div key={i} className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400">
+            <span className="text-base">{b.icon}</span>
+            {b.label}
+          </div>
+        ))}
+      </div>
+
+      {/* New Service Entry */}
+      <div className="mt-10 flex justify-center">
+        <button
+          onClick={() => setTab('sto')}
+          className="flex items-center gap-2 px-6 py-3 bg-gray-100 dark:bg-gray-800 rounded-xl font-bold text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+        >
+          + New Service Entry
+        </button>
       </div>
     </div>
   )
