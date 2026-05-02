@@ -4,12 +4,33 @@ import { C } from '../../constants'
 
 export function Modal({ title, children, onClose }) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all text-gray-400">
-            <X size={20} />
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(10px)', animation: 'bgFade 250ms ease both' }}
+    >
+      <div
+        className="w-full max-w-lg flex flex-col overflow-hidden"
+        style={{
+          background: 'var(--bg-card)',
+          border: '1px solid var(--line)',
+          borderRadius: '2rem',
+          boxShadow: 'var(--shadow-lg)',
+          animation: 'modalSpring 400ms cubic-bezier(.34,1.56,.64,1) both'
+        }}
+      >
+        <div
+          className="flex items-center justify-between px-6 py-5"
+          style={{ borderBottom: '1px solid var(--line)' }}
+        >
+          <h2 className="text-lg font-bold" style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}>{title}</h2>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors"
+            style={{ color: 'var(--text-3)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-3)' }}
+          >
+            <X size={18} />
           </button>
         </div>
         <div className="p-6 overflow-y-auto max-h-[80vh] custom-scrollbar">
@@ -23,24 +44,23 @@ export function Modal({ title, children, onClose }) {
 export function Field({ label, children }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
+      <label className="al-label">{label}</label>
       {children}
     </div>
   )
 }
 
 export function inp_cls() {
-  return 'w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5C3EFE]/40 focus:border-[#5C3EFE] transition-all text-gray-900 dark:text-white placeholder-gray-400'
+  return 'al-input'
 }
 
 export function PrimaryBtn({ children, onClick, type = 'button', className = '', disabled = false }) {
   return (
-    <button 
-      type={type} 
-      onClick={onClick} 
+    <button
+      type={type}
+      onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-2 px-5 py-2.5 text-white rounded-xl text-sm font-semibold transition-all hover:opacity-90 shadow-lg disabled:opacity-50 ${className}`} 
-      style={{ background: C }}
+      className={`btn-brand disabled:opacity-50 ${className}`}
     >
       {children}
     </button>
@@ -49,18 +69,19 @@ export function PrimaryBtn({ children, onClick, type = 'button', className = '',
 
 export function Card({ title, sub, icon, children, className = '' }) {
   return (
-    <div className={`bg-white dark:bg-gray-800 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-700/60 shadow-sm ${className}`}>
+    <div className={`al-card p-6 ${className}`}>
       {(title || icon) && (
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <div>
-            {title && <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight tracking-tight">{title}</h3>}
-            {sub && <p className="text-xs font-medium text-gray-500 mt-1">{sub}</p>}
+            {title && <h3 className="text-base font-bold leading-tight" style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}>{title}</h3>}
+            {sub && <p className="text-xs font-medium mt-1" style={{ color: 'var(--text-3)' }}>{sub}</p>}
           </div>
-          {icon && <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center border border-indigo-100 dark:border-indigo-800/50">{icon}</div>}
+          {icon && (
+            <div className="w-11 h-11 rounded-[14px] flex items-center justify-center stat-icon">{icon}</div>
+          )}
         </div>
       )}
       {children}
     </div>
   )
 }
-

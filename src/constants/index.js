@@ -35,7 +35,7 @@ export const NAV_OWNER = [
   { id: 'service', label: 'Сервіс', icon: ClipboardList },
   { id: 'ai', label: 'AI Механік', icon: Bot },
   { id: 'team', label: 'Команда', icon: Users },
-  { id: 'plans', label: 'Тарифи', icon: CreditCard },
+  // SUBSCRIPTION: { id: 'plans', label: 'Тарифи', icon: CreditCard },
   { id: 'settings', label: 'Налаштування', icon: Settings },
   { id: 'admin', label: 'Адмін панель', icon: Users },
 ]
@@ -43,7 +43,7 @@ export const NAV_OWNER = [
 export const NAV_STO = [
   { id: 'sto', label: 'Кабінет партнера', icon: Wrench },
   { id: 'sto_bookings', label: 'Календар записів', icon: Calendar },
-  { id: 'sto_plans', label: 'Тарифи', icon: CreditCard },
+  // SUBSCRIPTION: { id: 'sto_plans', label: 'Тарифи', icon: CreditCard },
   { id: 'settings', label: 'Налаштування', icon: Settings },
   { id: 'admin', label: 'Адмін панель', icon: Users },
 ]

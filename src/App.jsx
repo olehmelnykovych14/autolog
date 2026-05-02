@@ -6,7 +6,7 @@ import { doc, getDoc, getDocs, collection, query, where, addDoc, updateDoc, dele
 
 // Context & Constants
 import { ThemeCtx } from './context/ThemeContext'
-import { C, PLANS } from './constants'
+import { C } from './constants' // SUBSCRIPTION: PLANS removed for free launch
 
 // Layout
 import { Sidebar } from './components/layout/Sidebar'
@@ -18,7 +18,7 @@ import { GarageView } from './components/views/GarageView'
 import { HistoryView } from './components/views/HistoryView'
 import { AIView } from './components/views/AIView'
 import { TeamView } from './components/views/TeamView'
-import { PlansView, STOPricingView } from './components/views/PlansView'
+// SUBSCRIPTION: import { PlansView, STOPricingView } from './components/views/PlansView'
 import { SettingsView } from './components/views/SettingsView'
 import { AdminView } from './components/views/AdminView'
 import { STODashboardView } from './components/views/STODashboardView'
@@ -58,8 +58,9 @@ export default function App() {
   const tabRef = useRef(tab)
   useEffect(() => { tabRef.current = tab }, [tab])
 
-  const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
-  const TEAM_LIMIT = activePlan.teamLimit
+  // SUBSCRIPTION: const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
+  // SUBSCRIPTION: const TEAM_LIMIT = activePlan.teamLimit
+  const TEAM_LIMIT = Infinity // Free launch — no limits
   const [teamMembers, setTeamMembers] = useState([
     { id: 1, name: 'Олександр (Ви)', email: 'owner@autolog.ua', role: 'owner', status: 'active' }
   ])
@@ -248,16 +249,9 @@ export default function App() {
     }
   }, [tab, userProfile?.accountType])
 
+  // SUBSCRIPTION: AI usage tracking disabled for free launch
   const onUpdateAIUsage = async () => {
-    if (!currentUser) return
-    const currentMonth = new Date().toISOString().substring(0, 7);
-    let usage = userProfile?.aiUsage || 0;
-    if (userProfile?.lastAiResetMonth !== currentMonth) usage = 0;
-    const newUsage = usage + 1;
-    try {
-      await updateDoc(doc(db, 'users', currentUser.uid), { aiUsage: newUsage, lastAiResetMonth: currentMonth });
-      setUserProfile(p => ({ ...p, aiUsage: newUsage, lastAiResetMonth: currentMonth }));
-    } catch (e) { console.error(e) }
+    // no-op during free launch
   }
 
   const isAdmin = currentUser?.email === 'olehmelnykovych@gmail.com' || userProfile?.role === 'Admin'
@@ -372,27 +366,24 @@ export default function App() {
     } catch (e) { console.error(e); alert("Помилка передачі.") }
   }
 
+  // SUBSCRIPTION: plan upgrade disabled for free launch
   const handleUpdatePlan = async (planId) => {
-    if (!currentUser) return
-    try {
-      await updateDoc(doc(db, 'users', currentUser.uid), { plan: planId })
-      setUserProfile(p => ({ ...p, plan: planId }))
-    } catch (e) { console.error(e); throw e }
+    // no-op during free launch
   }
 
   if (currentUser === undefined || (currentUser && userProfile === null)) {
     return (
-      <div className={`flex items-center justify-center h-screen w-full bg-gray-50 dark:bg-gray-900 transition-colors duration-500 ${isDark ? 'dark' : ''}`}>
-        <div className="flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500">
-           <div className="w-16 h-16 rounded-[2rem] bg-white dark:bg-gray-800 flex items-center justify-center shadow-2xl border border-gray-100 dark:border-gray-700 animate-bounce">
-              <img src="/logo.png" alt="AutoLog" className="w-10 h-10 object-contain" />
-           </div>
-           <div className="flex flex-col items-center gap-2">
-             <div className="w-48 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                <div className="h-full bg-[#5C3EFE] animate-progress-loading" style={{ width: '40%' }}></div>
-             </div>
-             <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] animate-pulse">Завантаження...</p>
-           </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100%', background: 'var(--bg)' }} className={isDark ? 'dark' : ''}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
+          <div style={{ width: 64, height: 64, borderRadius: 22, background: 'var(--bg-card)', border: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, boxShadow: '0 8px 24px rgba(92,62,254,0.2)' }}>
+            <img src="/logo.png" alt="AutoLog" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 160, height: 4, background: 'var(--line-2)', borderRadius: 99, overflow: 'hidden' }}>
+              <div className="animate-progress-loading" style={{ height: '100%', background: 'var(--brand)', borderRadius: 99, width: '40%' }}></div>
+            </div>
+            <p style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.25em' }}>Завантаження...</p>
+          </div>
         </div>
       </div>
     )
@@ -414,28 +405,28 @@ export default function App() {
 
   return (
     <ThemeCtx.Provider value={isDark}>
-      <div className={`fixed inset-0 flex font-sans overflow-hidden bg-white dark:bg-black text-gray-900 dark:text-white ${isDark ? 'dark' : ''}`}>
+      <div className={`fixed inset-0 flex overflow-hidden font-sans ${isDark ? 'dark' : ''}`} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
         <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin} userProfile={userProfile} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} onLogout={() => signOut(auth)} />
-        <div className="flex flex-1 flex-col min-h-0 relative bg-white dark:bg-gray-950 overflow-hidden">
+        <div className="flex flex-1 flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
           {tab !== 'ai' && (
             <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} bookingNotifications={bookingNotifications} incomingInvites={incomingInvites} onAcceptInvite={handleAcceptInvite} onRejectInvite={handleRejectInvite} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setTab={setTab} onMarkRead={markNotificationAsRead} onMarkAllRead={markAllNotificationsAsRead} />
           )}
-          <main className={`flex-1 flex flex-col min-h-0 relative overflow-hidden ${tab === 'ai' ? 'bg-white dark:bg-gray-800' : 'bg-[#F8FAFC] dark:bg-gray-950'}`}>
+          <main className="flex-1 flex flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
             {tab === 'ai' 
               ? <AIView carList={carList} historyList={historyList} userProfile={userProfile} onUpdateAIUsage={onUpdateAIUsage} onGoPlans={() => setTab('plans')} onGoBookings={() => setTab('bookings')} onMenu={() => setShowMobileMenu(true)} onBack={() => setTab('dashboard')} />
               : <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
                   <div className={`${tab === 'sto_bookings' ? 'max-w-[120rem]' : 'max-w-7xl'} mx-auto space-y-6`}>
                     {tab === 'dashboard' && <DashboardView carList={carList} historyList={historyList} />}
-                    {tab === 'garage' && <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => setTab('plans')} />}
+                    {tab === 'garage' && <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => {}} />}
                     {tab === 'bookings' && <ClientBookingsView carList={carList} />}
                     {tab === 'service' && <HistoryView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />}
                     {tab === 'team' && <TeamView teamMembers={teamMembers} limit={TEAM_LIMIT} onRemove={id => setTeamMembers(p => p.filter(m => m.id !== id))} onInvite={() => setShowInviteModal(true)} />}
-                    {tab === 'plans' && <PlansView carList={carList} userProfile={userProfile} onUpdatePlan={handleUpdatePlan} currentUser={currentUser} />}
+                    {/* SUBSCRIPTION: {tab === 'plans' && <PlansView carList={carList} userProfile={userProfile} onUpdatePlan={handleUpdatePlan} currentUser={currentUser} />} */}
                     {tab === 'settings' && <SettingsView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} />}
                     {tab === 'admin' && isAdmin && <AdminView />}
                     {tab === 'sto' && userProfile?.accountType === 'sto' && <STODashboardView userProfile={userProfile} setTab={setTab} />}
                     {tab === 'sto_bookings' && userProfile?.accountType === 'sto' && <STOBookingsView userProfile={userProfile} />}
-                    {tab === 'sto_plans' && userProfile?.accountType === 'sto' && <STOPricingView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} setTab={setTab} />}
+                    {/* SUBSCRIPTION: {tab === 'sto_plans' && userProfile?.accountType === 'sto' && <STOPricingView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} setTab={setTab} />} */}
                   </div>
                 </div>
             }

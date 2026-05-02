@@ -29,12 +29,14 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
   const timerRef = useRef(null)
   const inputRef = useRef(null)
 
-  const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
-  const currentMonth = new Date().toISOString().substring(0, 7)
-  let usage = userProfile?.aiUsage || 0
-  if (userProfile?.lastAiResetMonth !== currentMonth) usage = 0
-  const isLimited = usage >= activePlan.aiLimit
-  const usagePercent = Math.min((usage / activePlan.aiLimit) * 100, 100)
+  // SUBSCRIPTION: limits disabled for free launch
+  // const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
+  // const currentMonth = new Date().toISOString().substring(0, 7)
+  // let usage = userProfile?.aiUsage || 0
+  // if (userProfile?.lastAiResetMonth !== currentMonth) usage = 0
+  // const isLimited = usage >= activePlan.aiLimit
+  // const usagePercent = Math.min((usage / activePlan.aiLimit) * 100, 100)
+  const isLimited = false
 
   useEffect(() => {
     ref.current?.scrollIntoView({ behavior: 'smooth' })
@@ -135,14 +137,14 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Usage indicator */}
-          <button
+          {/* SUBSCRIPTION: usage counter hidden for free launch */}
+          {/* <button
             onClick={onGoPlans}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${isLimited ? 'border-red-500/40 bg-red-500/10 text-red-400' : 'border-gray-200 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:border-[#5C3EFE]/40'}`}
           >
             <Zap size={11} className={isLimited ? 'text-red-400' : 'text-[#5C3EFE]'} />
             {usage}/{activePlan.aiLimit}
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -326,7 +328,7 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-            placeholder={isLimited ? 'Ліміт вичерпано. Оновіть план →' : (media ? 'Додати коментар...' : 'Опишіть проблему з автомобілем...')}
+            placeholder={media ? 'Додати коментар...' : 'Опишіть проблему з автомобілем...'}
             className={`w-full pl-5 pr-14 py-4 rounded-2xl text-sm focus:outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 ${isLimited ? 'bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/40' : 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 focus:border-[#5C3EFE] focus:ring-4 focus:ring-[#5C3EFE]/10'}`}
             disabled={isLimited}
           />
