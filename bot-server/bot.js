@@ -138,9 +138,46 @@ const getExpenseStats = (snap, carId = null, carPlate = null) => {
 };
 
 bot.start(async (ctx) => {
+  const token = ctx.message.text.split(' ')[1]; // отримуємо токен з /start TOKEN
+
+  // Якщо передано токен синхронізації з веб-додатка
+  if (token) {
+    try {
+      const usersRef = db.collection('users');
+      const snap = await usersRef.where('tgLinkingToken.token', '==', token).get();
+
+      if (!snap.empty) {
+        const userDoc = snap.docs[0];
+        const userData = userDoc.data();
+        
+        // Перевіряємо чи токен не протермінувався
+        if (userData.tgLinkingToken.expires > Date.now()) {
+          const telegramId = ctx.from.id.toString();
+          
+          await userDoc.ref.update({
+            telegramId: telegramId,
+            tgLinkingToken: admin.firestore.FieldValue.delete() // видаляємо токен після використання
+          });
+          
+          // Оновлюємо кеш мідлвари
+          ctx.userData = { ...userData, telegramId };
+          ctx.userId = userDoc.id;
+
+          return ctx.reply('✅ Ваш Telegram успішно підключено до веб-акаунту!', mainMenu);
+        } else {
+          return ctx.reply('❌ Код підключення застарів. Згенеруйте новий у веб-додатку.');
+        }
+      }
+    } catch (e) {
+      console.error('Помилка синхронізації:', e);
+    }
+  }
+
+  // Звичайна логіка (якщо токену немає або він не підійшов)
   if (ctx.userData) {
     return ctx.reply(`З поверненням, ${ctx.userData.displayName || 'водій'}! 👋`, mainMenu);
   }
+  
   ctx.reply('Привіт! Ви ще не зареєстровані в AutoLog. Будь ласка, вкажіть ваш номер телефону для реєстрації:', {
     reply_markup: {
       keyboard: [[{ text: '📱 Поділитися контактом', request_contact: true }]],
