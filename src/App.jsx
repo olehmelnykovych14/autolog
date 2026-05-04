@@ -259,8 +259,7 @@ export default function App() {
   const addCar = async car => {
     if (!currentUser) return
     try {
-      const docRef = await addDoc(collection(db, 'cars'), { ...car, userId: currentUser.uid })
-      setCarList(p => [{ ...car, id: docRef.id, userId: currentUser.uid }, ...p])
+      await addDoc(collection(db, 'cars'), { ...car, userId: currentUser.uid })
     } catch (e) { console.error(e) }
   }
 
@@ -268,7 +267,6 @@ export default function App() {
     if (!currentUser) return
     try {
       await updateDoc(doc(db, 'cars', carId), updates)
-      setCarList(p => p.map(c => c.id === carId ? { ...c, ...updates } : c))
     } catch (e) { console.error(e) }
   }
 
@@ -276,17 +274,7 @@ export default function App() {
     if (!currentUser) return
     try {
       const ts = Date.now()
-      const docRef = await addDoc(collection(db, 'history'), { ...svc, userId: currentUser.uid, createdAt: ts })
-      setHistoryList(p => {
-        const h = [{ ...svc, id: docRef.id, userId: currentUser.uid, createdAt: ts }, ...p]
-        h.sort((a, b) => {
-          const dA = new Date(a.date).getTime()
-          const dB = new Date(b.date).getTime()
-          if (dA === dB) return (b.createdAt || 0) - (a.createdAt || 0)
-          return dB - dA
-        })
-        return h
-      })
+      await addDoc(collection(db, 'history'), { ...svc, userId: currentUser.uid, createdAt: ts })
     } catch (e) { console.error(e) }
   }
 
@@ -294,7 +282,6 @@ export default function App() {
     if (!currentUser) return
     try {
       await updateDoc(doc(db, 'history', svc.id), svc)
-      setHistoryList(p => p.map(h => h.id === svc.id ? svc : h))
     } catch (e) { console.error(e) }
   }
 
@@ -302,7 +289,6 @@ export default function App() {
     if (!currentUser) return false
     try {
       await deleteDoc(doc(db, 'history', id))
-      setHistoryList(p => p.filter(h => h.id !== id))
       return true
     } catch (e) { 
       console.error(e)
@@ -314,7 +300,6 @@ export default function App() {
     if (!currentUser) return
     try {
       await updateDoc(doc(db, 'history', svcId), { status: 'verified' })
-      setHistoryList(p => p.map(h => h.id === svcId ? { ...h, status: 'verified' } : h))
     } catch (e) { console.error(e) }
   }
 
@@ -342,7 +327,6 @@ export default function App() {
     if (!currentUser) return
     try {
       await updateDoc(doc(db, 'history', svcId), { status: 'rejected' })
-      setHistoryList(p => p.map(h => h.id === svcId ? { ...h, status: 'rejected' } : h))
     } catch (e) { console.error(e) }
   }
 
@@ -359,8 +343,6 @@ export default function App() {
         batch.update(doc(db, 'history', h.id), { userId: recipientUid })
       })
       await batch.commit()
-      setCarList(p => p.filter(c => c.id !== selectedCar.id))
-      setHistoryList(p => p.filter(h => h.carId !== selectedCar.id))
       setShowTransfer(false); setSelectedCar(null); setTab('dashboard')
       alert(`Авто успішно передано!`)
     } catch (e) { console.error(e); alert("Помилка передачі.") }
