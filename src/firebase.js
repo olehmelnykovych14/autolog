@@ -4,13 +4,13 @@ import { getAnalytics } from "firebase/analytics";
 import { getFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDMifGkzL3l8c_22LLXMpCFL1xyQOrlz1o",
-  authDomain: "autolog-app-2d50e.firebaseapp.com",
-  projectId: "autolog-app-2d50e",
-  storageBucket: "autolog-app-2d50e.firebasestorage.app",
-  messagingSenderId: "949805106271",
-  appId: "1:949805106271:web:c42b33dfa2b078badf07ea",
-  measurementId: "G-CK3EE48Z81"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 let app, auth, analytics, db;
