@@ -157,7 +157,7 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
             {QUICK_PROMPTS.map((qp, i) => (
               <button
                 key={i}
-                onClick={() => { setInput(qp.text); inputRef.current?.focus(); }}
+                onClick={() => send(qp.text)}
                 className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-600 dark:text-gray-300 hover:border-[#5C3EFE] hover:text-[#5C3EFE] transition-all shadow-sm"
               >
                 <span>{qp.icon}</span> {qp.text}

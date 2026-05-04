@@ -5,6 +5,32 @@ import { fmt, getBrandLogo } from '../../utils'
 import { C, PLANS } from '../../constants'
 import { BRANDS_MODELS } from '../../data/cars'
 
+function CarPhoto({ brand, model }) {
+  const [failed, setFailed] = useState(false)
+  const src = `https://loremflickr.com/400/200/${encodeURIComponent(brand)},${encodeURIComponent(model)},car/all`
+
+  if (failed) return (
+    <>
+      <div className="brand-silhouette">{brand?.[0] || '?'}</div>
+      <svg viewBox="0 0 280 120" style={{ position: 'absolute', inset: '25% 5% 10%', width: '90%' }}>
+        <path d="M30 75 Q45 55 65 52 L90 44 Q120 36 160 36 Q210 36 230 50 L250 64 Q260 70 258 82 L254 92 L228 94 Q222 82 210 82 Q198 82 192 94 L88 94 Q82 82 70 82 Q58 82 52 94 L26 90 Q22 80 30 75 Z"
+          fill="var(--brand)" fillOpacity="0.10"/>
+        <ellipse cx="72" cy="94" rx="14" ry="6" fill="var(--brand)" fillOpacity="0.15"/>
+        <ellipse cx="210" cy="94" rx="14" ry="6" fill="var(--brand)" fillOpacity="0.15"/>
+      </svg>
+    </>
+  )
+
+  return (
+    <img
+      src={src}
+      alt={`${brand} ${model}`}
+      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 absolute inset-0"
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
 const compressImage = (file) => {
   return new Promise((resolve) => {
     const reader = new FileReader()
@@ -77,15 +103,7 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onSelectCar, userPr
                   {car.image ? (
                     <img src={car.image} alt={car.brand} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 absolute inset-0" />
                   ) : (
-                    <>
-                      <div className="brand-silhouette">{car.brand?.[0] || '?'}</div>
-                      <svg viewBox="0 0 280 120" style={{ position: 'absolute', inset: '25% 5% 10%', width: '90%' }}>
-                        <path d="M30 75 Q45 55 65 52 L90 44 Q120 36 160 36 Q210 36 230 50 L250 64 Q260 70 258 82 L254 92 L228 94 Q222 82 210 82 Q198 82 192 94 L88 94 Q82 82 70 82 Q58 82 52 94 L26 90 Q22 80 30 75 Z"
-                          fill="var(--brand)" fillOpacity="0.10"/>
-                        <ellipse cx="72" cy="94" rx="14" ry="6" fill="var(--brand)" fillOpacity="0.15"/>
-                        <ellipse cx="210" cy="94" rx="14" ry="6" fill="var(--brand)" fillOpacity="0.15"/>
-                      </svg>
-                    </>
+                    <CarPhoto brand={car.brand} model={car.model} />
                   )}
                   <div className="year-badge">{car.year}</div>
                   <label
