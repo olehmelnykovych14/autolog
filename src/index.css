@@ -65,6 +65,12 @@ html.dark {
     color: var(--text);
     transition: background 500ms var(--ease-out), color 500ms var(--ease-out);
   }
+  
+  /* Fix native select options in dark mode */
+  html.dark option {
+    background-color: var(--bg-card);
+    color: var(--text);
+  }
 }
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
