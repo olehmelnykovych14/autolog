@@ -186,7 +186,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
           </div>
         ) : (
           <div className="space-y-6">
-            {!userProfile?.tgLinkingToken ? (
+            {!userProfile?.tgLinkingToken || userProfile.tgLinkingToken.expires < Date.now() ? (
               <PrimaryBtn onClick={generateTgToken} disabled={tgLoading} className="w-full py-4 justify-center bg-blue-500 hover:bg-blue-600 shadow-blue-500/20 shadow-lg !border-none">
                 {tgLoading ? <Loader2 className="animate-spin" size={20} /> : 'ПІДКЛЮЧИТИ TELEGRAM'}
               </PrimaryBtn>
@@ -197,14 +197,19 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
                   <p className="text-3xl font-black text-[#5C3EFE] tracking-[0.2em]">{userProfile.tgLinkingToken.token}</p>
                   <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase">Дійсний протягом 10 хвилин</p>
                 </div>
-                <a
-                  href={`https://t.me/autologGarage_bot?start=${userProfile.tgLinkingToken.token}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-center gap-3 w-full py-4 bg-blue-500 text-white rounded-2xl font-black text-sm hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20"
-                >
-                  ПЕРЕЙТИ В БОТ <ExternalLink size={18} />
-                </a>
+                <div className="flex gap-3">
+                  <a
+                    href={`https://t.me/autologGarage_bot?start=${userProfile.tgLinkingToken.token}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 flex items-center justify-center gap-3 py-4 bg-blue-500 text-white rounded-2xl font-black text-sm hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/20"
+                  >
+                    ПЕРЕЙТИ В БОТ <ExternalLink size={18} />
+                  </a>
+                  <button onClick={generateTgToken} disabled={tgLoading} className="px-4 py-4 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-2xl font-black text-xs hover:bg-gray-200 dark:hover:bg-gray-700 transition-all">
+                    НОВИЙ КОД
+                  </button>
+                </div>
               </div>
             )}
           </div>
