@@ -6,28 +6,29 @@ import { C, PLANS } from '../../constants'
 import { BRANDS_MODELS } from '../../data/cars'
 
 function CarPhoto({ brand, model }) {
-  const [failed, setFailed] = useState(false)
-  const src = `https://loremflickr.com/400/200/${encodeURIComponent(brand)},${encodeURIComponent(model)},car/all`
-
-  if (failed) return (
-    <>
-      <div className="brand-silhouette">{brand?.[0] || '?'}</div>
-      <svg viewBox="0 0 280 120" style={{ position: 'absolute', inset: '25% 5% 10%', width: '90%' }}>
-        <path d="M30 75 Q45 55 65 52 L90 44 Q120 36 160 36 Q210 36 230 50 L250 64 Q260 70 258 82 L254 92 L228 94 Q222 82 210 82 Q198 82 192 94 L88 94 Q82 82 70 82 Q58 82 52 94 L26 90 Q22 80 30 75 Z"
-          fill="var(--brand)" fillOpacity="0.10"/>
-        <ellipse cx="72" cy="94" rx="14" ry="6" fill="var(--brand)" fillOpacity="0.15"/>
-        <ellipse cx="210" cy="94" rx="14" ry="6" fill="var(--brand)" fillOpacity="0.15"/>
-      </svg>
-    </>
-  )
+  const logo = getBrandLogo(brand)
+  const [logoFailed, setLogoFailed] = useState(false)
 
   return (
-    <img
-      src={src}
-      alt={`${brand} ${model}`}
-      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 absolute inset-0"
-      onError={() => setFailed(true)}
-    />
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3"
+      style={{ background: 'linear-gradient(145deg, var(--brand-soft) 0%, rgba(92,62,254,0.04) 100%)' }}>
+      {logo && !logoFailed ? (
+        <img
+          src={logo}
+          alt={brand}
+          className="w-14 h-14 object-contain opacity-80 group-hover:scale-110 transition-transform duration-500 drop-shadow-sm"
+          onError={() => setLogoFailed(true)}
+        />
+      ) : (
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black"
+          style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
+          {brand?.[0] || '?'}
+        </div>
+      )}
+      <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40" style={{ color: 'var(--brand)' }}>
+        {model}
+      </span>
+    </div>
   )
 }
 
