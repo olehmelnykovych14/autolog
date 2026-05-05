@@ -1,110 +1,239 @@
 import React, { useEffect, useState } from 'react'
-import { 
-  Car, Wrench, Shield, Bot, ChevronRight, CheckCircle2, 
-  Zap, Calendar, Users, ArrowRight, Smartphone, 
-  BarChart3, FileText, Bell, Sparkles, MousePointer2, ClipboardList
-} from 'lucide-react'
+import { Bot, ChevronRight, CheckCircle2, Zap, ArrowRight, BarChart3, FileText, Bell, Sparkles, Wrench, Shield, Calendar, Smartphone } from 'lucide-react'
+
+const STYLE = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+  .al { font-family: 'DM Sans', sans-serif; }
+  .al-display { font-family: 'Syne', sans-serif !important; }
+
+  @keyframes al-float {
+    0%,100% { transform: translateY(0) }
+    50%      { transform: translateY(-10px) }
+  }
+  @keyframes al-ticker {
+    0%   { transform: translateX(0) }
+    100% { transform: translateX(-50%) }
+  }
+  @keyframes al-reveal {
+    from { opacity: 0; transform: translateY(28px) }
+    to   { opacity: 1; transform: translateY(0) }
+  }
+  @keyframes al-glow {
+    0%,100% { box-shadow: 0 0 25px rgba(92,62,254,.3), 0 0 60px rgba(92,62,254,.08) }
+    50%      { box-shadow: 0 0 45px rgba(92,62,254,.5), 0 0 90px rgba(92,62,254,.18) }
+  }
+  @keyframes al-bounce-dot {
+    0%,80%,100% { transform: translateY(0) }
+    40%         { transform: translateY(-6px) }
+  }
+
+  .al-r1 { animation: al-reveal .65s ease-out .05s both }
+  .al-r2 { animation: al-reveal .65s ease-out .18s both }
+  .al-r3 { animation: al-reveal .65s ease-out .32s both }
+  .al-r4 { animation: al-reveal .65s ease-out .46s both }
+
+  .al-float  { animation: al-float 4s ease-in-out infinite }
+  .al-float2 { animation: al-float 3.6s ease-in-out .8s infinite }
+  .al-glow   { animation: al-glow 3s ease-in-out infinite }
+
+  .al-ticker { animation: al-ticker 22s linear infinite }
+  .al-ticker:hover { animation-play-state: paused }
+
+  .al-grad {
+    background: linear-gradient(130deg, #fff 0%, #b8a4ff 45%, #5C3EFE 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .al-glass {
+    background: rgba(255,255,255,.03);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,.07);
+  }
+  .al-glass-hover { transition: all .3s ease }
+  .al-glass-hover:hover {
+    background: rgba(255,255,255,.05);
+    border-color: rgba(92,62,254,.35);
+    transform: translateY(-2px);
+    box-shadow: 0 20px 60px rgba(92,62,254,.1);
+  }
+
+  .al-btn {
+    position: relative; overflow: hidden;
+    transition: transform .15s, box-shadow .3s;
+  }
+  .al-btn::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,.12) 0%, transparent 60%);
+    opacity: 0; transition: opacity .3s;
+  }
+  .al-btn:hover::after { opacity: 1 }
+  .al-btn:active { transform: scale(.97) }
+
+  .al-mesh {
+    background:
+      radial-gradient(ellipse 70% 70% at 15% 20%, rgba(92,62,254,.14) 0%, transparent 65%),
+      radial-gradient(ellipse 55% 55% at 85% 75%, rgba(92,62,254,.09) 0%, transparent 65%);
+  }
+
+  .al-grid-bg {
+    background-image:
+      linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size: 72px 72px;
+  }
+
+  .al-dot { animation: al-bounce-dot .9s ease-in-out infinite }
+  .al-dot:nth-child(2) { animation-delay: .18s }
+  .al-dot:nth-child(3) { animation-delay: .36s }
+`
+
+const BRAND = '#5C3EFE'
+const BG    = '#07070E'
 
 export function LandingView({ onLogin }) {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    const fn = () => setScrolled(window.scrollY > 30)
+    window.addEventListener('scroll', fn)
+    return () => window.removeEventListener('scroll', fn)
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#FDFDFF] text-gray-900 font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
-      {/* Navigation */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? 'bg-white/90 backdrop-blur-xl border-b border-gray-100 py-3 shadow-sm' : 'bg-transparent py-4 sm:py-6'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-white flex items-center justify-center shadow-lg border border-gray-100 overflow-hidden shrink-0">
-              <img src="/logo.png" alt="AutoLog" className="w-7 h-7 sm:w-8 sm:h-8 object-contain" />
+    <div className="al min-h-screen overflow-x-hidden text-white" style={{ background: BG }}>
+      <style>{STYLE}</style>
+
+      {/* ─── NAV ─── */}
+      <nav className="fixed top-0 inset-x-0 z-50 transition-all duration-500"
+        style={scrolled ? { background: 'rgba(7,7,14,.88)', backdropFilter: 'blur(20px)', borderBottom: '1px solid rgba(255,255,255,.06)' } : {}}>
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 sm:h-20 flex items-center justify-between">
+
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
+              style={{ background: BRAND, boxShadow: '0 0 20px rgba(92,62,254,.45)' }}>
+              <img src="/logo.png" alt="AutoLog" className="w-6 h-6 object-contain brightness-0 invert" />
             </div>
-            <span className="text-xl sm:text-2xl font-black tracking-tight text-gray-900">AutoLog</span>
+            <span className="al-display text-lg font-bold tracking-tight">AutoLog</span>
           </div>
-          
-          <div className="hidden lg:flex items-center gap-10">
-            <a href="#product" className="text-[11px] font-black text-gray-500 hover:text-indigo-600 transition-colors uppercase tracking-[0.2em]">Продукт</a>
-            <a href="#features" className="text-[11px] font-black text-gray-500 hover:text-indigo-600 transition-colors uppercase tracking-[0.2em]">Можливості</a>
-            <a href="#sto" className="text-[11px] font-black text-gray-500 hover:text-indigo-600 transition-colors uppercase tracking-[0.2em]">Для СТО</a>
-            <a href="#ai" className="text-[11px] font-black text-gray-500 hover:text-indigo-600 transition-colors uppercase tracking-[0.2em]">AI Механік</a>
+
+          <div className="hidden lg:flex items-center gap-9">
+            {[['#product','Продукт'],['#features','Можливості'],['#sto','Для СТО'],['#ai','AI Механік']].map(([href, label]) => (
+              <a key={href} href={href} className="text-[11px] font-semibold uppercase tracking-[.18em] transition-colors"
+                style={{ color: 'rgba(255,255,255,.38)' }}
+                onMouseEnter={e => e.target.style.color='rgba(255,255,255,.9)'}
+                onMouseLeave={e => e.target.style.color='rgba(255,255,255,.38)'}>{label}</a>
+            ))}
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
-            <button onClick={onLogin} className="hidden sm:block text-[11px] font-black text-gray-900 hover:text-indigo-600 py-2 px-5 transition-all uppercase tracking-widest">Увійти</button>
-            <button onClick={onLogin} className="bg-gray-900 text-white px-4 py-2.5 sm:px-6 sm:py-3.5 rounded-xl sm:rounded-2xl text-[9px] sm:text-[11px] font-black uppercase tracking-[0.15em] hover:bg-indigo-600 transition-all shadow-xl shadow-gray-200 active:scale-95 whitespace-nowrap">Спробувати безкоштовно</button>
+            <button onClick={onLogin} className="hidden sm:block text-[11px] font-semibold uppercase tracking-widest px-4 py-2 transition-colors"
+              style={{ color: 'rgba(255,255,255,.4)' }}>Увійти</button>
+            <button onClick={onLogin} className="al-btn text-[10px] sm:text-[11px] font-bold uppercase tracking-[.14em] px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl text-white"
+              style={{ background: BRAND, boxShadow: '0 0 28px rgba(92,62,254,.35)' }}>
+              Спробувати
+            </button>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-16 lg:pt-56 lg:pb-40 overflow-hidden">
-        {/* Background Accents */}
-        <div className="absolute top-0 right-0 w-[40rem] sm:w-[60rem] h-[40rem] sm:h-[60rem] bg-indigo-50/50 rounded-full blur-[80px] sm:blur-[120px] sm:-mr-[30rem] -mt-[10rem] sm:-mt-[20rem] pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-[30rem] sm:w-[40rem] h-[30rem] sm:h-[40rem] bg-blue-50/50 rounded-full blur-[60px] sm:blur-[100px] -ml-[10rem] sm:-ml-[20rem] -mb-[5rem] sm:-mb-[10rem] pointer-events-none"></div>
+      {/* ─── HERO ─── */}
+      <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
+        <div className="absolute inset-0 al-mesh pointer-events-none" />
+        <div className="absolute inset-0 al-grid-bg pointer-events-none opacity-100" />
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(92,62,254,.1) 0%, transparent 70%)', filter: 'blur(50px)' }} />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
-          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-            <div className="flex-1 text-center lg:text-left mt-8 lg:mt-0">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-1.5 rounded-full bg-indigo-50 border border-indigo-100/50 text-indigo-600 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] mb-6 sm:mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <Sparkles size={12} fill="currentColor"/> Інтелектуальний гараж №1 в Україні
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 w-full py-24 lg:py-0">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+
+            {/* Text */}
+            <div className="flex-1 text-center lg:text-left">
+              <div className="al-r1 inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-8"
+                style={{ border: '1px solid rgba(92,62,254,.35)', background: 'rgba(92,62,254,.08)' }}>
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: BRAND }} />
+                <span className="text-[10px] font-bold uppercase tracking-[.22em]" style={{ color: 'rgba(255,255,255,.55)' }}>
+                  Інтелектуальний гараж №1 в Україні
+                </span>
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-[5.5rem] font-[1000] text-gray-900 leading-[0.95] mb-6 lg:mb-10 tracking-[-0.04em] animate-in fade-in slide-in-from-bottom-8 duration-700">
-                Керуй своїм авто <br className="hidden sm:block"/> 
-                <span className="text-indigo-600">на швидкості AI.</span>
+
+              <h1 className="al-r2 al-display text-[3.2rem] sm:text-[4.5rem] lg:text-[6.2rem] font-extrabold leading-[.9] tracking-[-0.03em] mb-7">
+                Керуй авто<br/>
+                <span className="al-grad">на швидкості<br/>AI.</span>
               </h1>
-              <p className="text-base sm:text-xl text-gray-500 font-medium mb-8 lg:mb-12 max-w-xl mx-auto lg:mx-0 leading-relaxed animate-in fade-in slide-in-from-bottom-12 duration-1000 px-2 sm:px-0">
-                Перша екосистема, що поєднує водія, сервіс та штучний інтелект. Весь життєвий цикл вашого автомобіля в одному преміальному додатку.
+
+              <p className="al-r3 text-base sm:text-lg leading-relaxed max-w-lg mx-auto lg:mx-0 mb-10"
+                style={{ color: 'rgba(255,255,255,.42)' }}>
+                Перша екосистема, що поєднує водія, сервіс та штучний інтелект. Весь життєвий цикл вашого авто — в одному преміальному додатку.
               </p>
-              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5 justify-center lg:justify-start animate-in fade-in slide-in-from-bottom-12 duration-1000 w-full sm:w-auto px-4 sm:px-0">
-                <button onClick={onLogin} className="w-full sm:w-auto px-6 py-4 sm:px-10 sm:py-6 bg-indigo-600 text-white rounded-[1.5rem] sm:rounded-[2rem] text-xs sm:text-sm font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200 flex items-center justify-center gap-3 active:scale-95 group">
-                  Почати зараз <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform"/>
+
+              <div className="al-r4 flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start mb-10">
+                <button onClick={onLogin} className="al-btn al-glow w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 sm:py-5 rounded-2xl text-sm font-bold uppercase tracking-[.12em]"
+                  style={{ background: BRAND }}>
+                  Почати безкоштовно <ArrowRight size={16} />
                 </button>
-                <div className="flex items-center gap-4 px-6 border-none sm:border-l sm:border-gray-100 mt-4 sm:mt-0 opacity-80 sm:opacity-100">
-                   <div className="flex -space-x-2">
-                      {[1,2,3].map(i => <div key={i} className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border-2 border-white bg-gray-100 overflow-hidden"><img src={`https://i.pravatar.cc/100?u=h${i}`} alt="user"/></div>)}
-                   </div>
-                   <p className="text-[9px] sm:text-[10px] font-black text-gray-400 uppercase tracking-widest leading-tight text-left">5,000+ водіїв <br/> вже з нами</p>
+                <button onClick={onLogin} className="al-btn al-glass w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 sm:py-5 rounded-2xl text-sm font-semibold"
+                  style={{ color: 'rgba(255,255,255,.55)' }}>
+                  Переглянути demo <ChevronRight size={16} />
+                </button>
+              </div>
+
+              <div className="al-r4 flex items-center gap-5 justify-center lg:justify-start">
+                <div className="flex -space-x-2.5">
+                  {[1,2,3,4].map(i => (
+                    <div key={i} className="w-8 h-8 rounded-full border-2 overflow-hidden shrink-0" style={{ borderColor: BG }}>
+                      <img src={`https://i.pravatar.cc/80?u=al${i}`} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex gap-0.5 mb-0.5">
+                    {[1,2,3,4,5].map(i => <span key={i} className="text-amber-400 text-xs">★</span>)}
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(255,255,255,.3)' }}>
+                    5 000+ водіїв вже з нами
+                  </p>
                 </div>
               </div>
             </div>
-            
-            <div className="flex-1 relative animate-in fade-in zoom-in duration-1000 delay-300 px-2 sm:px-0 w-full max-w-md lg:max-w-none mx-auto">
-              <div className="relative group">
-                <div className="absolute -inset-2 sm:-inset-4 bg-indigo-500/10 rounded-[3rem] sm:rounded-[4rem] blur-xl sm:blur-2xl group-hover:bg-indigo-500/15 transition-all duration-700"></div>
-                <div className="relative rounded-3xl sm:rounded-[3.5rem] p-3 sm:p-5 bg-white border border-gray-100 shadow-2xl overflow-hidden aspect-[4/5] flex items-center justify-center">
-                  <img 
-                    src="/autolog_landing_hero.png" 
-                    alt="AutoLog Experience" 
-                    className="w-full h-full object-cover rounded-2xl sm:rounded-[2.8rem] shadow-xl"
-                  />
+
+            {/* Visual */}
+            <div className="flex-1 relative w-full max-w-md lg:max-w-none mx-auto">
+              <div className="al-float relative">
+                <div className="rounded-[2.5rem] overflow-hidden"
+                  style={{ border: '1px solid rgba(92,62,254,.25)', boxShadow: '0 40px 100px rgba(92,62,254,.18), 0 0 0 1px rgba(92,62,254,.12)' }}>
+                  <img src="/autolog_landing_hero.png" alt="AutoLog" className="w-full h-auto block" />
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to top, rgba(7,7,14,.45) 0%, transparent 55%)' }} />
                 </div>
-                {/* Floating UI Elements */}
-                <div className="absolute -top-4 -right-2 sm:-top-8 sm:-right-8 bg-white/95 backdrop-blur-md p-3 sm:p-5 rounded-xl sm:rounded-3xl shadow-2xl border border-gray-100 animate-in fade-in slide-in-from-right-8 delay-700 duration-1000">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-green-50 text-green-600 flex items-center justify-center shadow-inner shrink-0">
-                      <Shield size={20} className="sm:w-6 sm:h-6"/>
+
+                {/* Status badge */}
+                <div className="al-float2 absolute -top-4 -right-4 sm:-top-6 sm:-right-8 al-glass rounded-2xl p-3 sm:p-4"
+                  style={{ border: '1px solid rgba(92,62,254,.2)', boxShadow: '0 20px 50px rgba(0,0,0,.4)' }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(34,197,94,.15)' }}>
+                      <Shield size={16} className="text-green-400" />
                     </div>
                     <div>
-                      <p className="text-[8px] sm:text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-0.5">Статус авто</p>
-                      <p className="text-xs sm:text-sm font-black text-gray-900 tracking-tight">Сервіс завершено</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider mb-0.5" style={{ color: 'rgba(255,255,255,.38)' }}>Статус авто</p>
+                      <p className="text-xs font-bold text-white">Сервіс завершено ✓</p>
                     </div>
                   </div>
                 </div>
-                
-                <div className="absolute -bottom-6 -left-2 sm:-bottom-10 sm:-left-10 bg-white/95 backdrop-blur-md p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] shadow-2xl border border-gray-100 animate-in fade-in slide-in-from-left-8 delay-1000 duration-1000 max-w-[85%] sm:max-w-none">
-                   <div className="flex flex-col gap-2 sm:gap-3">
-                      <div className="flex items-center gap-2 sm:gap-3 mb-1">
-                         <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shrink-0"><Bot size={14}/></div>
-                         <p className="text-[9px] sm:text-[11px] font-black text-gray-900 uppercase">AI Mechanic</p>
-                      </div>
-                      <div className="bg-gray-50 rounded-xl sm:rounded-2xl py-2 px-3 sm:py-2.5 sm:px-4 text-[9px] sm:text-[11px] font-semibold text-gray-600 leading-relaxed border border-gray-100">
-                         Наступне ТО через **452 км**. <br/> Записати вас на сервіс?
-                      </div>
-                   </div>
+
+                {/* AI badge */}
+                <div className="absolute -bottom-6 -left-3 sm:-bottom-8 sm:-left-8 al-glass rounded-2xl p-4 max-w-[250px]"
+                  style={{ border: '1px solid rgba(92,62,254,.2)', boxShadow: '0 20px 50px rgba(0,0,0,.4)', animation: 'al-float 4.5s ease-in-out 1.2s infinite' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: BRAND }}>
+                      <Bot size={12} className="text-white" />
+                    </div>
+                    <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,.45)' }}>AI Механік</p>
+                  </div>
+                  <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(255,255,255,.7)' }}>
+                    Наступне ТО через <span className="text-white font-bold">452 км</span>. Записати вас?
+                  </p>
                 </div>
               </div>
             </div>
@@ -112,212 +241,336 @@ export function LandingView({ onLogin }) {
         </div>
       </section>
 
-      {/* Product Deep Dive */}
-      <section id="product" className="py-20 lg:py-32 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16 lg:mb-24 max-w-3xl mx-auto px-4 text-balance">
-            <h2 className="text-[10px] sm:text-[11px] font-black text-indigo-600 uppercase tracking-[0.3em] lg:tracking-[0.4em] mb-4 sm:mb-6 underline decoration-indigo-200 decoration-4 underline-offset-8">Продукт</h2>
-            <h3 className="text-3xl sm:text-4xl lg:text-6xl font-black text-gray-900 tracking-tight leading-tight">Більше, ніж просто сервісна книжка</h3>
+      {/* ─── TICKER ─── */}
+      <div className="py-7 overflow-hidden border-y" style={{ borderColor: 'rgba(255,255,255,.05)', background: 'rgba(255,255,255,.015)' }}>
+        <div className="al-ticker flex whitespace-nowrap gap-14">
+          {[0,1].map(r => (
+            <div key={r} className="flex items-center gap-14 shrink-0">
+              {[
+                ['5 000+','Активних водіїв'],['120+','Партнерських СТО'],['98%','Задоволених клієнтів'],
+                ['24/7','AI підтримка'],['3×','Швидше за конкурентів'],['₴0','Безкоштовний старт'],
+              ].map(([num, lbl], i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <span className="al-display text-xl sm:text-2xl font-bold text-white">{num}</span>
+                  <span className="text-[11px] font-medium uppercase tracking-widest" style={{ color: 'rgba(255,255,255,.28)' }}>{lbl}</span>
+                  <span className="text-xl ml-6" style={{ color: 'rgba(255,255,255,.08)' }}>·</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── BENTO FEATURES ─── */}
+      <section id="product" className="py-24 lg:py-36">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8">
+          <div className="text-center mb-16 lg:mb-20">
+            <p className="text-[10px] font-bold uppercase tracking-[.35em] mb-4" style={{ color: 'rgba(255,255,255,.28)' }}>Можливості</p>
+            <h2 className="al-display text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
+              Все що потрібно<br/><span className="al-grad">сучасному водію</span>
+            </h2>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center mb-24 lg:mb-32">
-            <div className="relative px-4 sm:px-8 lg:px-0">
-               <div className="absolute -inset-10 lg:-inset-20 bg-blue-50/50 rounded-full blur-[60px] lg:blur-[100px] pointer-events-none"></div>
-               <div className="relative bg-white rounded-[2rem] lg:rounded-[3rem] p-2 shadow-2xl border border-gray-50 overflow-hidden">
-                  <div className="bg-gray-900 rounded-[1.8rem] lg:rounded-[2.8rem] aspect-video flex flex-col items-center justify-center p-6 lg:p-12 text-center overflow-hidden relative">
-                     <div className="absolute top-0 right-0 w-24 h-24 lg:w-32 lg:h-32 bg-indigo-500/20 blur-3xl"></div>
-                     <BarChart3 size={48} className="text-indigo-400 mb-4 lg:mb-6 sm:w-16 sm:h-16" />
-                     <h4 className="text-xl sm:text-2xl font-black text-white mb-2 lg:mb-4">Аналітика витрат</h4>
-                     <p className="text-xs sm:text-sm lg:text-base text-gray-400 font-medium">AutoLog автоматично рахує вартість володіння авто, прогнозує витрати на пальне та ремонт.</p>
-                  </div>
-               </div>
-            </div>
-            <div className="px-4 sm:px-0 text-center sm:text-left">
-               <h4 className="text-[10px] sm:text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-4 lg:mb-6">Економіка авто</h4>
-               <h3 className="text-3xl lg:text-4xl font-black text-gray-900 mb-6 lg:mb-8 leading-tight">Контролюй кожен цент, витрачений на сервіс</h3>
-               <p className="text-base sm:text-lg lg:text-xl text-gray-500 font-medium mb-8 lg:mb-10 leading-relaxed">
-                  Ми візуалізуємо ваші витрати у зручних графіках. Ви точно знаєте, на що йдуть кошти: пальне, запчастини чи планове ТО. Ніяких сюрпризів.
-               </p>
-               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 text-left">
-                  {[
-                    { icon: MousePointer2, text: 'Прогноз витрат' },
-                    { icon: FileText, text: 'Експорт звітів' },
-                    { icon: Zap, text: 'Економія до 15%' },
-                    { icon: CheckCircle2, text: 'Історія чеків' }
-                  ].map((item, idx) => (
-                    <li key={idx} className="flex items-center gap-3 text-sm font-bold text-gray-700">
-                       <item.icon size={18} className="text-indigo-500 shrink-0"/> {item.text}
-                    </li>
-                  ))}
-               </ul>
-            </div>
-          </div>
+          <div id="features" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center px-4 sm:px-0">
-            <div className="order-2 lg:order-1 text-center sm:text-left">
-               <h4 className="text-[10px] sm:text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-4 lg:mb-6">Прозорість</h4>
-               <h3 className="text-3xl lg:text-4xl font-black text-gray-900 mb-6 lg:mb-8 leading-tight">Ваш власний Carfax у один клік</h3>
-               <p className="text-base sm:text-lg lg:text-xl text-gray-500 font-medium mb-8 lg:mb-10 leading-relaxed">
-                  При продажі авто ви просто ділитеся посиланням. Покупець бачить прозору історію, підтверджену партнерськими СТО. Це автоматично піднімає ціну вашого авто на 10-15%.
-               </p>
-               <button onClick={onLogin} className="inline-flex items-center justify-center w-full sm:w-auto gap-3 text-sm font-black text-indigo-600 uppercase tracking-widest hover:gap-5 transition-all bg-indigo-50 sm:bg-transparent py-4 sm:py-0 rounded-2xl sm:rounded-none">
-                  Дізнатися більше <ArrowRight size={16}/>
-               </button>
+            {/* AI Chat — wide */}
+            <div className="sm:col-span-2 al-glass al-glass-hover rounded-3xl p-8 lg:p-10 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-72 h-72 pointer-events-none"
+                style={{ background: 'radial-gradient(circle at top right, rgba(92,62,254,.14), transparent 70%)' }} />
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ background: BRAND }}>
+                  <Bot size={19} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">AI Механік</p>
+                  <p className="text-[10px] font-bold text-green-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse inline-block" /> Online
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="px-4 py-3 rounded-2xl rounded-tl-sm max-w-[88%] text-[13px] leading-relaxed"
+                  style={{ background: 'rgba(255,255,255,.06)', color: 'rgba(255,255,255,.7)' }}>
+                  Аналізую Ford Bronco… Знос передніх колодок до <span className="text-white font-semibold">20%</span>. Рекомендую замінити протягом 500 км.
+                </div>
+                <div className="ml-auto px-4 py-3 rounded-2xl rounded-tr-sm max-w-[80%] text-[13px] font-medium text-white"
+                  style={{ background: BRAND }}>
+                  Скільки коштуватиме заміна?
+                </div>
+                <div className="px-4 py-3 rounded-2xl rounded-tl-sm max-w-[88%] text-[13px] leading-relaxed"
+                  style={{ background: 'rgba(255,255,255,.06)', color: 'rgba(255,255,255,.7)' }}>
+                  Заміна колодок: <span className="text-white font-semibold">800–1 200 ₴</span>. Знайшов 3 партнерських СТО поруч. Записати?
+                </div>
+                <div className="px-4 py-3 rounded-2xl rounded-tl-sm flex gap-1.5 w-fit"
+                  style={{ background: 'rgba(255,255,255,.05)' }}>
+                  {[0,150,300].map(d => <div key={d} className="al-dot w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,.3)', animationDelay: `${d}ms` }} />)}
+                </div>
+              </div>
             </div>
-            <div className="order-1 lg:order-2 relative px-4 sm:px-8 lg:px-0">
-               <div className="bg-indigo-600 rounded-3xl lg:rounded-[3rem] p-8 lg:p-12 text-white shadow-[0_20px_40px_-10px_rgba(92,62,254,0.3)] lg:shadow-[0_40px_80px_-15px_rgba(92,62,254,0.3)] relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 lg:w-48 lg:h-48 bg-white/10 rounded-full -mr-16 -mt-16 lg:-mr-24 lg:-mt-24 group-hover:scale-110 transition-transform duration-700"></div>
-                  <FileText size={40} className="mb-6 lg:mb-8 opacity-50 sm:w-12 sm:h-12" />
-                  <h4 className="text-2xl sm:text-3xl font-black mb-4">Публічний звіт</h4>
-                  <div className="space-y-3 opacity-80 font-medium mb-8 lg:mb-10">
-                     <p className="flex items-center gap-3 text-xs sm:text-sm"><CheckCircle2 size={16} className="shrink-0"/> Оригінальний пробіг підтверджено</p>
-                     <p className="flex items-center gap-3 text-xs sm:text-sm"><CheckCircle2 size={16} className="shrink-0"/> Відсутність ДТП у базі</p>
-                     <p className="flex items-center gap-3 text-xs sm:text-sm"><CheckCircle2 size={16} className="shrink-0"/> Всі записи ТО з 2021 року</p>
+
+            {/* Analytics */}
+            <div className="al-glass al-glass-hover rounded-3xl p-8 relative overflow-hidden">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-6" style={{ background: 'rgba(92,62,254,.18)' }}>
+                <BarChart3 size={19} style={{ color: '#9D85FF' }} />
+              </div>
+              <h3 className="al-display text-xl font-bold text-white mb-3">Аналітика витрат</h3>
+              <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,.38)' }}>
+                Візуалізуємо всі витрати. Ніяких сюрпризів.
+              </p>
+              <div className="flex items-end gap-1 h-14">
+                {[38,60,42,78,52,68,88,56,82,72,95].map((h, i) => (
+                  <div key={i} className="flex-1 rounded-sm transition-all"
+                    style={{ height: `${h}%`, background: i === 10 ? BRAND : `rgba(92,62,254,${.12 + h * .004})` }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Sharing */}
+            <div className="al-glass al-glass-hover rounded-3xl p-8 relative overflow-hidden">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-6" style={{ background: 'rgba(92,62,254,.18)' }}>
+                <FileText size={19} style={{ color: '#9D85FF' }} />
+              </div>
+              <h3 className="al-display text-xl font-bold text-white mb-3">Публічний звіт</h3>
+              <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,.38)' }}>
+                Поділіться прозорою історією при продажі. +10–15% до ціни.
+              </p>
+              {['Оригінальний пробіг підтверджено','Відсутність ДТП','Всі записи ТО'].map((t, i) => (
+                <div key={i} className="flex items-center gap-2 mb-2">
+                  <CheckCircle2 size={13} style={{ color: '#9D85FF' }} />
+                  <span className="text-[11px]" style={{ color: 'rgba(255,255,255,.5)' }}>{t}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Reminders */}
+            <div className="al-glass al-glass-hover rounded-3xl p-8 relative overflow-hidden">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-6" style={{ background: 'rgba(92,62,254,.18)' }}>
+                <Bell size={19} style={{ color: '#9D85FF' }} />
+              </div>
+              <h3 className="al-display text-xl font-bold text-white mb-3">Розумні нагадування</h3>
+              <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,.38)' }}>
+                AutoLog знає, коли закінчується страховка або час міняти масло.
+              </p>
+              <div className="space-y-2">
+                {[['#5C3EFE','Заміна масла через 1 200 км'],['#f59e0b','Страховка спливає за 14 днів']].map(([c, t], i) => (
+                  <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-xl" style={{ background: 'rgba(255,255,255,.04)' }}>
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c }} />
+                    <span className="text-[11px]" style={{ color: 'rgba(255,255,255,.55)' }}>{t}</span>
                   </div>
-                  <div className="bg-white/10 p-3 lg:p-4 rounded-xl lg:rounded-2xl flex items-center justify-between">
-                     <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest break-all">autolog.app/share/m5</span>
-                     <Sparkles size={16} className="shrink-0 ml-2"/>
-                  </div>
-               </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Booking CTA */}
+            <div className="al-glass al-glass-hover rounded-3xl p-8 relative overflow-hidden">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-6" style={{ background: 'rgba(92,62,254,.18)' }}>
+                <Wrench size={19} style={{ color: '#9D85FF' }} />
+              </div>
+              <h3 className="al-display text-xl font-bold text-white mb-3">Онлайн запис</h3>
+              <p className="text-sm leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,.38)' }}>
+                Вибирайте вільне вікно на СТО за 30 секунд прямо в додатку.
+              </p>
+              <button onClick={onLogin} className="al-btn w-full py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest text-white"
+                style={{ background: 'rgba(92,62,254,.25)', border: '1px solid rgba(92,62,254,.35)' }}>
+                Записатись зараз
+              </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section id="features" className="py-20 lg:py-32 bg-gray-50/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16 lg:mb-24 px-4 text-balance">
-            <h2 className="text-[10px] sm:text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em] lg:tracking-[0.4em] mb-4 lg:mb-6">Функціонал</h2>
-            <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 tracking-tight">Розумні інструменти для водія</h3>
-          </div>
+      {/* ─── STO SECTION ─── */}
+      <section id="sto" className="py-24 lg:py-36 relative overflow-hidden">
+        <div className="absolute right-0 inset-y-0 w-1/2 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 70% 70% at 80% 50%, rgba(92,62,254,.09) 0%, transparent 70%)' }} />
+        <div className="max-w-7xl mx-auto px-5 sm:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 lg:gap-8 px-4 sm:px-0">
-            {[
-              { icon: Bell, title: 'Розумні нагадування', desc: 'AutoLog знає, коли закінчується страховка чи прийшов час міняти гальмівні колодки.' },
-              { icon: Wrench, title: 'Онлайн запис', desc: 'Вибирайте вільне вікно на улюбленому СТО прямо в додатку за 30 секунд.' },
-              { icon: Smartphone, title: 'Telegram Бот', desc: 'Уся статистика та керування сервісом через ваш месенджер.' }
-            ].map((f, i) => (
-              <div key={i} className="bg-white p-6 sm:p-8 lg:p-10 rounded-3xl lg:rounded-[3rem] border border-gray-100 hover:border-indigo-100 transition-all hover:shadow-2xl hover:shadow-indigo-500/5 group">
-                <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-[1.2rem] lg:rounded-[1.5rem] bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6 lg:mb-8 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500">
-                  <f.icon size={24} className="lg:w-7 lg:h-7" />
-                </div>
-                <h4 className="text-xl sm:text-2xl font-black text-gray-900 mb-3 lg:mb-4">{f.title}</h4>
-                <p className="text-sm sm:text-base text-gray-500 font-medium leading-relaxed">{f.desc}</p>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[.35em] mb-6" style={{ color: 'rgba(255,255,255,.28)' }}>Для бізнесу</p>
+              <h2 className="al-display text-4xl sm:text-5xl lg:text-[3.8rem] font-extrabold tracking-[-0.02em] leading-[.93] mb-8">
+                Будуй майбутнє<br/><span className="al-grad">свого СТО</span><br/>разом з нами
+              </h2>
+              <p className="text-lg leading-relaxed mb-10" style={{ color: 'rgba(255,255,255,.4)' }}>
+                Підключіть ваше СТО до мережі AutoLog і отримайте CRM, потік клієнтів та аналітику в одному місці.
+              </p>
+              <div className="space-y-4 mb-10">
+                {['CRM з розумним календарем записів','Автоматичні push-сповіщення клієнтам','База запчастин та аналітика доходів'].map((t, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(92,62,254,.2)' }}>
+                      <CheckCircle2 size={13} style={{ color: '#9D85FF' }} />
+                    </div>
+                    <span className="text-base font-medium" style={{ color: 'rgba(255,255,255,.6)' }}>{t}</span>
+                  </div>
+                ))}
               </div>
+              <button onClick={onLogin} className="al-btn al-glow inline-flex items-center gap-3 px-8 py-4 sm:py-5 rounded-2xl text-sm font-bold uppercase tracking-widest text-white"
+                style={{ background: BRAND }}>
+                Стати партнером <ArrowRight size={15} />
+              </button>
+            </div>
+
+            <div className="al-glass rounded-3xl p-6 sm:p-8 relative overflow-hidden"
+              style={{ border: '1px solid rgba(92,62,254,.18)', boxShadow: '0 30px 80px rgba(92,62,254,.1)' }}>
+              <div className="absolute top-0 right-0 w-48 h-48 pointer-events-none"
+                style={{ background: 'radial-gradient(circle, rgba(92,62,254,.14), transparent 70%)' }} />
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-6" style={{ color: 'rgba(255,255,255,.28)' }}>CRM · Сьогодні</p>
+              <div className="space-y-3">
+                {[
+                  { id:'#1024', car:'BMW X5',      time:'10:00', active: true },
+                  { id:'#1025', car:'Toyota Camry', time:'12:30', active: false },
+                  { id:'#1026', car:'Audi Q5',      time:'14:00', active: false },
+                  { id:'#1027', car:'Ford Focus',   time:'16:30', active: false },
+                ].map((row, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl"
+                    style={{ background: row.active ? 'rgba(92,62,254,.15)' : 'rgba(255,255,255,.03)', border: `1px solid ${row.active ? 'rgba(92,62,254,.35)' : 'rgba(255,255,255,.05)'}` }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-bold shrink-0"
+                        style={{ background: 'rgba(255,255,255,.05)', color: 'rgba(255,255,255,.35)' }}>{row.id}</div>
+                      <div>
+                        <p className="text-sm font-bold text-white">{row.car}</p>
+                        <p className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,.3)' }}>{row.time}</p>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl"
+                      style={{ background: row.active ? 'rgba(92,62,254,.3)' : 'rgba(255,255,255,.05)', color: row.active ? '#b8a4ff' : 'rgba(255,255,255,.28)' }}>
+                      {row.active ? 'В роботі' : 'Очікує'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 pt-6 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,.06)' }}>
+                <p className="text-[10px] font-medium uppercase tracking-widest" style={{ color: 'rgba(255,255,255,.22)' }}>Записів сьогодні</p>
+                <p className="al-display text-2xl font-bold text-white">12</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── AI SECTION ─── */}
+      <section id="ai" className="py-24 lg:py-36 relative overflow-hidden">
+        <div className="absolute left-0 inset-y-0 w-1/2 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 60% 70% at 10% 50%, rgba(92,62,254,.08) 0%, transparent 70%)' }} />
+        <div className="max-w-7xl mx-auto px-5 sm:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+            {/* Chat mock */}
+            <div className="order-2 lg:order-1 al-glass rounded-3xl p-6 sm:p-8"
+              style={{ border: '1px solid rgba(92,62,254,.18)', boxShadow: '0 30px 80px rgba(92,62,254,.08)' }}>
+              <div className="flex items-center gap-3 pb-6 mb-6" style={{ borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ background: BRAND }}>
+                  <Bot size={18} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">AI AutoMechanic</p>
+                  <p className="text-[10px] font-bold text-green-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse inline-block" /> Online · 24/7
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {[
+                  { r:'bot',  t:'Доброго дня! Аналізую телеметрію вашого авто. Виявив потенційну проблему з гальмівною системою.' },
+                  { r:'user', t:'Що саме не так?' },
+                  { r:'bot',  t:'Знос передніх гальмівних колодок до 20%. Рекомендую замінити протягом 500–700 км. Вартість: 800–1 200 ₴.' },
+                ].map((m, i) => (
+                  <div key={i} className={`flex ${m.r === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className="max-w-[88%] px-4 py-3 text-[13px] leading-relaxed"
+                      style={{
+                        background: m.r === 'user' ? BRAND : 'rgba(255,255,255,.06)',
+                        color: m.r === 'user' ? '#fff' : 'rgba(255,255,255,.7)',
+                        borderRadius: m.r === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                        fontWeight: m.r === 'user' ? 500 : 400
+                      }}>
+                      {m.t}
+                    </div>
+                  </div>
+                ))}
+                <div className="flex gap-1.5 px-4 py-3 w-fit" style={{ background: 'rgba(255,255,255,.05)', borderRadius: '18px 18px 18px 4px' }}>
+                  {[0,1,2].map(i => <div key={i} className="al-dot w-2 h-2 rounded-full" style={{ background: 'rgba(255,255,255,.28)', animationDelay: `${i*160}ms` }} />)}
+                </div>
+              </div>
+            </div>
+
+            <div className="order-1 lg:order-2">
+              <p className="text-[10px] font-bold uppercase tracking-[.35em] mb-6" style={{ color: 'rgba(255,255,255,.28)' }}>AI Інтелект</p>
+              <h2 className="al-display text-4xl sm:text-5xl lg:text-[3.8rem] font-extrabold tracking-[-0.02em] leading-[.93] mb-8">
+                Механік,<br/><span className="al-grad">який завжди</span><br/>поруч.
+              </h2>
+              <p className="text-lg leading-relaxed mb-10" style={{ color: 'rgba(255,255,255,.4)' }}>
+                AutoLog AI аналізує технічний стан вашого авто в реальному часі, дає поради та допомагає вибрати найкращі запчастини. Як лікар для авто, але 24/7.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  [Zap,'Миттєва діагностика','Відповідь за секунди'],
+                  [Shield,'Надійні поради','Перевірені рекомендації'],
+                  [Calendar,'Планування ТО','Авто-нагадування'],
+                  [Smartphone,'Telegram бот','Завжди в месенджері'],
+                ].map(([Icon, title, desc], i) => (
+                  <div key={i} className="p-4 rounded-2xl" style={{ background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.06)' }}>
+                    <Icon size={17} style={{ color: '#9D85FF' }} className="mb-2.5" />
+                    <p className="text-sm font-bold text-white mb-0.5">{title}</p>
+                    <p className="text-[11px]" style={{ color: 'rgba(255,255,255,.3)' }}>{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── CTA ─── */}
+      <section className="py-28 lg:py-40 relative overflow-hidden">
+        <div className="absolute inset-0 al-mesh opacity-70 pointer-events-none" />
+        <div className="absolute inset-0 al-grid-bg pointer-events-none opacity-60" />
+        <div className="absolute top-0 inset-x-0 h-px pointer-events-none"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(92,62,254,.6), transparent)' }} />
+        <div className="absolute bottom-0 inset-x-0 h-px pointer-events-none"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(92,62,254,.35), transparent)' }} />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-[600px] h-[600px] rounded-full"
+            style={{ background: 'radial-gradient(circle, rgba(92,62,254,.12) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+        </div>
+
+        <div className="max-w-4xl mx-auto px-5 sm:px-8 text-center relative z-10">
+          <h2 className="al-display text-5xl sm:text-6xl lg:text-8xl font-extrabold tracking-[-0.03em] leading-[.9] mb-8">
+            Почни нову еру<br/><span className="al-grad">життя свого авто.</span>
+          </h2>
+          <p className="text-lg mb-12 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,.38)' }}>
+            Безкоштовна реєстрація за 30 секунд. Картка не потрібна.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button onClick={onLogin} className="al-btn al-glow px-10 py-5 rounded-2xl text-sm font-bold uppercase tracking-[.15em] text-white"
+              style={{ background: BRAND }}>
+              Створити акаунт
+            </button>
+            <button onClick={onLogin} className="al-btn al-glass px-10 py-5 rounded-2xl text-sm font-bold uppercase tracking-[.15em] text-white/55 hover:text-white transition-colors">
+              Портал СТО
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FOOTER ─── */}
+      <footer className="py-10" style={{ borderTop: '1px solid rgba(255,255,255,.05)' }}>
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center shrink-0" style={{ background: BRAND }}>
+              <img src="/logo.png" alt="" className="w-5 h-5 object-contain brightness-0 invert" />
+            </div>
+            <span className="al-display text-sm font-bold" style={{ color: 'rgba(255,255,255,.5)' }}>AutoLog</span>
+          </div>
+          <div className="flex gap-8">
+            {['Політика','Контакти','API'].map(t => (
+              <a key={t} href="#" className="text-[10px] font-semibold uppercase tracking-widest transition-colors"
+                style={{ color: 'rgba(255,255,255,.22)' }}
+                onMouseEnter={e => e.target.style.color='rgba(255,255,255,.6)'}
+                onMouseLeave={e => e.target.style.color='rgba(255,255,255,.22)'}>{t}</a>
             ))}
           </div>
+          <p className="text-[10px] font-medium uppercase tracking-widest" style={{ color: 'rgba(255,255,255,.18)' }}>© 2026 AutoLog</p>
         </div>
-      </section>
-
-      {/* B2B / STO Section */}
-      <section id="sto" className="py-20 lg:py-32 bg-white relative">
-         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="bg-gray-900 rounded-3xl sm:rounded-[3rem] lg:rounded-[4rem] p-8 sm:p-12 lg:p-24 text-white relative overflow-hidden flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
-               <div className="absolute top-0 right-0 w-[20rem] sm:w-[40rem] h-[20rem] sm:h-[40rem] bg-indigo-600/20 rounded-full blur-[60px] lg:blur-[100px] -mr-[10rem] lg:-mr-[20rem] -mt-[10rem] lg:-mt-[20rem] pointer-events-none"></div>
-               
-               <div className="flex-1 relative z-10 text-center lg:text-left">
-                  <h2 className="text-[10px] sm:text-[11px] font-black text-indigo-400 uppercase tracking-[0.3em] lg:tracking-[0.4em] mb-6 lg:mb-8">Для бізнесу</h2>
-                  <h3 className="text-3xl sm:text-4xl lg:text-6xl font-black leading-none mb-8 lg:mb-10 tracking-tight text-balance">Будуй майбутнє свого СТО разом з нами</h3>
-                  <div className="space-y-4 sm:space-y-6 mb-10 lg:mb-12">
-                     <p className="flex items-center gap-3 sm:gap-4 text-base sm:text-lg font-bold justify-center lg:justify-start"><CheckCircle2 className="text-indigo-400 shrink-0" /> CRM з розумним календарем</p>
-                     <p className="flex items-center gap-3 sm:gap-4 text-base sm:text-lg font-bold justify-center lg:justify-start"><CheckCircle2 className="text-indigo-400 shrink-0" /> Автоматичні пуші клієнтам</p>
-                     <p className="flex items-center gap-3 sm:gap-4 text-base sm:text-lg font-bold justify-center lg:justify-start"><CheckCircle2 className="text-indigo-400 shrink-0" /> База запчастин та аналітика</p>
-                  </div>
-                  <button onClick={onLogin} className="w-full sm:w-auto px-8 py-4 sm:px-10 sm:py-6 bg-white text-gray-900 rounded-2xl sm:rounded-3xl text-xs sm:text-sm font-black uppercase tracking-widest hover:bg-gray-100 transition-all active:scale-95 shadow-xl">Стати партнером</button>
-               </div>
-
-               <div className="flex-1 w-full lg:w-auto relative z-10">
-                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-[3rem] p-6 sm:p-8 lg:p-12">
-                     <div className="space-y-4 sm:space-y-6">
-                        {[1,2,3].map(i => (
-                          <div key={i} className={`flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/5 border border-white/5 ${i === 1 ? 'border-indigo-500/50 bg-indigo-500/10' : ''}`}>
-                             <div className="flex items-center gap-3 sm:gap-4">
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/10 flex items-center justify-center font-black text-xs sm:text-sm shrink-0">{i}</div>
-                                <div>
-                                   <p className="text-xs sm:text-sm font-black">Запис #{1024 + i}</p>
-                                   <p className="text-[9px] sm:text-[10px] uppercase font-bold text-gray-400">BMW X5 · 14:30</p>
-                                </div>
-                             </div>
-                             <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest px-2 sm:px-3 py-1 bg-white/10 rounded-full whitespace-nowrap">{i===1 ? 'В роботі' : 'Очікує'}</div>
-                          </div>
-                        ))}
-                     </div>
-                  </div>
-               </div>
-            </div>
-         </div>
-      </section>
-
-      {/* AI Section */}
-      <section id="ai" className="py-20 lg:py-32 relative overflow-hidden bg-[#FDFDFF]">
-         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
-               <div className="flex-1 relative order-2 lg:order-1 w-full">
-                  <div className="relative z-10 bg-white rounded-3xl lg:rounded-[3.5rem] border border-gray-100 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.05)] lg:shadow-[0_50px_100px_-20px_rgba(0,0,0,0.05)] p-6 sm:p-8 lg:p-10">
-                     <div className="flex items-center gap-4 sm:gap-5 mb-8 sm:mb-10 pb-6 sm:pb-10 border-b border-gray-50">
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl sm:rounded-3xl bg-indigo-600 flex items-center justify-center text-white shadow-xl shadow-indigo-100 shrink-0"><Bot size={24} className="sm:w-8 sm:h-8"/></div>
-                        <div>
-                           <p className="text-base sm:text-lg font-black text-gray-900 leading-none mb-1.5 tracking-tight">AI AutoMechanic</p>
-                           <p className="text-[9px] sm:text-[10px] font-black text-green-500 uppercase tracking-widest flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Online · Доступний</p>
-                        </div>
-                     </div>
-                     <div className="space-y-4 sm:space-y-6">
-                        <div className="flex justify-start"><div className="bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 rounded-[1.2rem] sm:rounded-[1.8rem] rounded-tl-sm text-xs sm:text-sm font-medium text-gray-600 max-w-[90%] sm:max-w-[85%] border border-gray-100">Чути дивний звук при гальмуванні? Скоріш за все, це знос колодок. Я вибрав найкращі варіанти для твого авто...</div></div>
-                        <div className="flex justify-end"><div className="bg-indigo-600 px-4 sm:px-6 py-3 sm:py-4 rounded-[1.2rem] sm:rounded-[1.8rem] rounded-tr-sm text-xs sm:text-sm font-bold text-white max-w-[85%] sm:max-w-[80%] shadow-lg shadow-indigo-200">Дякую! Скільки коштуватиме заміна?</div></div>
-                     </div>
-                  </div>
-               </div>
-
-               <div className="flex-1 order-1 lg:order-2 text-center lg:text-left">
-                  <h2 className="text-[10px] sm:text-[11px] font-black text-indigo-500 uppercase tracking-[0.3em] lg:tracking-[0.4em] mb-6 lg:mb-10">AI Інтелект</h2>
-                  <h3 className="text-4xl sm:text-5xl lg:text-[5rem] font-[1000] text-gray-900 leading-[0.95] mb-8 lg:mb-12 tracking-tighter text-balance">Механік, <br className="hidden sm:block"/>який завжди поруч.</h3>
-                  <p className="text-base sm:text-lg lg:text-xl text-gray-500 font-medium mb-8 lg:mb-12 leading-relaxed">
-                     AutoLog AI аналізує технічний стан вашого авто у реальному часі, дає поради щодо ремонту та допомагає вибрати найкращі запчастини. Це як лікар для вашого авто, тільки доступний 24/7.
-                  </p>
-                  <button onClick={onLogin} className="inline-flex items-center gap-3 text-xs sm:text-sm font-black text-indigo-600 uppercase tracking-[0.1em] sm:tracking-[0.2em] group bg-indigo-50 sm:bg-transparent py-4 px-6 sm:p-0 rounded-2xl w-full sm:w-auto justify-center">
-                     Спробувати консультацію <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                  </button>
-               </div>
-            </div>
-         </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="py-24 lg:py-32 relative group">
-        <div className="absolute inset-0 bg-gray-950 overflow-hidden">
-           <div className="absolute top-0 left-0 w-full h-full opacity-10" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '20px 20px', '@media (min-width: 640px)': {backgroundSize: '40px 40px'}}}></div>
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] sm:w-full h-full bg-indigo-600/20 blur-[100px] sm:blur-[150px] rounded-full"></div>
-        </div>
-        
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center relative z-10">
-          <h2 className="text-4xl sm:text-5xl lg:text-7xl font-black text-white leading-[0.95] mb-10 sm:mb-12 tracking-tight text-balance">Почни нову еру <br className="hidden sm:block"/> <span className="text-indigo-400">життя свого авто.</span></h2>
-          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 justify-center w-full">
-            <button onClick={onLogin} className="w-full sm:w-auto px-8 py-5 sm:px-12 sm:py-7 bg-indigo-600 text-white rounded-2xl sm:rounded-[2rem] text-xs sm:text-sm font-black uppercase tracking-[0.2em] hover:bg-white hover:text-gray-900 transition-all shadow-2xl sm:shadow-3xl shadow-indigo-500/20 active:scale-95">Створити акаунт</button>
-            <button onClick={onLogin} className="w-full sm:w-auto px-8 py-5 sm:px-12 sm:py-7 bg-white/5 border border-white/10 text-white rounded-2xl sm:rounded-[2rem] text-xs sm:text-sm font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all active:scale-95">Портал СТО</button>
-          </div>
-          <p className="mt-8 sm:mt-12 text-gray-400 sm:text-gray-500 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.4em]">Реєстрація займає 30 секунд. Картка не потрібна.</p>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 sm:py-16 bg-white border-t border-gray-50">
-         <div className="max-w-7xl mx-auto px-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-8 sm:gap-12 text-center md:text-left">
-               <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-gray-900 flex items-center justify-center shrink-0"><img src="/logo.png" alt="AutoLog" className="w-4 h-4 brightness-0 invert opacity-60"/></div>
-                  <span className="text-xs font-black uppercase tracking-[0.3em] text-gray-900">AutoLog</span>
-               </div>
-               
-               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-6 sm:gap-12">
-                  <a href="#" className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Політика</a>
-                  <a href="#" className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">Контакти</a>
-                  <a href="#" className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">API</a>
-               </div>
-               
-               <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest underline decoration-indigo-200 underline-offset-4">AutoLog © 2026</p>
-            </div>
-         </div>
       </footer>
     </div>
   )
