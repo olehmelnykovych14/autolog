@@ -66,7 +66,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
       if (name !== currentUser.displayName) {
         await updateProfile(currentUser, { displayName: name })
       }
-      const up = { ...userProfile, phone, city, avatarBase64: avatar }
+      const up = { ...userProfile, displayName: name, phone, city, avatarBase64: avatar }
       if (userProfile?.accountType === 'sto') {
         up.stoName = stoName
         up.stoAddress = stoAddress
