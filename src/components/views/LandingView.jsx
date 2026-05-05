@@ -95,15 +95,18 @@ const BG    = '#07070E'
 
 export function LandingView({ onLogin }) {
   const [scrolled, setScrolled] = useState(false)
+  const containerRef = React.useRef(null)
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 30)
-    window.addEventListener('scroll', fn)
-    return () => window.removeEventListener('scroll', fn)
+    const el = containerRef.current
+    if (!el) return
+    const fn = () => setScrolled(el.scrollTop > 30)
+    el.addEventListener('scroll', fn)
+    return () => el.removeEventListener('scroll', fn)
   }, [])
 
   return (
-    <div className="al min-h-screen overflow-x-hidden text-white" style={{ background: BG }}>
+    <div ref={containerRef} className="al min-h-screen overflow-x-hidden overflow-y-auto text-white" style={{ background: BG, height: '100vh' }}>
       <style>{STYLE}</style>
 
       {/* ─── NAV ─── */}
@@ -114,7 +117,7 @@ export function LandingView({ onLogin }) {
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
               style={{ background: BRAND, boxShadow: '0 0 20px rgba(92,62,254,.45)' }}>
-              <img src="/logo.png" alt="AutoLog" className="w-6 h-6 object-contain brightness-0 invert" />
+              <img src="/logo.png" alt="AutoLog" className="w-6 h-6 object-contain" />
             </div>
             <span className="al-display text-lg font-bold tracking-tight">AutoLog</span>
           </div>
@@ -557,7 +560,7 @@ export function LandingView({ onLogin }) {
         <div className="max-w-7xl mx-auto px-5 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center shrink-0" style={{ background: BRAND }}>
-              <img src="/logo.png" alt="" className="w-5 h-5 object-contain brightness-0 invert" />
+              <img src="/logo.png" alt="" className="w-5 h-5 object-contain" />
             </div>
             <span className="al-display text-sm font-bold" style={{ color: 'rgba(255,255,255,.5)' }}>AutoLog</span>
           </div>
