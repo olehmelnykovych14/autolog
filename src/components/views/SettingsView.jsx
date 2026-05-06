@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Camera, Check, MapPin, Smartphone, User, Loader2, Send, ExternalLink, CreditCard, Star, Zap } from 'lucide-react'
+import { Camera, Check, MapPin, Smartphone, User, Loader2, Send, ExternalLink, CreditCard, Star, Zap, Wrench } from 'lucide-react'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { updateProfile } from 'firebase/auth'
 import { doc, updateDoc, setDoc } from 'firebase/firestore'
@@ -12,6 +12,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
   const [city, setCity] = useState('')
   const [stoName, setStoName] = useState('')
   const [stoAddress, setStoAddress] = useState('')
+  const [stoServices, setStoServices] = useState([])
   const [avatar, setAvatar] = useState('')
   const [saving, setSaving] = useState(false)
   const [tgLoading, setTgLoading] = useState(false)
@@ -23,6 +24,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
       setCity(userProfile.city || '')
       setStoName(userProfile.stoName || '')
       setStoAddress(userProfile.stoAddress || '')
+      setStoServices(userProfile.services || [])
       setAvatar(userProfile.avatarBase64 || '')
     }
   }, [userProfile])
@@ -70,6 +72,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
       if (userProfile?.accountType === 'sto') {
         up.stoName = stoName
         up.stoAddress = stoAddress
+        up.services = stoServices
       }
       await setDoc(doc(db, 'users', currentUser.uid), up, { merge: true })
       setUserProfile(up)
@@ -152,6 +155,23 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
                 <div className="relative flex items-center">
                   <MapPin className="absolute left-4 text-gray-400" size={18} />
                   <input value={stoAddress} onChange={e => setStoAddress(e.target.value)} className={`${ic} !pl-12`} placeholder="Київ, вул. Світла, 1" />
+                </div>
+              </Field>
+              <Field label="Послуги">
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {['ТО', 'Ремонт', 'Діагностика', 'Шиномонтаж', 'Мийка', 'Тюнінг'].map(s => {
+                    const active = stoServices.includes(s)
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setStoServices(prev => active ? prev.filter(x => x !== s) : [...prev, s])}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wide border transition-all ${active ? 'bg-[#5C3EFE] text-white border-[#5C3EFE]' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:border-[#5C3EFE] hover:text-[#5C3EFE]'}`}
+                      >
+                        {s}
+                      </button>
+                    )
+                  })}
                 </div>
               </Field>
             </div>
