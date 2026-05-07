@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Car, ShieldCheck, Info, Loader2, TrendingUp, Users, ClipboardCheck, Zap, ChevronRight, Circle, CheckCircle, Clock, XCircle } from 'lucide-react'
+import { Search, Car, ShieldCheck, Info, Loader2, TrendingUp, ClipboardCheck, ChevronRight, CheckCircle, Clock, XCircle } from 'lucide-react'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
@@ -95,7 +95,7 @@ export function STODashboardView({ userProfile, setTab }) {
 
   const statCards = [
     {
-      label: 'MONTHLY INCOME',
+      label: 'ДОХІД ЗА МІСЯЦЬ',
       value: `₴${fmt(stats.income)}`,
       growth: '+12%',
       growthPositive: true,
@@ -104,7 +104,7 @@ export function STODashboardView({ userProfile, setTab }) {
       iconBg: 'bg-emerald-500/10',
     },
     {
-      label: 'CARS SERVICED',
+      label: 'АВТО ОБСЛУГОВАНО',
       value: fmt(stats.carsServiced),
       growth: '+8%',
       growthPositive: true,
@@ -113,9 +113,9 @@ export function STODashboardView({ userProfile, setTab }) {
       iconBg: 'bg-blue-500/10',
     },
     {
-      label: 'PENDING APPROVALS',
+      label: 'ОЧІКУЮТЬ ПІДТВЕРДЖЕННЯ',
       value: fmt(stats.pendingApprovals),
-      tag: stats.pendingApprovals > 0 ? 'High Priority' : null,
+      tag: stats.pendingApprovals > 0 ? 'Терміново' : null,
       icon: ClipboardCheck,
       iconColor: 'text-red-400',
       iconBg: 'bg-red-500/10',
@@ -129,9 +129,9 @@ export function STODashboardView({ userProfile, setTab }) {
   }
 
   const statusLabel = (status) => {
-    if (status === 'verified') return <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md uppercase tracking-widest">Verified</span>
-    if (status === 'pending') return <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md uppercase tracking-widest">Pending</span>
-    return <span className="text-[10px] font-black text-gray-500 bg-gray-700/50 px-2 py-0.5 rounded-md uppercase tracking-widest">Rejected</span>
+    if (status === 'verified') return <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md uppercase tracking-widest">Верифіковано</span>
+    if (status === 'pending') return <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md uppercase tracking-widest">Очікує</span>
+    return <span className="text-[10px] font-black text-gray-500 bg-gray-700/50 px-2 py-0.5 rounded-md uppercase tracking-widest">Відхилено</span>
   }
 
   return (
@@ -141,18 +141,13 @@ export function STODashboardView({ userProfile, setTab }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-1 tracking-tight">
-            Partner Cabinet
+            Кабінет партнера
           </h1>
           <p className="text-gray-500 dark:text-gray-400 font-medium">
-            Welcome back, Precision Auto Works
+            З поверненням, {userProfile?.displayName || userProfile?.name || 'Партнер'}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {isInactive && (
-            <button onClick={() => setTab('sto_plans')} className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 text-amber-500 rounded-xl font-bold text-xs border border-amber-500/20 hover:bg-amber-500/20 transition-all">
-              <Zap size={14}/> Активувати підписку
-            </button>
-          )}
           <button onClick={() => setTab('sto_bookings')} className="flex items-center gap-2 px-5 py-2.5 bg-[#5C3EFE] text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 hover:opacity-90 transition-all">
             <ClipboardCheck size={16}/> Записи
           </button>
@@ -201,9 +196,9 @@ export function STODashboardView({ userProfile, setTab }) {
 
         <div className="relative z-10 p-8 sm:p-10">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-black text-white mb-2">Global Registry Verification</h2>
+            <h2 className="text-2xl font-black text-white mb-2">Перевірка глобального реєстру</h2>
             <p className="text-gray-400 max-w-lg mx-auto">
-              Input the 17-digit VIN to access the unified service history and create new verified maintenance records.
+              Введіть держ. номер або 17-значний VIN для пошуку авто та додавання верифікованих сервісних записів.
             </p>
           </div>
 
@@ -223,7 +218,7 @@ export function STODashboardView({ userProfile, setTab }) {
               disabled={loading}
               className="px-8 py-4 bg-[#5C3EFE] text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/30 hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 min-w-[160px]"
             >
-              {loading ? <Loader2 className="animate-spin" size={20}/> : <><Search size={18}/> Search VIN</>}
+              {loading ? <Loader2 className="animate-spin" size={20}/> : <><Search size={18}/> Пошук</>}
             </button>
           </form>
 
@@ -248,7 +243,7 @@ export function STODashboardView({ userProfile, setTab }) {
                 <div>
                   <div className="flex items-center gap-3 mb-1">
                     <h3 className="text-xl font-black text-white uppercase tracking-tight">{foundCar.brand} {foundCar.model}</h3>
-                    <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md uppercase tracking-widest border border-emerald-500/20">Verified History</span>
+                    <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md uppercase tracking-widest border border-emerald-500/20">Перевірена історія</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-gray-400">
                     <span className="font-mono font-black text-gray-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">{foundCar.plate}</span>
@@ -267,7 +262,7 @@ export function STODashboardView({ userProfile, setTab }) {
                 disabled={isInactive}
                 className="flex items-center gap-2 px-6 py-3.5 bg-[#5C3EFE] text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/30 hover:opacity-90 transition-all disabled:opacity-50 shrink-0"
               >
-                <ShieldCheck size={18}/> Create Verified Record
+                <ShieldCheck size={18}/> Додати верифікований запис
               </button>
             </div>
           </div>
@@ -277,9 +272,9 @@ export function STODashboardView({ userProfile, setTab }) {
       {/* Recent Service Logs */}
       <div className="bg-white dark:bg-[#0F172A] border border-gray-200 dark:border-gray-800/80 rounded-2xl overflow-hidden shadow-sm">
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
-          <h2 className="font-black text-gray-900 dark:text-white">Recent Service Logs</h2>
+          <h2 className="font-black text-gray-900 dark:text-white">Останні сервісні записи</h2>
           <button onClick={() => setTab('sto_bookings')} className="text-[#5C3EFE] text-xs font-black hover:underline flex items-center gap-1">
-            View All Records <ChevronRight size={14}/>
+            Всі записи <ChevronRight size={14}/>
           </button>
         </div>
 
