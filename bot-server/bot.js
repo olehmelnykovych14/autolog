@@ -646,8 +646,82 @@ try {
   });
 } catch (e) { console.error('Notification Setup Error:', e.message); }
 
-bot.command('ping', (ctx) => ctx.reply('Pong! 🏓'));
+bot.command('ping', (ctx) => ctx.reply('Pong! 🏓'))
 
+// --- REMINDERS SCHEDULER ---
+const checkReminders = async () => {
+  console.log('🔔 Checking reminders...');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  try {
+    const usersSnap = await db.collection('users').where('telegramId', '!=', null).get();
+
+    for (const userDoc of usersSnap.docs) {
+      const user = userDoc.data();
+      if (!user.telegramId) continue;
+
+      const remindersSnap = await db.collection('users').doc(userDoc.id).collection('reminders')
+        .where('enabled', '==', true)
+        .where('notifyViaTelegram', '==', true)
+        .get();
+
+      for (const remDoc of remindersSnap.docs) {
+        const r = remDoc.data();
+        if (!r.date) continue;
+
+        const eventDate = new Date(r.date);
+        eventDate.setHours(0, 0, 0, 0);
+        const daysLeft = Math.ceil((eventDate - today) / 86400000);
+
+        // Notify if daysLeft === daysBefore OR daysLeft === 0 (day of) OR daysLeft === 1
+        const shouldNotify = daysLeft === r.daysBefore || daysLeft === 1 || daysLeft === 0;
+        if (!shouldNotify) continue;
+
+        // Avoid duplicate: check lastNotifiedDate
+        const todayStr = today.toISOString().split('T')[0];
+        if (r.lastNotifiedDate === todayStr) continue;
+
+        let msg = '';
+        if (daysLeft <= 0) {
+          msg = `⚠️ *${r.label}* — сьогодні!\n${r.carLabel ? `🚗 ${r.carLabel}\n` : ''}Дата: ${new Date(r.date).toLocaleDateString('uk-UA')}`;
+        } else if (daysLeft === 1) {
+          msg = `⏰ *${r.label}* — завтра!\n${r.carLabel ? `🚗 ${r.carLabel}\n` : ''}Дата: ${new Date(r.date).toLocaleDateString('uk-UA')}`;
+        } else {
+          msg = `🔔 *Нагадування: ${r.label}*\n${r.carLabel ? `🚗 ${r.carLabel}\n` : ''}До події: *${daysLeft} днів*\nДата: ${new Date(r.date).toLocaleDateString('uk-UA')}`;
+        }
+
+        try {
+          await bot.telegram.sendMessage(user.telegramId, msg, { parse_mode: 'Markdown' });
+          await remDoc.ref.update({ lastNotifiedDate: todayStr });
+          console.log(`✅ Reminder sent to ${user.telegramId}: ${r.label}`);
+        } catch (e) {
+          console.error(`❌ Failed to send reminder to ${user.telegramId}:`, e.message);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('❌ Reminders check error:', e.message);
+  }
+};
+
+// Run once at startup (after 10s delay), then every 24h at 09:00
+const scheduleReminders = () => {
+  const now = new Date();
+  const next9am = new Date();
+  next9am.setHours(9, 0, 0, 0);
+  if (next9am <= now) next9am.setDate(next9am.getDate() + 1);
+  const msUntil9am = next9am - now;
+
+  console.log(`⏰ Next reminder check at ${next9am.toLocaleTimeString('uk-UA')} (in ${Math.round(msUntil9am / 60000)} min)`);
+
+  setTimeout(() => {
+    checkReminders();
+    setInterval(checkReminders, 24 * 60 * 60 * 1000);
+  }, msUntil9am);
+};;
+
+scheduleReminders();
 console.log("🚀 Starting bot.launch()...");
 bot.launch()
   .then(() => {
