@@ -1,9 +1,188 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Camera, Check, MapPin, Smartphone, User, Loader2, Send, ExternalLink, CreditCard, Star, Zap, Wrench } from 'lucide-react'
+import { Camera, Check, MapPin, Smartphone, User, Loader2, Send, ExternalLink, Bell, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { updateProfile } from 'firebase/auth'
-import { doc, updateDoc, setDoc } from 'firebase/firestore'
+import { doc, updateDoc, setDoc, collection, getDocs, addDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
+
+const REMINDER_TYPES = [
+  { id: 'insurance', label: '🛡️ Страховка (ОСЦПВ)', icon: '🛡️' },
+  { id: 'inspection', label: '🔍 Техогляд', icon: '🔍' },
+  { id: 'oil', label: '🛢️ Заміна масла', icon: '🛢️' },
+  { id: 'tires', label: '🏎️ Шини (сезон)', icon: '🏎️' },
+  { id: 'battery', label: '🔋 Акумулятор', icon: '🔋' },
+  { id: 'custom', label: '📌 Власне', icon: '📌' },
+]
+const DAYS_BEFORE = [3, 7, 14, 30]
+
+function RemindersSection({ currentUser, hasTelegram }) {
+  const ic = inp_cls()
+  const [reminders, setReminders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [adding, setAdding] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ type: 'insurance', customLabel: '', carLabel: '', date: '', daysBefore: 7, notifyViaTelegram: true })
+
+  const colRef = currentUser ? collection(db, 'users', currentUser.uid, 'reminders') : null
+
+  useEffect(() => {
+    if (!colRef) return
+    getDocs(colRef).then(snap => {
+      setReminders(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setLoading(false)
+    })
+  }, [currentUser?.uid])
+
+  const addReminder = async () => {
+    if (!form.date || !colRef) return
+    setSaving(true)
+    try {
+      const typeObj = REMINDER_TYPES.find(t => t.id === form.type)
+      const label = form.type === 'custom' ? (form.customLabel || 'Нагадування') : typeObj.label
+      const data = { type: form.type, label, carLabel: form.carLabel, date: form.date, daysBefore: form.daysBefore, notifyViaTelegram: form.notifyViaTelegram, enabled: true }
+      const ref = await addDoc(colRef, data)
+      setReminders(prev => [...prev, { id: ref.id, ...data }])
+      setAdding(false)
+      setForm({ type: 'insurance', customLabel: '', carLabel: '', date: '', daysBefore: 7, notifyViaTelegram: true })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteReminder = async (id) => {
+    await deleteDoc(doc(db, 'users', currentUser.uid, 'reminders', id))
+    setReminders(prev => prev.filter(r => r.id !== id))
+  }
+
+  const toggleReminder = async (id, enabled) => {
+    await updateDoc(doc(db, 'users', currentUser.uid, 'reminders', id), { enabled })
+    setReminders(prev => prev.map(r => r.id === id ? { ...r, enabled } : r))
+  }
+
+  const daysLeft = (dateStr) => {
+    const diff = Math.ceil((new Date(dateStr) - new Date()) / 86400000)
+    if (diff < 0) return { label: 'Минуло', color: 'text-red-500' }
+    if (diff === 0) return { label: 'Сьогодні', color: 'text-orange-500' }
+    if (diff <= 7) return { label: `${diff} дн.`, color: 'text-orange-400' }
+    return { label: `${diff} дн.`, color: 'text-green-500' }
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-gray-100 dark:border-gray-700/60 p-8 shadow-sm">
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center text-violet-500">
+            <Bell size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Нагадування</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Telegram-сповіщення по даті</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setAdding(a => !a)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all active:scale-95"
+          style={{ background: '#5C3EFE' }}
+        >
+          <Plus size={16} /> Додати
+        </button>
+      </div>
+
+      {!hasTelegram && (
+        <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/40 rounded-2xl text-xs font-semibold text-yellow-700 dark:text-yellow-400">
+          ⚠️ Підключіть Telegram нижче, щоб отримувати сповіщення
+        </div>
+      )}
+
+      {adding && (
+        <div className="mb-5 p-5 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-4">
+          <Field label="Тип нагадування">
+            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className={ic}>
+              {REMINDER_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+            </select>
+          </Field>
+          {form.type === 'custom' && (
+            <Field label="Назва">
+              <input value={form.customLabel} onChange={e => setForm(f => ({ ...f, customLabel: e.target.value }))} className={ic} placeholder="Наприклад: Заміна фільтра" />
+            </Field>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Авто (необов'язково)">
+              <input value={form.carLabel} onChange={e => setForm(f => ({ ...f, carLabel: e.target.value }))} className={ic} placeholder="Acura ILX" />
+            </Field>
+            <Field label="Дата події">
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className={ic} />
+            </Field>
+          </div>
+          <Field label="Сповістити за">
+            <div className="flex gap-2 flex-wrap">
+              {DAYS_BEFORE.map(d => (
+                <button key={d} type="button"
+                  onClick={() => setForm(f => ({ ...f, daysBefore: d }))}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${form.daysBefore === d ? 'bg-[#5C3EFE] text-white border-[#5C3EFE]' : 'bg-white dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-600'}`}
+                >
+                  {d} дн.
+                </button>
+              ))}
+            </div>
+          </Field>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setForm(f => ({ ...f, notifyViaTelegram: !f.notifyViaTelegram }))}>
+              {form.notifyViaTelegram
+                ? <ToggleRight size={28} className="text-[#5C3EFE]" />
+                : <ToggleLeft size={28} className="text-gray-400" />}
+            </button>
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Надсилати в Telegram</span>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <PrimaryBtn onClick={addReminder} disabled={saving || !form.date} className="flex-1 py-3 justify-center">
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <><Check size={16} /> Зберегти</>}
+            </PrimaryBtn>
+            <button onClick={() => setAdding(false)} className="px-4 py-3 rounded-2xl text-sm font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
+              Скасувати
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-6"><Loader2 className="animate-spin text-gray-300" size={24} /></div>
+      ) : reminders.length === 0 ? (
+        <div className="text-center py-8 text-gray-400 text-sm font-medium">
+          Немає нагадувань. Додайте перше — наприклад про закінчення страховки.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {reminders.map(r => {
+            const dl = daysLeft(r.date)
+            return (
+              <div key={r.id} className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${r.enabled ? 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 opacity-50'}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-bold text-gray-900 dark:text-white truncate">{r.label}</span>
+                    {r.carLabel && <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">{r.carLabel}</span>}
+                    {r.notifyViaTelegram && <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-500">TG</span>}
+                  </div>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-xs text-gray-400">{new Date(r.date).toLocaleDateString('uk-UA')}</span>
+                    <span className={`text-xs font-bold ${dl.color}`}>{dl.label}</span>
+                    <span className="text-xs text-gray-400">за {r.daysBefore} дн.</span>
+                  </div>
+                </div>
+                <button onClick={() => toggleReminder(r.id, !r.enabled)} className="text-gray-400 hover:text-[#5C3EFE] transition-colors">
+                  {r.enabled ? <ToggleRight size={24} className="text-[#5C3EFE]" /> : <ToggleLeft size={24} />}
+                </button>
+                <button onClick={() => deleteReminder(r.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function SettingsView({ currentUser, userProfile, setUserProfile }) {
   const ic = inp_cls()
@@ -235,6 +414,8 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
           </div>
         )}
       </div>
+
+      <RemindersSection currentUser={currentUser} hasTelegram={!!userProfile?.telegramId} />
     </div>
   )
 }

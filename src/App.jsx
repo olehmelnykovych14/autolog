@@ -35,6 +35,7 @@ import { TransferCarModal, InviteMemberModal } from './components/modals/Modals'
 // Auth
 import { AuthScreen } from './components/auth/AuthScreen'
 import { LandingView } from './components/views/LandingView'
+import { PWAInstallBanner } from './components/common/PWAInstallBanner'
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(undefined)
@@ -388,6 +389,7 @@ export default function App() {
 
   return (
     <ThemeCtx.Provider value={isDark}>
+      <PWAInstallBanner />
       <div className={`fixed inset-0 flex overflow-hidden font-sans ${isDark ? 'dark' : ''}`} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
         <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin} userProfile={userProfile} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} onLogout={() => signOut(auth)} />
         <div className="flex flex-1 flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
