@@ -1,4 +1,4 @@
-import { LayoutDashboard, Car, ClipboardList, Bot, Users, CreditCard, Settings, Wrench, Calendar, MapPin } from 'lucide-react'
+import { LayoutDashboard, Car, ClipboardList, Bot, Users, CreditCard, Settings, Wrench, Calendar, MapPin, FileText } from 'lucide-react'
 
 export const C = '#5C3EFE'
 
@@ -44,6 +44,8 @@ export const NAV_OWNER = [
 export const NAV_STO = [
   { id: 'sto', label: 'Кабінет партнера', icon: Wrench },
   { id: 'sto_bookings', label: 'Календар записів', icon: Calendar },
+  { id: 'sto_clients', label: 'CRM Клієнти', icon: Users },
+  { id: 'sto_acts', label: 'Акти', icon: FileText },
   // SUBSCRIPTION: { id: 'sto_plans', label: 'Тарифи', icon: CreditCard },
   { id: 'settings', label: 'Налаштування', icon: Settings },
   { id: 'admin', label: 'Адмін панель', icon: Users },

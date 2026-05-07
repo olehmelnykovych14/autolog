@@ -26,6 +26,8 @@ import { FindSTOView } from './components/views/FindSTOView'
 import { PublicReportView } from './components/views/PublicReportView'
 import { ClientBookingsView } from './components/views/ClientBookingsView'
 import { STOBookingsView } from './components/views/STOBookingsView'
+import { STOClientsView } from './components/views/STOClientsView'
+import { STOActsView } from './components/views/STOActsView'
 
 // Modals
 import { CarDetailsModal } from './components/modals/CarDetailsModal'
@@ -412,6 +414,8 @@ export default function App() {
                     {tab === 'admin' && isAdmin && <AdminView />}
                     {tab === 'sto' && userProfile?.accountType === 'sto' && <STODashboardView userProfile={userProfile} setTab={setTab} />}
                     {tab === 'sto_bookings' && userProfile?.accountType === 'sto' && <STOBookingsView userProfile={userProfile} />}
+                    {tab === 'sto_clients' && userProfile?.accountType === 'sto' && <STOClientsView setTab={setTab} />}
+                    {tab === 'sto_acts' && userProfile?.accountType === 'sto' && <STOActsView userProfile={userProfile} />}
                     {/* SUBSCRIPTION: {tab === 'sto_plans' && userProfile?.accountType === 'sto' && <STOPricingView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} setTab={setTab} />} */}
                   </div>
                 </div>
