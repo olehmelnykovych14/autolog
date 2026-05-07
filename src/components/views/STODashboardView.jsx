@@ -207,9 +207,9 @@ export function STODashboardView({ userProfile, setTab }) {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20}/>
               <input
                 value={search}
-                onChange={e => setSearch(e.target.value.toUpperCase().slice(0, 17))}
-                placeholder="WBA3B31000K2XXXXX"
-                maxLength={17}
+                onChange={e => setSearch(e.target.value.toUpperCase())}
+                placeholder="АА1234АА або WBA3B31000K2XXXXX"
+                maxLength={20}
                 className="w-full pl-12 pr-6 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-[#5C3EFE]/60 focus:ring-2 focus:ring-[#5C3EFE]/20 transition-all uppercase font-mono tracking-wider text-sm"
               />
             </div>
