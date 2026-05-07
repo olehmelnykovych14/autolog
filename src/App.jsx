@@ -57,6 +57,7 @@ export default function App() {
   const [showTransfer, setShowTransfer] = useState(false)
   const [incomingTransfer, setIncomingTransfer] = useState(null)
   const [bookingNotifications, setBookingNotifications] = useState([])
+  const [preselectedSto, setPreselectedSto] = useState(null)
   const [incomingInvites, setIncomingInvites] = useState([])
   
   const tabRef = useRef(tab)
@@ -405,8 +406,8 @@ export default function App() {
                   <div className={`${tab === 'sto_bookings' ? 'max-w-[120rem]' : 'max-w-7xl'} mx-auto space-y-6`}>
                     {tab === 'dashboard' && <DashboardView carList={carList} historyList={historyList} />}
                     {tab === 'garage' && <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => {}} />}
-                    {tab === 'find_sto' && <FindSTOView setTab={setTab} />}
-                    {tab === 'bookings' && <ClientBookingsView carList={carList} />}
+                    {tab === 'find_sto' && <FindSTOView setTab={setTab} onBookSTO={sto => { setPreselectedSto(sto); setTab('bookings') }} />}
+                    {tab === 'bookings' && <ClientBookingsView carList={carList} preselectedSto={preselectedSto} onClearPreselected={() => setPreselectedSto(null)} />}
                     {tab === 'service' && <HistoryView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />}
                     {tab === 'team' && <TeamView teamMembers={teamMembers} limit={TEAM_LIMIT} onRemove={id => setTeamMembers(p => p.filter(m => m.id !== id))} onInvite={() => setShowInviteModal(true)} />}
                     {/* SUBSCRIPTION: {tab === 'plans' && <PlansView carList={carList} userProfile={userProfile} onUpdatePlan={handleUpdatePlan} currentUser={currentUser} />} */}

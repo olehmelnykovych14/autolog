@@ -4,7 +4,7 @@ import { collection, query, where, getDocs, orderBy, addDoc } from 'firebase/fir
 import { db, auth } from '../../firebase'
 import { PrimaryBtn, Modal, Field, inp_cls } from '../common/Common'
 
-export function ClientBookingsView({ carList }) {
+export function ClientBookingsView({ carList, preselectedSto, onClearPreselected }) {
   const [activeTab, setActiveTab] = useState('new') // 'new' | 'my'
   const [stos, setStos] = useState([])
   const [myBookings, setMyBookings] = useState([])
@@ -16,6 +16,13 @@ export function ClientBookingsView({ carList }) {
     fetchStos()
     fetchMyBookings()
   }, [])
+
+  useEffect(() => {
+    if (preselectedSto) {
+      setSelectedSto(preselectedSto)
+      onClearPreselected?.()
+    }
+  }, [preselectedSto])
 
   const fetchStos = async () => {
     try {
