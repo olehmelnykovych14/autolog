@@ -244,7 +244,63 @@ function CreateActModal({ onClose, historyItems, histLoading, userProfile, onCre
 }
 
 function ActPreviewModal({ act, stoProfile, onClose }) {
-  const print = () => window.print()
+  const print = () => {
+    const html = `<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8"/>
+<title>Акт №${act.actNumber}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; color: #111; padding: 32px; font-size: 14px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; padding-bottom: 16px; border-bottom: 2px solid #111; }
+  .sto-name { font-size: 22px; font-weight: 900; letter-spacing: -0.02em; }
+  .sto-addr { font-size: 12px; color: #555; margin-top: 4px; }
+  .act-num { font-size: 18px; font-weight: 900; text-align: right; }
+  .act-date { font-size: 12px; color: #555; margin-top: 4px; text-align: right; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  .box { padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px; }
+  .box-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #888; margin-bottom: 6px; }
+  .box-title { font-size: 15px; font-weight: 700; }
+  .box-sub { font-size: 12px; color: #555; margin-top: 3px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th { text-align: left; padding: 8px 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #555; border-bottom: 2px solid #111; }
+  th:last-child { text-align: right; }
+  td { padding: 9px 4px; font-size: 13px; border-bottom: 1px solid #f3f4f6; }
+  td:last-child { text-align: right; font-weight: 700; }
+  .total-row td { border-top: 2px solid #111; border-bottom: none; font-weight: 900; font-size: 15px; padding-top: 10px; }
+  .notes { margin-bottom: 24px; padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 10px; }
+  .sigs { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
+  .sig-label { font-size: 12px; font-weight: 700; color: #555; margin-bottom: 28px; }
+  .sig-line { border-top: 1px solid #aaa; padding-top: 5px; font-size: 12px; color: #888; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div><div class="sto-name">${act.stoName}</div>${act.stoAddress ? `<div class="sto-addr">${act.stoAddress}</div>` : ''}</div>
+  <div><div class="act-num">АКТ №${act.actNumber}</div><div class="act-date">Дата: ${new Date(act.createdAt).toLocaleDateString('uk-UA')}</div></div>
+</div>
+<div class="grid2">
+  <div class="box"><div class="box-label">Замовник</div><div class="box-title">${act.clientName}</div>${act.clientPhone ? `<div class="box-sub">${act.clientPhone}</div>` : ''}</div>
+  <div class="box"><div class="box-label">Автомобіль</div><div class="box-title">${act.carBrand || '—'}</div>${act.carPlate ? `<div class="box-sub">Держ. номер: <strong>${act.carPlate}</strong></div>` : ''}</div>
+</div>
+<table>
+  <thead><tr><th>№</th><th>Найменування роботи</th><th>Категорія</th><th>Дата</th><th>Сума</th></tr></thead>
+  <tbody>${act.items.map((item, i) => `<tr><td style="color:#888">${i+1}</td><td style="font-weight:600">${item.title}</td><td style="color:#555">${item.category}</td><td style="color:#555">${item.date||''}</td><td>${new Intl.NumberFormat('uk-UA').format(item.cost||0)} ₴</td></tr>`).join('')}</tbody>
+  <tfoot><tr class="total-row"><td colspan="4" style="text-align:right;padding-right:12px">РАЗОМ:</td><td>${new Intl.NumberFormat('uk-UA').format(act.totalCost)} ₴</td></tr></tfoot>
+</table>
+${act.notes ? `<div class="notes"><div class="box-label">Примітки</div><div style="font-size:13px;color:#444;margin-top:4px">${act.notes}</div></div>` : ''}
+<div class="sigs">
+  <div><div class="sig-label">Виконавець:</div><div class="sig-line">${act.stoName}</div></div>
+  <div><div class="sig-label">Замовник:</div><div class="sig-line">${act.clientName}</div></div>
+</div>
+</body></html>`
+    const w = window.open('', '_blank', 'width=900,height=700')
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    setTimeout(() => { w.print(); w.close() }, 300)
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>

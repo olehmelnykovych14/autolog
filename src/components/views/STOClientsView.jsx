@@ -120,10 +120,10 @@ export function STOClientsView({ setTab }) {
               className="al-card al-card-hover p-5 flex items-center gap-4 w-full text-left transition-all">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black flex-none"
                 style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
-                {c.avatarBase64 ? <img src={c.avatarBase64} className="w-full h-full object-cover rounded-2xl" /> : (c.displayName?.[0] || '?')}
+                {c.avatarBase64 ? <img src={c.avatarBase64} className="w-full h-full object-cover rounded-2xl" /> : ((c.displayName || c.name)?.[0] || '?')}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-base" style={{ color: 'var(--text)' }}>{c.displayName || 'Без імені'}</div>
+                <div className="font-bold text-base" style={{ color: 'var(--text)' }}>{c.displayName || c.name || c.phone || 'Без імені'}</div>
                 <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                   {c.phone && <span className="text-xs" style={{ color: 'var(--text-3)' }}>{c.phone}</span>}
                   {c.email && <span className="text-xs" style={{ color: 'var(--text-3)' }}>{c.email}</span>}
@@ -165,7 +165,7 @@ function ClientDetail({ client, loading, onBack, setTab }) {
         <button onClick={onBack} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 transition-all" style={{ color: 'var(--text-3)' }}>
           <ChevronRight size={20} className="rotate-180" />
         </button>
-        <h1 className="text-[22px] font-black tracking-tight" style={{ color: 'var(--text)' }}>{user.displayName || 'Клієнт'}</h1>
+        <h1 className="text-[22px] font-black tracking-tight" style={{ color: 'var(--text)' }}>{user.displayName || user.name || user.phone || 'Клієнт'}</h1>
       </div>
 
       {loading ? (
