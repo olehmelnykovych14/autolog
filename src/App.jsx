@@ -22,7 +22,6 @@ import { TeamView } from './components/views/TeamView'
 import { SettingsView } from './components/views/SettingsView'
 import { AdminView } from './components/views/AdminView'
 import { STODashboardView } from './components/views/STODashboardView'
-import { FindSTOView } from './components/views/FindSTOView'
 import { PublicReportView } from './components/views/PublicReportView'
 import { ClientBookingsView } from './components/views/ClientBookingsView'
 import { STOBookingsView } from './components/views/STOBookingsView'
@@ -419,8 +418,7 @@ export default function App() {
                   <div className={`${tab === 'sto_bookings' ? 'max-w-[120rem]' : 'max-w-7xl'} mx-auto space-y-6`}>
                     {tab === 'dashboard' && <DashboardView carList={carList} historyList={historyList} />}
                     {tab === 'garage' && <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => {}} />}
-                    {tab === 'find_sto' && <FindSTOView setTab={setTab} onBookSTO={sto => { setPreselectedSto(sto); setTab('bookings') }} />}
-                    {tab === 'bookings' && <ClientBookingsView carList={carList} preselectedSto={preselectedSto} onClearPreselected={() => setPreselectedSto(null)} />}
+{tab === 'bookings' && <ClientBookingsView carList={carList} preselectedSto={preselectedSto} onClearPreselected={() => setPreselectedSto(null)} />}
                     {tab === 'service' && <HistoryView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />}
                     {tab === 'team' && <TeamView teamMembers={teamMembers} limit={TEAM_LIMIT} onRemove={id => setTeamMembers(p => p.filter(m => m.id !== id))} onInvite={() => setShowInviteModal(true)} />}
                     {/* SUBSCRIPTION: {tab === 'plans' && <PlansView carList={carList} userProfile={userProfile} onUpdatePlan={handleUpdatePlan} currentUser={currentUser} />} */}

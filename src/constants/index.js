@@ -1,4 +1,4 @@
-import { LayoutDashboard, Car, ClipboardList, Bot, Users, CreditCard, Settings, Wrench, Calendar, MapPin, FileText } from 'lucide-react'
+import { LayoutDashboard, Car, ClipboardList, Bot, Users, Settings, Wrench, Calendar, FileText } from 'lucide-react'
 
 export const C = '#5C3EFE'
 
@@ -31,7 +31,6 @@ export const CAT_CLR = {
 export const NAV_OWNER = [
   { id: 'dashboard', label: 'Дашборд', icon: LayoutDashboard },
   { id: 'garage', label: 'Мій гараж', icon: Car },
-  { id: 'find_sto', label: 'Знайти СТО', icon: MapPin },
   { id: 'bookings', label: 'Запис на СТО', icon: Calendar },
   { id: 'service', label: 'Сервіс', icon: ClipboardList },
   { id: 'ai', label: 'AI Механік', icon: Bot },
