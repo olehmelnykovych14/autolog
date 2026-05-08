@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Share2, Mail, Send, Check, UserPlus, Shield, Eye, Wrench, Calendar, Activity, MapPin, Layers, FileText, ShieldCheck } from 'lucide-react'
 import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
-import { collection, addDoc } from 'firebase/firestore'
+import { collection, addDoc, updateDoc, doc } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { C, CAT } from '../../constants'
 
@@ -129,10 +129,11 @@ export function AddVerifiedServiceModal({ car, userProfile, onClose, onSuccess }
     if (!f.title || !f.mileage) return
     setLoading(true)
     try {
+      const newMileage = Number(f.mileage) || 0
       await addDoc(collection(db, 'history'), {
         title: f.title,
         cost: Number(f.cost) || 0,
-        mileage: Number(f.mileage) || 0,
+        mileage: newMileage,
         category: f.category || 'other',
         date: f.date || new Date().toISOString().split('T')[0],
         garage: userProfile?.stoName || 'AutoLog Partner',
@@ -143,6 +144,9 @@ export function AddVerifiedServiceModal({ car, userProfile, onClose, onSuccess }
         source: 'sto_push',
         stoId: userProfile?.userId || auth.currentUser?.uid
       });
+      if (newMileage > (car.mileage || 0)) {
+        await updateDoc(doc(db, 'cars', car.id), { mileage: newMileage })
+      }
       onSuccess()
     } catch (e) {
       console.error(e)

@@ -280,6 +280,13 @@ export default function App() {
     try {
       const ts = Date.now()
       await addDoc(collection(db, 'history'), { ...svc, userId: currentUser.uid, createdAt: ts })
+      // Update car's mileage if new record has higher mileage
+      if (svc.carId && svc.mileage) {
+        const car = carList.find(c => String(c.id) === String(svc.carId))
+        if (car && svc.mileage > (car.mileage || 0)) {
+          await updateDoc(doc(db, 'cars', svc.carId), { mileage: svc.mileage })
+        }
+      }
     } catch (e) { console.error(e) }
   }
 
@@ -287,6 +294,12 @@ export default function App() {
     if (!currentUser) return
     try {
       await updateDoc(doc(db, 'history', svc.id), svc)
+      if (svc.carId && svc.mileage) {
+        const car = carList.find(c => String(c.id) === String(svc.carId))
+        if (car && svc.mileage > (car.mileage || 0)) {
+          await updateDoc(doc(db, 'cars', svc.carId), { mileage: svc.mileage })
+        }
+      }
     } catch (e) { console.error(e) }
   }
 
