@@ -212,7 +212,8 @@ export function STODashboardView({ userProfile }) {
                 onChange={e => setSearch(e.target.value.toUpperCase())}
                 placeholder="АА1234АА або WBA3B31000K2XXXXX"
                 maxLength={20}
-                className="w-full pl-12 pr-6 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-[#5C3EFE]/60 focus:ring-2 focus:ring-[#5C3EFE]/20 transition-all uppercase font-mono tracking-wider text-sm"
+                className="w-full pl-12 pr-6 py-4 backdrop-blur-sm rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#5C3EFE]/30 transition-all uppercase font-mono tracking-wider text-sm"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--line-2)', color: 'var(--text)' }}
               />
             </div>
             <button

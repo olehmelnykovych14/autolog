@@ -68,7 +68,8 @@ export function Sidebar({ col, isAdmin, userProfile, showMobileMenu, setShowMobi
           {links.map((item) => {
             const Icon = item.icon
             const to = getPath(item.id)
-            const active = location.pathname === to || location.pathname.startsWith(to + '/')
+            const isExact = to === '/sto' || to === '/dashboard'
+            const active = location.pathname === to || (!isExact && location.pathname.startsWith(to + '/'))
             return (
               <NavLink
                 key={item.id}
