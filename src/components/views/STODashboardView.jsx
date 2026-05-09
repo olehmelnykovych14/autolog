@@ -16,7 +16,7 @@ export function STODashboardView({ userProfile, setTab }) {
   const [statsLoading, setStatsLoading] = useState(true)
   const [stats, setStats] = useState({ income: 0, carsServiced: 0, pendingApprovals: 0 })
 
-  const isInactive = userProfile?.stoSubscription !== 'active'
+  const isInactive = false
 
   useEffect(() => {
     fetchStats()
@@ -189,15 +189,15 @@ export function STODashboardView({ userProfile, setTab }) {
       {/* Global Registry Verification */}
       <div className="relative overflow-hidden rounded-3xl border border-gray-200 dark:border-gray-800/60 shadow-xl">
         {/* Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1a0e3a] via-[#0d0d1e] to-[#0a0a18]"/>
-        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(ellipse at 70% 50%, rgba(92, 62, 254, 0.4) 0%, transparent 60%)' }}/>
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-indigo-50/30 dark:from-[#1a0e3a] dark:via-[#0d0d1e] dark:to-[#0a0a18]"/>
+        <div className="absolute inset-0 opacity-20 dark:opacity-30" style={{ backgroundImage: 'radial-gradient(ellipse at 70% 50%, rgba(92, 62, 254, 0.4) 0%, transparent 60%)' }}/>
         {/* Subtle car silhouette effect */}
         <div className="absolute right-0 bottom-0 w-80 h-48 opacity-5" style={{ backgroundImage: 'url(/logo.png)', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'right bottom' }} />
 
         <div className="relative z-10 p-8 sm:p-10">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-black text-white mb-2">Перевірка глобального реєстру</h2>
-            <p className="text-gray-400 max-w-lg mx-auto">
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Перевірка глобального реєстру</h2>
+            <p className="text-gray-500 dark:text-gray-400 max-w-lg mx-auto">
               Введіть держ. номер або 17-значний VIN для пошуку авто та додавання верифікованих сервісних записів.
             </p>
           </div>
