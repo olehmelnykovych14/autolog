@@ -11,8 +11,9 @@ export function STOBookingsView({ userProfile }) {
   const [createInitial, setCreateInitial] = useState(null)
   const [editingBooking, setEditingBooking] = useState(null)
   
-  const [viewMode, setViewMode] = useState('calendar') // 'kanban' | 'calendar'
+  const [viewMode, setViewMode] = useState('calendar') // 'kanban' | 'calendar' | 'day'
   const [weekOffset, setWeekOffset] = useState(0)
+  const [dayOffset, setDayOffset] = useState(0)
 
   // Helper for Calendar Math
   const getWeekDays = () => {
@@ -114,7 +115,8 @@ export function STOBookingsView({ userProfile }) {
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex bg-gray-100 dark:bg-gray-800 p-1.5 rounded-2xl w-fit shrink-0">
             <button onClick={() => setViewMode('kanban')} className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${viewMode === 'kanban' ? 'bg-white dark:bg-gray-700 text-[#5C3EFE] shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}><LayoutBoard size={16}/> Дошка</button>
-            <button onClick={() => setViewMode('calendar')} className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${viewMode === 'calendar' ? 'bg-white dark:bg-gray-700 text-[#5C3EFE] shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}><CalIcon size={16}/> Календар</button>
+            <button onClick={() => setViewMode('calendar')} className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${viewMode === 'calendar' ? 'bg-white dark:bg-gray-700 text-[#5C3EFE] shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}><CalIcon size={16}/> Тиждень</button>
+            <button onClick={() => { setViewMode('day'); setDayOffset(0) }} className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${viewMode === 'day' ? 'bg-white dark:bg-gray-700 text-[#5C3EFE] shadow-sm' : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'}`}><CalIcon size={16}/> День</button>
           </div>
 
           <button onClick={() => { setCreateInitial(null); setShowCreateModal(true) }} className="flex items-center gap-2 px-6 py-3 bg-[#5C3EFE] text-white rounded-2xl font-black text-sm shadow-xl shadow-indigo-500/20 hover:scale-105 transition-all">
@@ -262,6 +264,97 @@ export function STOBookingsView({ userProfile }) {
           </div>
         </div>
       )}
+
+      {viewMode === 'day' && (() => {
+        const today = new Date()
+        today.setHours(0,0,0,0)
+        const day = new Date(today)
+        day.setDate(today.getDate() + dayOffset)
+        const tzOffset = day.getTimezoneOffset() * 60000
+        const dateStr = new Date(day.getTime() - tzOffset).toISOString().split('T')[0]
+        const isToday = dayOffset === 0
+        const dayBookings = bookings.filter(b => b.date === dateStr)
+
+        return (
+          <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-right-4">
+            {/* Nav */}
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4">
+              <div className="flex gap-2">
+                <button onClick={() => setDayOffset(p => p - 1)} className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"><ChevronLeft size={16}/></button>
+                <button onClick={() => setDayOffset(0)} className="px-4 py-2 text-sm font-bold border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300">Сьогодні</button>
+                <button onClick={() => setDayOffset(p => p + 1)} className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"><ChevronRight size={16}/></button>
+              </div>
+              <div className="text-right">
+                <p className={`text-xl font-black ${isToday ? 'text-[#5C3EFE]' : 'text-gray-900 dark:text-white'}`}>
+                  {day.toLocaleDateString('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-0.5">{dayBookings.length} записів</p>
+              </div>
+            </div>
+
+            {/* Day grid */}
+            <div className="border border-gray-200 dark:border-gray-800 rounded-[2rem] bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+              {[...Array(24)].map((_, hour) => {
+                const hourStr = String(hour).padStart(2, '0')
+                const slotBookings = dayBookings.filter(b => b.time?.startsWith(hourStr + ':'))
+                const isWorkHour = hour >= 8 && hour <= 19
+
+                return (
+                  <div
+                    key={hour}
+                    onClick={() => !slotBookings.length && (setCreateInitial({ date: dateStr, time: hourStr + ':00' }), setShowCreateModal(true))}
+                    className={`flex gap-4 border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors ${!slotBookings.length ? 'cursor-pointer hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10' : ''} ${isWorkHour ? '' : 'opacity-40'}`}
+                  >
+                    {/* Time column */}
+                    <div className="w-16 shrink-0 flex items-start justify-center pt-3 pb-3">
+                      <span className={`text-xs font-black tabular-nums ${isToday && new Date().getHours() === hour ? 'text-[#5C3EFE]' : 'text-gray-400'}`}>
+                        {hourStr}:00
+                      </span>
+                    </div>
+
+                    {/* Content */}
+                    <div className={`flex-1 py-2 pr-4 min-h-[56px] flex flex-wrap gap-2 items-start ${slotBookings.length ? '' : ''}`}>
+                      {slotBookings.map(b => (
+                        <div
+                          key={b.id}
+                          draggable
+                          onDragStart={e => onDragStart(e, b.id)}
+                          onClick={e => { e.stopPropagation(); setEditingBooking(b) }}
+                          className="flex-1 min-w-[220px] cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-[#5C3EFE]/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all relative overflow-hidden group"
+                        >
+                          <div className="absolute top-0 left-0 w-1 h-full bg-[#5C3EFE]" />
+                          <div className="pl-3 flex flex-col gap-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-[#5C3EFE] tracking-widest">{b.time}</span>
+                              {b.status === 'confirmed' ? <CheckCircle2 size={13} className="text-green-500"/> : b.status === 'pending' ? <Clock4 size={13} className="text-amber-500"/> : <XCircle size={13} className="text-gray-400"/>}
+                            </div>
+                            <p className="font-bold text-sm text-gray-900 dark:text-white leading-tight">
+                              {b.isOffline ? (b.offlineData?.brand || 'Офлайн авто') : (`${b.carBrand || b.car?.brand || ''} ${b.carModel || b.car?.model || ''}`.trim() || 'Автомобіль')}
+                              <span className="ml-2 text-[10px] font-black bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 px-1.5 py-0.5 rounded">
+                                {(b.isOffline ? b.offlineData?.plate : b.car?.plate) || '—'}
+                              </span>
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                              <User size={11}/> {b.isOffline ? b.offlineData?.clientName : b.driver?.displayName || 'Анонім'}
+                              {(b.isOffline ? b.offlineData?.phone : b.driver?.phone) && (
+                                <span className="flex items-center gap-1"><Phone size={11}/> {b.isOffline ? b.offlineData?.phone : b.driver?.phone}</span>
+                              )}
+                            </p>
+                            {b.issue && <p className="text-xs text-gray-400 line-clamp-1 italic">{b.issue}</p>}
+                          </div>
+                        </div>
+                      ))}
+                      {!slotBookings.length && isWorkHour && (
+                        <span className="text-[10px] text-gray-300 dark:text-gray-700 font-bold self-center py-1">+ Додати запис</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })()}
 
       {showCreateModal && <CreateBookingBySTOModal userProfile={userProfile} initialParams={createInitial} onClose={() => setShowCreateModal(false)} onSuccess={() => { setShowCreateModal(false); fetchBookings(); }} />}
       {editingBooking && <ViewEditBookingModal booking={editingBooking} userProfile={userProfile} onClose={() => setEditingBooking(null)} onSuccess={() => { setEditingBooking(null); fetchBookings(); }} />}
