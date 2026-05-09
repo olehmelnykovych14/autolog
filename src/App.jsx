@@ -429,11 +429,12 @@ export default function App() {
       <Routes>
         <Route path="/share/:carId" element={<PublicReportViewWrapper />} />
         <Route path="/auth" element={<AuthScreen isDark={isDark} setDark={setDark} onBack={() => navigate('/')} />} />
-        <Route path="*" element={
+        <Route path="/" element={
           mode === 'auth'
             ? <AuthScreen isDark={isDark} setDark={setDark} onBack={() => setMode('landing')} />
             : <LandingView onLogin={() => setMode('auth')} />
         } />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     )
   }
