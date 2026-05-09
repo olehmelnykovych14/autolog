@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Bot, Send, Camera, Mic, X, Trash2, StopCircle, Info, ChevronRight, Plus, MessageSquare, Clock, ArrowLeft } from 'lucide-react'
+import { Bot, Send, Camera, Mic, X, Trash2, StopCircle, Info, ChevronRight, Plus, MessageSquare, Clock, ArrowLeft, Pencil, Check } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { askGemini } from '../../lib/ai'
 import { C } from '../../constants'
@@ -30,6 +30,8 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
   const [activeChatId, setActiveChatId] = useState(null)
   const [chatsLoading, setChatsLoading] = useState(true)
   const [showSidebar, setShowSidebar] = useState(false)
+  const [editingChatId, setEditingChatId] = useState(null)
+  const [editingTitle, setEditingTitle] = useState('')
 
   const ref = useRef(null)
   const mediaRecorder = useRef(null)
@@ -71,6 +73,23 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
     setActiveChatId(chat.id)
     setMsgs([WELCOME_MSG, ...chat.messages])
     setShowSidebar(false)
+  }
+
+  const startRenaming = (e, chat) => {
+    e.stopPropagation()
+    setEditingChatId(chat.id)
+    setEditingTitle(chat.title)
+  }
+
+  const saveRename = async (e, chatId) => {
+    e.stopPropagation()
+    const title = editingTitle.trim()
+    if (!title || !auth.currentUser) { setEditingChatId(null); return }
+    try {
+      await updateDoc(doc(db, 'users', auth.currentUser.uid, 'ai_chats', chatId), { title })
+      setChats(p => p.map(c => c.id === chatId ? { ...c, title } : c))
+    } catch (e) { console.error(e) }
+    setEditingChatId(null)
   }
 
   const deleteChat = async (e, chatId) => {
@@ -207,27 +226,46 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
           ) : chats.length === 0 ? (
             <p className="text-xs text-center text-gray-400 py-4">Немає збережених чатів</p>
           ) : chats.map(chat => (
-            <button
+            <div
               key={chat.id}
-              onClick={() => openChat(chat)}
-              className={`w-full text-left px-3 py-2.5 rounded-xl flex items-start gap-2 group transition-all ${activeChatId === chat.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-gray-100 dark:hover:bg-white/5'}`}
+              onClick={() => editingChatId !== chat.id && openChat(chat)}
+              className={`w-full text-left px-3 py-2.5 rounded-xl flex items-start gap-2 group transition-all cursor-pointer ${activeChatId === chat.id ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-gray-100 dark:hover:bg-white/5'}`}
             >
               <MessageSquare size={14} className="shrink-0 mt-0.5 text-gray-400" />
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-semibold truncate ${activeChatId === chat.id ? 'text-[#5C3EFE]' : 'text-gray-700 dark:text-gray-300'}`}>
-                  {chat.title}
-                </p>
+                {editingChatId === chat.id ? (
+                  <input
+                    autoFocus
+                    value={editingTitle}
+                    onChange={e => setEditingTitle(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') saveRename(e, chat.id); if (e.key === 'Escape') setEditingChatId(null) }}
+                    onClick={e => e.stopPropagation()}
+                    className="w-full text-xs font-semibold bg-white dark:bg-gray-800 border border-[#5C3EFE] rounded-lg px-2 py-0.5 focus:outline-none text-gray-900 dark:text-white"
+                  />
+                ) : (
+                  <p className={`text-xs font-semibold truncate ${activeChatId === chat.id ? 'text-[#5C3EFE]' : 'text-gray-700 dark:text-gray-300'}`}>
+                    {chat.title}
+                  </p>
+                )}
                 <p className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
                   <Clock size={9} /> {formatDate(chat.updatedAt)}
                 </p>
               </div>
-              <button
-                onClick={(e) => deleteChat(e, chat.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-400 transition-all shrink-0"
-              >
-                <Trash2 size={11} />
-              </button>
-            </button>
+              <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0">
+                {editingChatId === chat.id ? (
+                  <button onClick={e => saveRename(e, chat.id)} className="p-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 text-[#5C3EFE] transition-all">
+                    <Check size={11} />
+                  </button>
+                ) : (
+                  <button onClick={e => startRenaming(e, chat)} className="p-1 rounded-lg hover:bg-gray-200 dark:hover:bg-white/10 text-gray-400 transition-all">
+                    <Pencil size={11} />
+                  </button>
+                )}
+                <button onClick={e => deleteChat(e, chat.id)} className="p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-red-400 transition-all">
+                  <Trash2 size={11} />
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       </div>
