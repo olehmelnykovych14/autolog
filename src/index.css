@@ -317,3 +317,5 @@ html.dark .sto-glow { box-shadow: 0 0 0 1px rgba(92,62,254,0.35), 0 20px 48px rg
   .max-h-\[80vh\] { max-height: none !important; overflow: visible !important; }
   tr { break-inside: avoid; }
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }
