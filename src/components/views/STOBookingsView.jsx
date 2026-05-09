@@ -352,7 +352,7 @@ export function STOBookingsView({ userProfile }) {
             </div>
           </div>
         )
-      })() : null}
+      })()}
 
       {showCreateModal && <CreateBookingBySTOModal userProfile={userProfile} initialParams={createInitial} onClose={() => setShowCreateModal(false)} onSuccess={() => { setShowCreateModal(false); fetchBookings(); }} />}
       {editingBooking && <ViewEditBookingModal booking={editingBooking} userProfile={userProfile} onClose={() => setEditingBooking(null)} onSuccess={() => { setEditingBooking(null); fetchBookings(); }} />}
