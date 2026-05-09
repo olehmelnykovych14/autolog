@@ -133,12 +133,14 @@ export default function App() {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user)
       if (!user) {
+        localStorage.removeItem('al_authed')
         setUserProfile(null)
         setCarList([])
         setHistoryList([])
         setRelevantUids([])
         return
       }
+      localStorage.setItem('al_authed', '1')
       try {
         const snap = await getDoc(doc(db, 'users', user.uid))
         if (snap.exists()) {
@@ -401,20 +403,23 @@ export default function App() {
     } catch (e) { console.error(e); alert('Помилка передачі.') }
   }
 
-  // --- Loading state: show landing immediately, resolve auth in background ---
-  if (currentUser === undefined) {
+  // --- Loading state ---
+  if (currentUser === undefined || (currentUser && userProfile === null)) {
+    const wasLoggedIn = localStorage.getItem('al_authed') === '1'
     return (
-      <div className={isDark ? 'dark' : ''}>
-        <LandingView onLogin={() => setMode('auth')} />
-      </div>
-    )
-  }
-
-  // Profile still loading for logged-in user — show minimal spinner overlay
-  if (currentUser && userProfile === null) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)' }} className={isDark ? 'dark' : ''}>
-        <div style={{ width: 32, height: 32, border: '3px solid var(--line-2)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100%', background: 'var(--bg)' }} className={isDark ? 'dark' : ''}>
+        {wasLoggedIn ? (
+          <div style={{ width: 36, height: 36, border: '3px solid var(--line-2)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 22, background: 'var(--bg-card)', border: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, boxShadow: '0 8px 24px rgba(92,62,254,0.2)' }}>
+              <img src="/logo.png" alt="AutoLog" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+            <div style={{ width: 160, height: 4, background: 'var(--line-2)', borderRadius: 99, overflow: 'hidden' }}>
+              <div className="animate-progress-loading" style={{ height: '100%', background: 'var(--brand)', borderRadius: 99, width: '40%' }} />
+            </div>
+          </div>
+        )}
       </div>
     )
   }
