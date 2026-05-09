@@ -157,7 +157,7 @@ export default function App() {
     return () => unsub()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 2. Invitation & Team Tracking
+  // 2. Invitation & Team Tracking (one-time fetch)
   useEffect(() => {
     if (!currentUser?.email) return
     const lowerEmail = currentUser.email.toLowerCase()
@@ -166,17 +166,16 @@ export default function App() {
       where('email', 'in', [currentUser.email, lowerEmail]),
       where('status', '==', 'active')
     )
-    const unsub = onSnapshot(q, (snap) => {
+    getDocs(q).then(snap => {
       const ownerIds = snap.docs.map(d => d.data().ownerId).filter(id => typeof id === 'string' && id)
       const uids = Array.from(new Set([currentUser.uid, ...ownerIds])).filter(Boolean)
       setRelevantUids(uids)
-    })
-    return () => unsub()
+    }).catch(console.error)
   }, [currentUser])
 
-  // 3. Real-time Cars & History
+  // 3. Real-time Cars & History (owner only)
   useEffect(() => {
-    if (relevantUids.length === 0) {
+    if (relevantUids.length === 0 || userProfile?.accountType === 'sto') {
       setCarList([])
       setHistoryList([])
       return
@@ -202,14 +201,13 @@ export default function App() {
   useEffect(() => {
     if (!currentUser) return
     const q = query(collection(db, 'team_invitations'), where('ownerId', '==', currentUser.uid))
-    const unsub = onSnapshot(q, snap => {
+    getDocs(q).then(snap => {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       setTeamMembers([
         { id: 'owner', name: userProfile?.name || 'Ви', email: currentUser.email, role: 'owner', status: 'active' },
         ...list
       ])
-    })
-    return () => unsub()
+    }).catch(console.error)
   }, [currentUser, userProfile])
 
   useEffect(() => {
@@ -262,10 +260,9 @@ export default function App() {
       where('email', 'in', [currentUser.email, lowerEmail]),
       where('status', '==', 'pending')
     )
-    const unsub = onSnapshot(q, snap => {
+    getDocs(q).then(snap => {
       setIncomingInvites(snap.docs.map(d => ({ ...d.data(), id: d.id })))
-    })
-    return () => unsub()
+    }).catch(console.error)
   }, [currentUser])
 
   const markNotificationAsRead = async (id) => {
