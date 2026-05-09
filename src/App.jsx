@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useContext, useRef } from 'react'
-import { LayoutDashboard } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { auth, db } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { doc, getDoc, getDocs, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, onSnapshot } from 'firebase/firestore'
 
 // Context & Constants
 import { ThemeCtx } from './context/ThemeContext'
-import { C } from './constants' // SUBSCRIPTION: PLANS removed for free launch
+// SUBSCRIPTION: PLANS removed for free launch
 
 // Layout
 import { Sidebar } from './components/layout/Sidebar'
@@ -38,10 +38,67 @@ import { AuthScreen } from './components/auth/AuthScreen'
 import { LandingView } from './components/views/LandingView'
 import { PWAInstallBanner } from './components/common/PWAInstallBanner'
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function AppShell({ children, currentUser, userProfile, isDark, setDark, col, setCol,
+  showMobileMenu, setShowMobileMenu, isAdmin, incomingTransfer, setIncomingTransfer,
+  historyList, bookingNotifications, incomingInvites, handleAcceptInvite, handleRejectInvite,
+  handleAcceptService, handleRejectService, markNotificationAsRead, markAllNotificationsAsRead }) {
+
+  const location = useLocation()
+  const isAiRoute = location.pathname === '/ai'
+
+  return (
+    <div className={`fixed inset-0 flex overflow-hidden font-sans ${isDark ? 'dark' : ''}`} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+      <Sidebar
+        col={col}
+        isAdmin={isAdmin}
+        userProfile={userProfile}
+        showMobileMenu={showMobileMenu}
+        setShowMobileMenu={setShowMobileMenu}
+        onLogout={() => signOut(auth)}
+      />
+      <div className="flex flex-1 flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
+        {!isAiRoute && (
+          <Topbar
+            isDark={isDark}
+            setDark={setDark}
+            incomingTransfer={incomingTransfer}
+            onAcceptTransfer={() => setIncomingTransfer(null)}
+            onRejectTransfer={() => setIncomingTransfer(null)}
+            onLogout={() => signOut(auth)}
+            currentUser={currentUser}
+            userProfile={userProfile}
+            col={col}
+            setCol={setCol}
+            pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)}
+            bookingNotifications={bookingNotifications}
+            incomingInvites={incomingInvites}
+            onAcceptInvite={handleAcceptInvite}
+            onRejectInvite={handleRejectInvite}
+            onAcceptService={handleAcceptService}
+            onRejectService={handleRejectService}
+            showMobileMenu={showMobileMenu}
+            setShowMobileMenu={setShowMobileMenu}
+            onMarkRead={markNotificationAsRead}
+            onMarkAllRead={markAllNotificationsAsRead}
+          />
+        )}
+        <main className="flex-1 flex flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
+          {children}
+        </main>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
+  const navigate = useNavigate()
+
   const [currentUser, setCurrentUser] = useState(undefined)
   const [userProfile, setUserProfile] = useState(null)
-  const [tab, setTab] = useState('dashboard')
   const [mode, setMode] = useState('landing') // 'landing' | 'auth'
   const [col, setCol] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -58,9 +115,6 @@ export default function App() {
   const [bookingNotifications, setBookingNotifications] = useState([])
   const [preselectedSto, setPreselectedSto] = useState(null)
   const [incomingInvites, setIncomingInvites] = useState([])
-  
-  const tabRef = useRef(tab)
-  useEffect(() => { tabRef.current = tab }, [tab])
 
   // SUBSCRIPTION: const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
   // SUBSCRIPTION: const TEAM_LIMIT = activePlan.teamLimit
@@ -69,96 +123,94 @@ export default function App() {
     { id: 1, name: 'Олександр (Ви)', email: 'owner@autolog.ua', role: 'owner', status: 'active' }
   ])
   const [showInviteModal, setShowInviteModal] = useState(false)
-  
+
   // --- ROBUST DATA ORCHESTRATION ---
-  const [activeMemberships, setActiveMemberships] = useState([]); 
-  const [relevantUids, setRelevantUids] = useState([]);
+  const [relevantUids, setRelevantUids] = useState([])
 
   // 1. Auth & Profile
   useEffect(() => {
-    if (!auth) return;
+    if (!auth) return
     const unsub = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
+      setCurrentUser(user)
       if (!user) {
-        setUserProfile(null);
-        setCarList([]);
-        setHistoryList([]);
-        setRelevantUids([]);
-        return;
+        setUserProfile(null)
+        setCarList([])
+        setHistoryList([])
+        setRelevantUids([])
+        return
       }
       try {
-        const snap = await getDoc(doc(db, "users", user.uid));
+        const snap = await getDoc(doc(db, 'users', user.uid))
         if (snap.exists()) {
-          const up = snap.data();
-          setUserProfile(up);
-          if (up.accountType === "sto") setTab("sto");
+          const up = snap.data()
+          setUserProfile(up)
+          if (up.accountType === 'sto') {
+            navigate('/sto', { replace: true })
+          }
         } else {
-          setUserProfile({ phone: "", city: "", avatarBase64: "", accountType: "owner" });
+          setUserProfile({ phone: '', city: '', avatarBase64: '', accountType: 'owner' })
         }
       } catch (e) {
-        console.error("Profile error:", e);
+        console.error('Profile error:', e)
       }
-    });
-    return () => unsub();
-  }, []);
+    })
+    return () => unsub()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 2. Invitation & Team Tracking
   useEffect(() => {
-    if (!currentUser?.email) return;
-    const lowerEmail = currentUser.email.toLowerCase();
+    if (!currentUser?.email) return
+    const lowerEmail = currentUser.email.toLowerCase()
     const q = query(
-      collection(db, "team_invitations"),
-      where("email", "in", [currentUser.email, lowerEmail]),
-      where("status", "==", "active")
-    );
-
+      collection(db, 'team_invitations'),
+      where('email', 'in', [currentUser.email, lowerEmail]),
+      where('status', '==', 'active')
+    )
     const unsub = onSnapshot(q, (snap) => {
-      const ownerIds = snap.docs.map(d => d.data().ownerId).filter(id => typeof id === 'string' && id);
-      const uids = Array.from(new Set([currentUser.uid, ...ownerIds])).filter(Boolean);
-      setRelevantUids(uids);
-      setActiveMemberships(ownerIds);
-    });
-    return () => unsub();
-  }, [currentUser]);
+      const ownerIds = snap.docs.map(d => d.data().ownerId).filter(id => typeof id === 'string' && id)
+      const uids = Array.from(new Set([currentUser.uid, ...ownerIds])).filter(Boolean)
+      setRelevantUids(uids)
+    })
+    return () => unsub()
+  }, [currentUser])
 
   // 3. Real-time Cars & History
   useEffect(() => {
     if (relevantUids.length === 0) {
-      setCarList([]);
-      setHistoryList([]);
-      return;
+      setCarList([])
+      setHistoryList([])
+      return
     }
-
-    const carQ = query(collection(db, "cars"), where("userId", "in", relevantUids.slice(0, 10)));
+    const carQ = query(collection(db, 'cars'), where('userId', 'in', relevantUids.slice(0, 10)))
     const unsubCars = onSnapshot(carQ, (snap) => {
-      setCarList(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-    }, (err) => console.error("Cars listener error:", err));
+      setCarList(snap.docs.map(d => ({ ...d.data(), id: d.id })))
+    }, (err) => console.error('Cars listener error:', err))
 
-    const histQ = query(collection(db, "history"), where("userId", "in", relevantUids.slice(0, 10)));
+    const histQ = query(collection(db, 'history'), where('userId', 'in', relevantUids.slice(0, 10)))
     const unsubHist = onSnapshot(histQ, (snap) => {
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-      list.sort((a, b) => (new Date(b.date) - new Date(a.date)) || (b.createdAt - a.createdAt));
-      setHistoryList(list);
-    }, (err) => console.error("History listener error:", err));
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id }))
+      list.sort((a, b) => (new Date(b.date) - new Date(a.date)) || (b.createdAt - a.createdAt))
+      setHistoryList(list)
+    }, (err) => console.error('History listener error:', err))
 
     return () => {
-      unsubCars();
-      unsubHist();
-    };
-  }, [relevantUids]);
+      unsubCars()
+      unsubHist()
+    }
+  }, [relevantUids])
 
   useEffect(() => {
-    if (!currentUser) return;
-    const q = query(collection(db, 'team_invitations'), where('ownerId', '==', currentUser.uid));
+    if (!currentUser) return
+    const q = query(collection(db, 'team_invitations'), where('ownerId', '==', currentUser.uid))
     const unsub = onSnapshot(q, snap => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       setTeamMembers([
         { id: 'owner', name: userProfile?.name || 'Ви', email: currentUser.email, role: 'owner', status: 'active' },
         ...list
-      ]);
-    });
-    return () => unsub();
-  }, [currentUser, userProfile]);
+      ])
+    })
+    return () => unsub()
+  }, [currentUser, userProfile])
 
   useEffect(() => {
     if (!currentUser || !userProfile) {
@@ -166,56 +218,55 @@ export default function App() {
       return
     }
     const isSto = userProfile.accountType === 'sto'
-    const q = isSto 
-       ? query(collection(db, 'bookings'), where('stoId', '==', currentUser.uid))
-       : query(collection(db, 'bookings'), where('userId', '==', currentUser.uid))
+    const q = isSto
+      ? query(collection(db, 'bookings'), where('stoId', '==', currentUser.uid))
+      : query(collection(db, 'bookings'), where('userId', '==', currentUser.uid))
 
     const unsub = onSnapshot(q, async snap => {
-       const list = []
-       for(const d of snap.docs) {
-          const b = { id: d.id, ...d.data() }
-          if (isSto) {
-             if (b.status === 'pending') list.push(b)
-          } else {
-             if (b.status === 'confirmed' || b.status === 'rejected') list.push(b)
-          }
-       }
-       // Filter unread
-       const unread = list.filter(b => !b.readByRecipient)
-       unread.sort((a,b) => b.createdAt - a.createdAt)
-       
-       for (const b of unread) {
-         if (isSto && b.carId) {
-             try {
-               const cSnap = await getDoc(doc(db, 'cars', String(b.carId)))
-               if (cSnap.exists()) b.car = cSnap.data()
-             } catch(e){}
-         }
-         if (!isSto && b.stoId) {
-             try {
-               const sSnap = await getDoc(doc(db, 'users', String(b.stoId)))
-               if (sSnap.exists()) b.sto = sSnap.data()
-             } catch(e){}
-         }
-       }
-       setBookingNotifications(unread)
+      const list = []
+      for (const d of snap.docs) {
+        const b = { id: d.id, ...d.data() }
+        if (isSto) {
+          if (b.status === 'pending') list.push(b)
+        } else {
+          if (b.status === 'confirmed' || b.status === 'rejected') list.push(b)
+        }
+      }
+      const unread = list.filter(b => !b.readByRecipient)
+      unread.sort((a, b) => b.createdAt - a.createdAt)
+
+      for (const b of unread) {
+        if (isSto && b.carId) {
+          try {
+            const cSnap = await getDoc(doc(db, 'cars', String(b.carId)))
+            if (cSnap.exists()) b.car = cSnap.data()
+          } catch (e) { /* noop */ }
+        }
+        if (!isSto && b.stoId) {
+          try {
+            const sSnap = await getDoc(doc(db, 'users', String(b.stoId)))
+            if (sSnap.exists()) b.sto = sSnap.data()
+          } catch (e) { /* noop */ }
+        }
+      }
+      setBookingNotifications(unread)
     })
     return () => unsub()
   }, [currentUser, userProfile])
 
   useEffect(() => {
-    if (!currentUser || !currentUser.email) return;
-    const lowerEmail = currentUser.email.toLowerCase();
+    if (!currentUser || !currentUser.email) return
+    const lowerEmail = currentUser.email.toLowerCase()
     const q = query(
-      collection(db, 'team_invitations'), 
-      where('email', 'in', [currentUser.email, lowerEmail]), 
+      collection(db, 'team_invitations'),
+      where('email', 'in', [currentUser.email, lowerEmail]),
       where('status', '==', 'pending')
-    );
+    )
     const unsub = onSnapshot(q, snap => {
-      setIncomingInvites(snap.docs.map(d => ({ ...d.data(), id: d.id })));
-    });
-    return () => unsub();
-  }, [currentUser]);
+      setIncomingInvites(snap.docs.map(d => ({ ...d.data(), id: d.id })))
+    })
+    return () => unsub()
+  }, [currentUser])
 
   const markNotificationAsRead = async (id) => {
     if (!currentUser) return
@@ -239,19 +290,6 @@ export default function App() {
     document.documentElement.classList.toggle('dark', isDark)
     localStorage.setItem('theme', isDark ? 'dark' : 'light')
   }, [isDark])
-
-  useEffect(() => {
-    if (!userProfile) return
-    const isStoTab = ['sto', 'sto_bookings', 'sto_plans'].includes(tab)
-    const isOwnerTab = ['dashboard', 'garage', 'bookings', 'service', 'plans', 'ai', 'team'].includes(tab)
-    
-    if (isStoTab && userProfile.accountType !== 'sto') {
-      setTab('dashboard')
-    }
-    if (isOwnerTab && userProfile.accountType === 'sto') {
-      setTab('sto')
-    }
-  }, [tab, userProfile?.accountType])
 
   // SUBSCRIPTION: AI usage tracking disabled for free launch
   const onUpdateAIUsage = async () => {
@@ -279,7 +317,6 @@ export default function App() {
     try {
       const ts = Date.now()
       await addDoc(collection(db, 'history'), { ...svc, userId: currentUser.uid, createdAt: ts })
-      // Update car's mileage if new record has higher mileage
       if (svc.carId && svc.mileage) {
         const car = carList.find(c => String(c.id) === String(svc.carId))
         if (car && svc.mileage > (car.mileage || 0)) {
@@ -307,7 +344,7 @@ export default function App() {
     try {
       await deleteDoc(doc(db, 'history', id))
       return true
-    } catch (e) { 
+    } catch (e) {
       console.error(e)
       return false
     }
@@ -321,22 +358,22 @@ export default function App() {
   }
 
   const handleAcceptInvite = async (invId) => {
-    if (!currentUser || !invId) return;
+    if (!currentUser || !invId) return
     try {
-      await updateDoc(doc(db, 'team_invitations', String(invId)), { status: 'active' });
-    } catch (e) { 
-      console.error("Accept invite error:", e);
-      throw e; 
+      await updateDoc(doc(db, 'team_invitations', String(invId)), { status: 'active' })
+    } catch (e) {
+      console.error('Accept invite error:', e)
+      throw e
     }
   }
 
   const handleRejectInvite = async (invId) => {
-    if (!currentUser || !invId) return;
+    if (!currentUser || !invId) return
     try {
-      await deleteDoc(doc(db, 'team_invitations', String(invId)));
-    } catch (e) { 
-      console.error("Reject invite error:", e);
-      throw e;
+      await deleteDoc(doc(db, 'team_invitations', String(invId)))
+    } catch (e) {
+      console.error('Reject invite error:', e)
+      throw e
     }
   }
 
@@ -352,7 +389,7 @@ export default function App() {
     try {
       const q = query(collection(db, 'users'), where('email', '==', email))
       const snap = await getDocs(q)
-      if (snap.empty) { alert("Користувача не знайдено!"); return }
+      if (snap.empty) { alert('Користувача не знайдено!'); return }
       const recipientUid = snap.docs[0].id
       const batch = writeBatch(db)
       batch.update(doc(db, 'cars', selectedCar.id), { userId: recipientUid })
@@ -360,16 +397,14 @@ export default function App() {
         batch.update(doc(db, 'history', h.id), { userId: recipientUid })
       })
       await batch.commit()
-      setShowTransfer(false); setSelectedCar(null); setTab('dashboard')
-      alert(`Авто успішно передано!`)
-    } catch (e) { console.error(e); alert("Помилка передачі.") }
+      setShowTransfer(false)
+      setSelectedCar(null)
+      navigate('/dashboard')
+      alert('Авто успішно передано!')
+    } catch (e) { console.error(e); alert('Помилка передачі.') }
   }
 
-  // SUBSCRIPTION: plan upgrade disabled for free launch
-  const handleUpdatePlan = async (planId) => {
-    // no-op during free launch
-  }
-
+  // --- Loading state ---
   if (currentUser === undefined || (currentUser && userProfile === null)) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100%', background: 'var(--bg)' }} className={isDark ? 'dark' : ''}>
@@ -388,68 +423,192 @@ export default function App() {
     )
   }
 
-  const isSharedRoute = window.location.pathname.startsWith('/share/')
-  const sharedCarId = isSharedRoute ? window.location.pathname.split('/')[2] : null
-
-  if (isSharedRoute && sharedCarId) {
-    return <PublicReportView carId={sharedCarId} />
-  }
-
+  // --- Not logged in ---
   if (currentUser === null) {
-    if (mode === 'landing') {
-      return <LandingView onLogin={() => setMode('auth')} />
-    }
-    return <AuthScreen isDark={isDark} setDark={setDark} onBack={() => setMode('landing')} />
+    return (
+      <Routes>
+        <Route path="/share/:carId" element={<PublicReportViewWrapper />} />
+        <Route path="/auth" element={<AuthScreen isDark={isDark} setDark={setDark} onBack={() => navigate('/')} />} />
+        <Route path="*" element={
+          mode === 'auth'
+            ? <AuthScreen isDark={isDark} setDark={setDark} onBack={() => setMode('landing')} />
+            : <LandingView onLogin={() => setMode('auth')} />
+        } />
+      </Routes>
+    )
   }
+
+  // --- Shared route accessible while logged in ---
+  const isSto = userProfile?.accountType === 'sto'
+  const defaultRoute = isSto ? '/sto' : '/dashboard'
+
+  const shellProps = {
+    currentUser, userProfile, isDark, setDark, col, setCol,
+    showMobileMenu, setShowMobileMenu, isAdmin,
+    incomingTransfer, setIncomingTransfer,
+    historyList, bookingNotifications, incomingInvites,
+    handleAcceptInvite, handleRejectInvite,
+    handleAcceptService, handleRejectService,
+    markNotificationAsRead, markAllNotificationsAsRead,
+  }
+
+  const scrollWrapper = (maxW, children) => (
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+      <div className={`${maxW} mx-auto space-y-6`}>{children}</div>
+    </div>
+  )
 
   return (
     <ThemeCtx.Provider value={isDark}>
       <PWAInstallBanner />
-      <div className={`fixed inset-0 flex overflow-hidden font-sans ${isDark ? 'dark' : ''}`} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
-        <Sidebar tab={tab} setTab={setTab} col={col} setCol={setCol} isAdmin={isAdmin} userProfile={userProfile} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} onLogout={() => signOut(auth)} />
-        <div className="flex flex-1 flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
-          {tab !== 'ai' && (
-            <Topbar isDark={isDark} setDark={setDark} incomingTransfer={incomingTransfer} onAcceptTransfer={() => setIncomingTransfer(null)} onRejectTransfer={() => setIncomingTransfer(null)} onLogout={() => signOut(auth)} currentUser={currentUser} userProfile={userProfile} col={col} setCol={setCol} pendingApprovals={historyList.filter(h => h.status === 'pending_approval' && h.userId === currentUser.uid)} bookingNotifications={bookingNotifications} incomingInvites={incomingInvites} onAcceptInvite={handleAcceptInvite} onRejectInvite={handleRejectInvite} onAcceptService={handleAcceptService} onRejectService={handleRejectService} showMobileMenu={showMobileMenu} setShowMobileMenu={setShowMobileMenu} setTab={setTab} onMarkRead={markNotificationAsRead} onMarkAllRead={markAllNotificationsAsRead} />
-          )}
-          <main className="flex-1 flex flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
-            {tab === 'ai' 
-              ? <AIView carList={carList} historyList={historyList} userProfile={userProfile} onUpdateAIUsage={onUpdateAIUsage} onGoPlans={() => setTab('plans')} onGoBookings={() => setTab('bookings')} onMenu={() => setShowMobileMenu(true)} onBack={() => setTab('dashboard')} />
-              : <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
-                  <div className={`${tab === 'sto_bookings' ? 'max-w-[120rem]' : 'max-w-7xl'} mx-auto space-y-6`}>
-                    {tab === 'dashboard' && <DashboardView carList={carList} historyList={historyList} />}
-                    {tab === 'garage' && <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => {}} />}
-{tab === 'bookings' && <ClientBookingsView carList={carList} preselectedSto={preselectedSto} onClearPreselected={() => setPreselectedSto(null)} />}
-                    {tab === 'service' && <HistoryView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />}
-                    {tab === 'team' && <TeamView teamMembers={teamMembers} limit={TEAM_LIMIT} onRemove={id => setTeamMembers(p => p.filter(m => m.id !== id))} onInvite={() => setShowInviteModal(true)} />}
-                    {/* SUBSCRIPTION: {tab === 'plans' && <PlansView carList={carList} userProfile={userProfile} onUpdatePlan={handleUpdatePlan} currentUser={currentUser} />} */}
-                    {tab === 'settings' && <SettingsView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} />}
-                    {tab === 'admin' && isAdmin && <AdminView />}
-                    {tab === 'sto' && userProfile?.accountType === 'sto' && <STODashboardView userProfile={userProfile} setTab={setTab} />}
-                    {tab === 'sto_bookings' && userProfile?.accountType === 'sto' && <STOBookingsView userProfile={userProfile} />}
-                    {tab === 'sto_clients' && userProfile?.accountType === 'sto' && <STOClientsView setTab={setTab} />}
-                    {tab === 'sto_acts' && userProfile?.accountType === 'sto' && <STOActsView userProfile={userProfile} />}
-                    {/* SUBSCRIPTION: {tab === 'sto_plans' && userProfile?.accountType === 'sto' && <STOPricingView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} setTab={setTab} />} */}
-                  </div>
-                </div>
-            }
-          </main>
-        </div>
-        {showInviteModal && <InviteMemberModal limit={TEAM_LIMIT} currentCount={teamMembers.length} onClose={() => setShowInviteModal(false)} onInvite={async (mbr) => {
-          try {
-            await addDoc(collection(db, 'team_invitations'), {
-              ...mbr,
-              ownerId: currentUser.uid,
-              fromName: userProfile?.displayName || userProfile?.name || 'Власник',
-              createdAt: Date.now(),
-              notified: false
-            });
-            setTeamMembers(p => [...p, mbr]);
-          } catch (e) { console.error("Invite error:", e) }
-        }} />}
-        {selectedCar && !showReport && !showTransfer && <CarDetailsModal car={selectedCar} onClose={() => setSelectedCar(null)} onGoService={() => setTab('service')} onGoReport={() => setShowReport(true)} onGoTransfer={() => setShowTransfer(true)} />}
-        {showReport && <CarReportModal car={selectedCar} historyList={historyList} userProfile={userProfile} onClose={() => setShowReport(false)} />}
-        {showTransfer && <TransferCarModal car={selectedCar} onClose={() => setShowTransfer(false)} onTransfer={handleTransfer} />}
-      </div>
+      <Routes>
+        {/* Public shared report — no shell */}
+        <Route path="/share/:carId" element={<PublicReportViewWrapper />} />
+
+        {/* AI view — full screen, no topbar (shell handles that via isAiRoute) */}
+        <Route path="/ai" element={
+          <AppShell {...shellProps}>
+            <AIView
+              carList={carList}
+              historyList={historyList}
+              userProfile={userProfile}
+              onUpdateAIUsage={onUpdateAIUsage}
+              onGoPlans={() => navigate('/plans')}
+              onGoBookings={() => navigate('/bookings')}
+              onMenu={() => setShowMobileMenu(true)}
+              onBack={() => navigate('/dashboard')}
+            />
+          </AppShell>
+        } />
+
+        {/* Owner routes */}
+        <Route path="/dashboard" element={
+          isSto ? <Navigate to="/sto" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <DashboardView carList={carList} historyList={historyList} />)}
+          </AppShell>
+        } />
+        <Route path="/garage" element={
+          isSto ? <Navigate to="/sto" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => {}} />)}
+          </AppShell>
+        } />
+        <Route path="/bookings" element={
+          isSto ? <Navigate to="/sto/bookings" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <ClientBookingsView carList={carList} preselectedSto={preselectedSto} onClearPreselected={() => setPreselectedSto(null)} />)}
+          </AppShell>
+        } />
+        <Route path="/service" element={
+          isSto ? <Navigate to="/sto" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <HistoryView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />)}
+          </AppShell>
+        } />
+        <Route path="/team" element={
+          isSto ? <Navigate to="/sto" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <TeamView teamMembers={teamMembers} limit={TEAM_LIMIT} onRemove={id => setTeamMembers(p => p.filter(m => m.id !== id))} onInvite={() => setShowInviteModal(true)} />)}
+          </AppShell>
+        } />
+
+        {/* Shared routes */}
+        <Route path="/settings" element={
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <SettingsView currentUser={currentUser} userProfile={userProfile} setUserProfile={setUserProfile} />)}
+          </AppShell>
+        } />
+        {isAdmin && (
+          <Route path="/admin" element={
+            <AppShell {...shellProps}>
+              {scrollWrapper('max-w-7xl', <AdminView />)}
+            </AppShell>
+          } />
+        )}
+
+        {/* STO routes */}
+        <Route path="/sto" element={
+          !isSto ? <Navigate to="/dashboard" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <STODashboardView userProfile={userProfile} />)}
+          </AppShell>
+        } />
+        <Route path="/sto/bookings" element={
+          !isSto ? <Navigate to="/bookings" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-[120rem]', <STOBookingsView userProfile={userProfile} />)}
+          </AppShell>
+        } />
+        <Route path="/sto/clients" element={
+          !isSto ? <Navigate to="/dashboard" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <STOClientsView />)}
+          </AppShell>
+        } />
+        <Route path="/sto/acts" element={
+          !isSto ? <Navigate to="/dashboard" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <STOActsView userProfile={userProfile} />)}
+          </AppShell>
+        } />
+
+        {/* Default redirect */}
+        <Route path="/" element={<Navigate to={defaultRoute} replace />} />
+        <Route path="*" element={<Navigate to={defaultRoute} replace />} />
+      </Routes>
+
+      {/* Global modals */}
+      {showInviteModal && (
+        <InviteMemberModal
+          limit={TEAM_LIMIT}
+          currentCount={teamMembers.length}
+          onClose={() => setShowInviteModal(false)}
+          onInvite={async (mbr) => {
+            try {
+              await addDoc(collection(db, 'team_invitations'), {
+                ...mbr,
+                ownerId: currentUser.uid,
+                fromName: userProfile?.displayName || userProfile?.name || 'Власник',
+                createdAt: Date.now(),
+                notified: false
+              })
+              setTeamMembers(p => [...p, mbr])
+            } catch (e) { console.error('Invite error:', e) }
+          }}
+        />
+      )}
+      {selectedCar && !showReport && !showTransfer && (
+        <CarDetailsModal
+          car={selectedCar}
+          onClose={() => setSelectedCar(null)}
+          onGoService={() => navigate('/service')}
+          onGoReport={() => setShowReport(true)}
+          onGoTransfer={() => setShowTransfer(true)}
+        />
+      )}
+      {showReport && (
+        <CarReportModal
+          car={selectedCar}
+          historyList={historyList}
+          userProfile={userProfile}
+          onClose={() => setShowReport(false)}
+        />
+      )}
+      {showTransfer && (
+        <TransferCarModal
+          car={selectedCar}
+          onClose={() => setShowTransfer(false)}
+          onTransfer={handleTransfer}
+        />
+      )}
     </ThemeCtx.Provider>
   )
+}
+
+// Wrapper to extract :carId param for PublicReportView
+function PublicReportViewWrapper() {
+  const location = useLocation()
+  const carId = location.pathname.split('/')[2]
+  return <PublicReportView carId={carId} />
 }

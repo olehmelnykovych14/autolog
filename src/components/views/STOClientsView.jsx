@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search, User, Car, Phone, Mail, ChevronRight, X, Loader2, ClipboardList, TrendingUp } from 'lucide-react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
@@ -6,7 +7,8 @@ import { inp_cls } from '../common/Common'
 import { fmt } from '../../utils'
 import { CAT, CAT_CLR } from '../../constants'
 
-export function STOClientsView({ setTab }) {
+export function STOClientsView() {
+  const navigate = useNavigate()
   const ic = inp_cls()
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -85,7 +87,7 @@ export function STOClientsView({ setTab }) {
     return !q || c.displayName?.toLowerCase().includes(q) || c.phone?.includes(q) || c.email?.toLowerCase().includes(q)
   })
 
-  if (selected) return <ClientDetail client={selected} loading={detailLoading} onBack={() => setSelected(null)} setTab={setTab} />
+  if (selected) return <ClientDetail client={selected} loading={detailLoading} onBack={() => setSelected(null)} navigate={navigate} />
 
   return (
     <div className="flex flex-col gap-6">
@@ -154,7 +156,7 @@ export function STOClientsView({ setTab }) {
   )
 }
 
-function ClientDetail({ client, loading, onBack, setTab }) {
+function ClientDetail({ client, loading, onBack, navigate }) {
   const { user, cars, history } = client
 
   const totalSpent = history.reduce((s, h) => s + (h.cost || 0), 0)
@@ -219,7 +221,7 @@ function ClientDetail({ client, loading, onBack, setTab }) {
             <div className="flex items-center justify-between mb-4">
               <div className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--brand)' }}>Сервісна історія ({history.length})</div>
               {history.length > 0 && (
-                <button onClick={() => setTab?.('sto_acts')} className="text-xs font-bold px-3 py-1.5 rounded-xl transition-all" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
+                <button onClick={() => navigate('/sto/acts')} className="text-xs font-bold px-3 py-1.5 rounded-xl transition-all" style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}>
                   Створити акт
                 </button>
               )}

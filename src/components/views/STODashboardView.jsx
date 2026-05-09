@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search, Car, ShieldCheck, Info, Loader2, TrendingUp, ClipboardCheck, ChevronRight, CheckCircle, Clock, XCircle } from 'lucide-react'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
@@ -6,7 +7,8 @@ import { db, auth } from '../../firebase'
 import { C } from '../../constants'
 import { AddVerifiedServiceModal } from '../modals/Modals'
 
-export function STODashboardView({ userProfile, setTab }) {
+export function STODashboardView({ userProfile }) {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [foundCar, setFoundCar] = useState(null)
@@ -148,7 +150,7 @@ export function STODashboardView({ userProfile, setTab }) {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setTab('sto_bookings')} className="flex items-center gap-2 px-5 py-2.5 bg-[#5C3EFE] text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 hover:opacity-90 transition-all">
+          <button onClick={() => navigate('/sto/bookings')} className="flex items-center gap-2 px-5 py-2.5 bg-[#5C3EFE] text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 hover:opacity-90 transition-all">
             <ClipboardCheck size={16}/> Записи
           </button>
         </div>
@@ -273,7 +275,7 @@ export function STODashboardView({ userProfile, setTab }) {
       <div className="bg-white dark:bg-[#0F172A] border border-gray-200 dark:border-gray-800/80 rounded-2xl overflow-hidden shadow-sm">
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
           <h2 className="font-black text-gray-900 dark:text-white">Останні сервісні записи</h2>
-          <button onClick={() => setTab('sto_bookings')} className="text-[#5C3EFE] text-xs font-black hover:underline flex items-center gap-1">
+          <button onClick={() => navigate('/sto/bookings')} className="text-[#5C3EFE] text-xs font-black hover:underline flex items-center gap-1">
             Всі записи <ChevronRight size={14}/>
           </button>
         </div>

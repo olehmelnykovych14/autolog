@@ -1,10 +1,20 @@
 import React, { useContext } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { LogOut, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { ThemeCtx } from '../../context/ThemeContext'
 import { NAV_OWNER, NAV_STO } from '../../constants'
 
-export function Sidebar({ tab, setTab, col, setCol, isAdmin, userProfile, showMobileMenu, setShowMobileMenu, onLogout }) {
+function getPath(id) {
+  if (id === 'sto_bookings') return '/sto/bookings'
+  if (id === 'sto_clients') return '/sto/clients'
+  if (id === 'sto_acts') return '/sto/acts'
+  if (id === 'sto_plans') return '/sto/plans'
+  return `/${id}`
+}
+
+export function Sidebar({ col, isAdmin, userProfile, showMobileMenu, setShowMobileMenu, onLogout }) {
   const isDark = useContext(ThemeCtx)
+  const location = useLocation()
   const isSto = userProfile?.accountType === 'sto'
   const navSource = isSto ? NAV_STO : NAV_OWNER
   const links = navSource.filter(n => n.id !== 'admin' || isAdmin)
@@ -57,19 +67,21 @@ export function Sidebar({ tab, setTab, col, setCol, isAdmin, userProfile, showMo
         <nav className="flex-1 px-3 py-2 overflow-y-auto flex flex-col gap-0.5 no-scrollbar">
           {links.map((item) => {
             const Icon = item.icon
-            const active = tab === item.id
+            const to = getPath(item.id)
+            const active = location.pathname === to || location.pathname.startsWith(to + '/')
             return (
-              <button
+              <NavLink
                 key={item.id}
-                onClick={() => { setTab(item.id); setShowMobileMenu(false) }}
-                className={`w-full flex items-center gap-[14px] px-3 py-[11px] rounded-2xl text-sm font-semibold transition-all duration-[250ms] ease-[cubic-bezier(.22,1,.36,1)] relative border-0 text-left ${col ? 'justify-center' : ''}`}
+                to={to}
+                onClick={() => setShowMobileMenu(false)}
+                className={`w-full flex items-center gap-[14px] px-3 py-[11px] rounded-2xl text-sm font-semibold transition-all duration-[250ms] ease-[cubic-bezier(.22,1,.36,1)] relative border-0 text-left no-underline ${col ? 'justify-center' : ''}`}
                 style={{
                   background: active ? 'var(--brand)' : 'transparent',
                   color: active ? 'white' : 'var(--text-2)',
                   boxShadow: active ? '0 8px 24px -4px rgba(92,62,254,0.35)' : 'none',
                 }}
-                onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-hover)'; if (!active) e.currentTarget.style.color = 'var(--text)' }}
-                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; if (!active) e.currentTarget.style.color = 'var(--text-2)' }}
+                onMouseEnter={e => { if (!active) { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text)' } }}
+                onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-2)' } }}
               >
                 <span className="w-5 h-5 flex-none flex items-center justify-center">
                   <Icon size={20} />
@@ -82,7 +94,7 @@ export function Sidebar({ tab, setTab, col, setCol, isAdmin, userProfile, showMo
                     )}
                   </>
                 )}
-              </button>
+              </NavLink>
             )
           })}
         </nav>

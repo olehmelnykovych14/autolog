@@ -1,9 +1,10 @@
 import React, { useContext, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Sun, Moon, Bell, Check, X, AlertCircle, Menu, ChevronRight } from 'lucide-react'
 import { ThemeCtx } from '../../context/ThemeContext'
 import { C } from '../../constants'
 
-export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], incomingInvites=[], onAcceptInvite, onRejectInvite, onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu, setTab, onMarkRead, onMarkAllRead }) {
+export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], incomingInvites=[], onAcceptInvite, onRejectInvite, onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu, onMarkRead, onMarkAllRead }) {
   const [showInbox, setShowInbox] = useState(false)
   const [processingInvites, setProcessingInvites] = useState({})
 
@@ -19,6 +20,7 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
     }
   }
 
+  const navigate = useNavigate()
   const isSto = userProfile?.accountType === 'sto'
   const totalNotifications = pendingApprovals.length + bookingNotifications.length + incomingInvites.length
 
@@ -182,7 +184,7 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
                           key={b.id}
                           className="group p-4 cursor-pointer transition-colors relative"
                           style={{ borderBottom: '1px solid var(--line)' }}
-                          onClick={() => { setShowInbox(false); setTab(isSto ? 'sto_bookings' : 'bookings') }}
+                          onClick={() => { setShowInbox(false); navigate(isSto ? '/sto/bookings' : '/bookings') }}
                           onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
                           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
