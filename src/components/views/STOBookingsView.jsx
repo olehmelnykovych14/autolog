@@ -187,7 +187,7 @@ export function STOBookingsView({ userProfile }) {
              )
            })}
         </div>
-      ) : (
+      ) : viewMode === 'calendar' ? (
         <div className="mt-4 flex flex-col gap-4 animate-in slide-in-from-right-4">
           <div className="flex flex-wrap sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-800 pb-4">
             <div className="flex gap-2 w-full sm:w-auto">
@@ -263,9 +263,7 @@ export function STOBookingsView({ userProfile }) {
             </table>
           </div>
         </div>
-      )}
-
-      {viewMode === 'day' && (() => {
+      ) : (() => {
         const today = new Date()
         today.setHours(0,0,0,0)
         const day = new Date(today)
@@ -354,7 +352,7 @@ export function STOBookingsView({ userProfile }) {
             </div>
           </div>
         )
-      })()}
+      })() : null}
 
       {showCreateModal && <CreateBookingBySTOModal userProfile={userProfile} initialParams={createInitial} onClose={() => setShowCreateModal(false)} onSuccess={() => { setShowCreateModal(false); fetchBookings(); }} />}
       {editingBooking && <ViewEditBookingModal booking={editingBooking} userProfile={userProfile} onClose={() => setEditingBooking(null)} onSuccess={() => { setEditingBooking(null); fetchBookings(); }} />}
