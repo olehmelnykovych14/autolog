@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { auth, db } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
@@ -6,37 +6,35 @@ import { doc, getDoc, getDocs, collection, query, where, addDoc, updateDoc, dele
 
 // Context & Constants
 import { ThemeCtx } from './context/ThemeContext'
-// SUBSCRIPTION: PLANS removed for free launch
 
 // Layout
 import { Sidebar } from './components/layout/Sidebar'
 import { Topbar } from './components/layout/Topbar'
 
-// Views
-import { DashboardView } from './components/views/DashboardView'
-import { GarageView } from './components/views/GarageView'
-import { HistoryView } from './components/views/HistoryView'
-import { AIView } from './components/views/AIView'
-import { TeamView } from './components/views/TeamView'
-// SUBSCRIPTION: import { PlansView, STOPricingView } from './components/views/PlansView'
-import { SettingsView } from './components/views/SettingsView'
-import { AdminView } from './components/views/AdminView'
-import { STODashboardView } from './components/views/STODashboardView'
-import { PublicReportView } from './components/views/PublicReportView'
-import { ClientBookingsView } from './components/views/ClientBookingsView'
-import { STOBookingsView } from './components/views/STOBookingsView'
-import { STOClientsView } from './components/views/STOClientsView'
-import { STOActsView } from './components/views/STOActsView'
+// Auth & Landing (always needed)
+import { AuthScreen } from './components/auth/AuthScreen'
+import { LandingView } from './components/views/LandingView'
+import { PWAInstallBanner } from './components/common/PWAInstallBanner'
 
-// Modals
+// Modals (loaded with app shell)
 import { CarDetailsModal } from './components/modals/CarDetailsModal'
 import { CarReportModal } from './components/modals/CarReportModal'
 import { TransferCarModal, InviteMemberModal } from './components/modals/Modals'
 
-// Auth
-import { AuthScreen } from './components/auth/AuthScreen'
-import { LandingView } from './components/views/LandingView'
-import { PWAInstallBanner } from './components/common/PWAInstallBanner'
+// Views — lazy loaded per route
+const DashboardView = lazy(() => import('./components/views/DashboardView').then(m => ({ default: m.DashboardView })))
+const GarageView = lazy(() => import('./components/views/GarageView').then(m => ({ default: m.GarageView })))
+const HistoryView = lazy(() => import('./components/views/HistoryView').then(m => ({ default: m.HistoryView })))
+const AIView = lazy(() => import('./components/views/AIView').then(m => ({ default: m.AIView })))
+const TeamView = lazy(() => import('./components/views/TeamView').then(m => ({ default: m.TeamView })))
+const SettingsView = lazy(() => import('./components/views/SettingsView').then(m => ({ default: m.SettingsView })))
+const AdminView = lazy(() => import('./components/views/AdminView').then(m => ({ default: m.AdminView })))
+const STODashboardView = lazy(() => import('./components/views/STODashboardView').then(m => ({ default: m.STODashboardView })))
+const PublicReportView = lazy(() => import('./components/views/PublicReportView').then(m => ({ default: m.PublicReportView })))
+const ClientBookingsView = lazy(() => import('./components/views/ClientBookingsView').then(m => ({ default: m.ClientBookingsView })))
+const STOBookingsView = lazy(() => import('./components/views/STOBookingsView').then(m => ({ default: m.STOBookingsView })))
+const STOClientsView = lazy(() => import('./components/views/STOClientsView').then(m => ({ default: m.STOClientsView })))
+const STOActsView = lazy(() => import('./components/views/STOActsView').then(m => ({ default: m.STOActsView })))
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -87,7 +85,9 @@ function AppShell({ children, currentUser, userProfile, isDark, setDark, col, se
           />
         )}
         <main className="flex-1 flex flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
-          {children}
+          <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-[#5C3EFE] border-t-transparent rounded-full animate-spin" /></div>}>
+            {children}
+          </Suspense>
         </main>
       </div>
     </div>
