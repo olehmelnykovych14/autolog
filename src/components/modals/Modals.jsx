@@ -121,9 +121,6 @@ export function InviteMemberModal({ limit, currentCount, onClose, onInvite }) {
 export function AddVerifiedServiceModal({ car, userProfile, onClose, onSuccess }) {
   const [f, setF] = useState({ category: 'maintenance', title: '', date: new Date().toISOString().split('T')[0], cost: '', garage: userProfile?.stoName || '', mileage: '' })
   const [loading, setLoading] = useState(false)
-  const ic = inp_cls()
-  const fieldCls = `${ic} flex items-center gap-2`
-
   const submit = async (e) => {
     e.preventDefault()
     if (!f.title || !f.mileage) return
@@ -171,39 +168,39 @@ export function AddVerifiedServiceModal({ car, userProfile, onClose, onSuccess }
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Категорія *">
-            <div className={fieldCls}>
-              <Layers size={16} className="text-gray-400 shrink-0" />
-              <select value={f.category} onChange={e => setF({...f, category: e.target.value})} className="flex-1 bg-transparent focus:outline-none text-sm dark:text-white">
+            <div className="al-input-wrap">
+              <Layers size={15} className="al-input-icon" />
+              <select value={f.category} onChange={e => setF({...f, category: e.target.value})} className="al-input-inner">
                 {Object.entries(CAT).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
               </select>
             </div>
           </Field>
           <Field label="Дата *">
-            <div className={fieldCls}>
-              <Calendar size={16} className="text-gray-400 shrink-0" />
-              <input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className="flex-1 bg-transparent focus:outline-none text-sm dark:text-white appearance-none" />
+            <div className="al-input-wrap">
+              <Calendar size={15} className="al-input-icon" />
+              <input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className="al-input-inner" />
             </div>
           </Field>
         </div>
 
         <Field label="Назва робіт *">
-          <div className={fieldCls}>
-            <FileText size={16} className="text-gray-400 shrink-0" />
-            <input value={f.title} onChange={e => setF({...f, title: e.target.value})} placeholder="Напр. Заміна масла та фільтрів" className="flex-1 bg-transparent focus:outline-none text-sm placeholder-gray-400 dark:text-white" required />
+          <div className="al-input-wrap">
+            <FileText size={15} className="al-input-icon" />
+            <input value={f.title} onChange={e => setF({...f, title: e.target.value})} placeholder="Напр. Заміна масла та фільтрів" className="al-input-inner" required />
           </div>
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Пробіг (км) *">
-            <div className={fieldCls}>
-              <Activity size={16} className="text-[#5C3EFE] shrink-0" />
-              <input type="number" value={f.mileage} onChange={e => setF({...f, mileage: e.target.value})} placeholder={`Від ${car.mileage} км`} required className="flex-1 bg-transparent focus:outline-none text-sm placeholder-gray-400 dark:text-white" />
+            <div className="al-input-wrap">
+              <Activity size={15} className="al-input-icon" style={{color:'var(--brand)'}} />
+              <input type="number" value={f.mileage} onChange={e => setF({...f, mileage: e.target.value})} placeholder={car?.mileage ? `від ${car.mileage} км` : 'Введіть пробіг'} required className="al-input-inner" />
             </div>
           </Field>
           <Field label="Вартість (₴) *">
-            <div className={fieldCls}>
-              <span className="text-gray-400 text-sm font-bold">₴</span>
-              <input type="number" value={f.cost} onChange={e => setF({...f, cost: e.target.value})} placeholder="0" className="flex-1 bg-transparent focus:outline-none text-sm placeholder-gray-400 dark:text-white" required />
+            <div className="al-input-wrap">
+              <span className="al-input-icon font-bold text-sm">₴</span>
+              <input type="number" value={f.cost} onChange={e => setF({...f, cost: e.target.value})} placeholder="Введіть суму" className="al-input-inner" />
             </div>
           </Field>
         </div>

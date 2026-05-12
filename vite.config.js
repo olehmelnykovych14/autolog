@@ -57,6 +57,16 @@ export default defineConfig({
       },
     }
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/firebase')) return 'firebase'
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router')) return 'react-vendor'
+        }
+      }
+    }
+  },
   test: {
     globals: true,
     environment: 'jsdom',

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Calendar, Clock, MapPin, Search, ChevronRight, CheckCircle2, XCircle, Clock4, Info, ShieldCheck } from 'lucide-react'
-import { collection, query, where, getDocs, orderBy, addDoc } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, addDoc, doc, getDoc } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { PrimaryBtn, Modal, Field, inp_cls } from '../common/Common'
 
@@ -175,9 +175,23 @@ function StatusBadge({ status }) {
 }
 
 function BookingRequestModal({ sto, carList, onClose, onSuccess }) {
-  const [f, setF] = useState({ carId: carList[0]?.id || '', date: '', time: '10:00', issue: '' })
+  const [stoSettings, setStoSettings] = useState({ workdayStart: 8, workdayEnd: 19 })
+  const [f, setF] = useState({ carId: carList[0]?.id || '', date: '', time: '', issue: '' })
   const [loading, setLoading] = useState(false)
   const ic = inp_cls()
+
+  useEffect(() => {
+    if (!sto?.id) return
+    getDoc(doc(db, 'sto_settings', sto.id)).then(snap => {
+      if (snap.exists()) {
+        const s = snap.data()
+        setStoSettings(s)
+        setF(p => ({ ...p, time: `${String(s.workdayStart || 8).padStart(2,'0')}:00` }))
+      } else {
+        setF(p => ({ ...p, time: '09:00' }))
+      }
+    }).catch(() => setF(p => ({ ...p, time: '09:00' })))
+  }, [sto?.id])
 
   const submit = async (e) => {
     e.preventDefault()
@@ -229,7 +243,13 @@ function BookingRequestModal({ sto, carList, onClose, onSuccess }) {
              <input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} min={new Date().toISOString().split('T')[0]} className={ic} required />
            </Field>
            <Field label="Орієнтовний час *">
-             <input type="time" value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} required />
+             <select value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} style={{ background: 'var(--bg-input)', color: 'var(--text)' }} required>
+               {Array.from({ length: stoSettings.workdayEnd - stoSettings.workdayStart + 1 }, (_, i) => {
+                 const h = stoSettings.workdayStart + i
+                 const val = `${String(h).padStart(2,'0')}:00`
+                 return <option key={h} value={val}>{val}</option>
+               })}
+             </select>
            </Field>
          </div>
 

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Info, FileText, Share2, ClipboardList, TrendingUp, X } from 'lucide-react'
+import { Share2, ClipboardList, TrendingUp } from 'lucide-react'
 import { Modal, PrimaryBtn } from '../common/Common'
 import { fmt, getBrandLogo } from '../../utils'
 import { C } from '../../constants'
@@ -101,6 +101,27 @@ export function CarDetailsModal({ car, onClose, onGoService, onGoReport, onGoTra
             <p className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-widest">{car.vin || 'НЕ ВКАЗАНО'}</p>
           </div>
         </div>
+
+        {(car.fuelType || car.engineL || car.driveType || car.transmission || car.bodyClass) && (
+          <div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Технічні характеристики</p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { l: 'Тип палива',   v: car.fuelType },
+                { l: 'Двигун',       v: car.engineL ? `${Number(car.engineL).toFixed(1)}L${car.engineCyl ? ` · ${car.engineCyl} цил.` : ''}` : '' },
+                { l: 'Привід',       v: car.driveType },
+                { l: 'КПП',          v: car.transmission },
+                { l: 'Тип кузова',   v: car.bodyClass },
+              ].filter(i => i.v).map((item, i) => (
+                <div key={i} className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-50 dark:border-gray-800">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{item.l}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{item.v}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
 
         <div className="flex flex-col gap-2 mt-4">
           <button onClick={() => { onGoService(); onClose(); }} className="w-full py-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl font-black text-sm hover:bg-indigo-100 transition-all flex items-center justify-center gap-3 border border-indigo-100 dark:border-indigo-800/50 shadow-sm active:scale-95">

@@ -204,15 +204,22 @@ bot.on('contact', async (ctx) => {
 });
 
 bot.hears(/Мої авто/i, async (ctx) => {
-  if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
-  const snap = await db.collection('cars').where('userId', '==', ctx.userId).get();
-  if (snap.empty) return ctx.reply('Ваш гараж порожній.');
-  let text = `🚗 *Ваш Гараж:*\n\n`;
-  snap.forEach(d => {
-    const c = d.data();
-    text += `📍 *${c.brand} ${c.model || ''}*\n🔢 Номер: \`${c.plate}\`\n\n`;
-  });
-  ctx.reply(text, { parse_mode: 'Markdown' });
+  try {
+    console.log(`🚗 [Мої авто] userId=${ctx.userId} tid=${ctx.from?.id}`);
+    if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
+    const snap = await db.collection('cars').where('userId', '==', ctx.userId).get();
+    console.log(`🚗 [Мої авто] found ${snap.size} cars`);
+    if (snap.empty) return ctx.reply('Ваш гараж порожній.');
+    let text = `🚗 *Ваш Гараж:*\n\n`;
+    snap.forEach(d => {
+      const c = d.data();
+      text += `📍 *${c.brand} ${c.model || ''}*\n🔢 Номер: \`${c.plate}\`\n\n`;
+    });
+    await ctx.reply(text, { parse_mode: 'Markdown' });
+  } catch (e) {
+    console.error('❌ Мої авто error:', e.message, e.stack);
+    await ctx.reply('Помилка завантаження гаража. Спробуйте ще раз.');
+  }
 });
 
 bot.hears(/Мої записи/i, async (ctx) => {

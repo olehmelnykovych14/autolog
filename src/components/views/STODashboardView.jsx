@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search, Car, ShieldCheck, Info, Loader2, TrendingUp, ClipboardCheck, ChevronRight, CheckCircle, Clock, XCircle } from 'lucide-react'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
@@ -6,7 +7,8 @@ import { db, auth } from '../../firebase'
 import { C } from '../../constants'
 import { AddVerifiedServiceModal } from '../modals/Modals'
 
-export function STODashboardView({ userProfile, setTab }) {
+export function STODashboardView({ userProfile }) {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [foundCar, setFoundCar] = useState(null)
@@ -148,7 +150,7 @@ export function STODashboardView({ userProfile, setTab }) {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={() => setTab('sto_bookings')} className="flex items-center gap-2 px-5 py-2.5 bg-[#5C3EFE] text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 hover:opacity-90 transition-all">
+          <button onClick={() => navigate('/sto/bookings')} className="flex items-center gap-2 px-5 py-2.5 bg-[#5C3EFE] text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20 hover:opacity-90 transition-all">
             <ClipboardCheck size={16}/> Записи
           </button>
         </div>
@@ -210,7 +212,8 @@ export function STODashboardView({ userProfile, setTab }) {
                 onChange={e => setSearch(e.target.value.toUpperCase())}
                 placeholder="АА1234АА або WBA3B31000K2XXXXX"
                 maxLength={20}
-                className="w-full pl-12 pr-6 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-[#5C3EFE]/60 focus:ring-2 focus:ring-[#5C3EFE]/20 transition-all uppercase font-mono tracking-wider text-sm"
+                className="w-full pl-12 pr-6 py-4 backdrop-blur-sm rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#5C3EFE]/30 transition-all uppercase font-mono tracking-wider text-sm"
+                style={{ background: 'var(--bg-card)', border: '1px solid var(--line-2)', color: 'var(--text)' }}
               />
             </div>
             <button
@@ -273,7 +276,7 @@ export function STODashboardView({ userProfile, setTab }) {
       <div className="bg-white dark:bg-[#0F172A] border border-gray-200 dark:border-gray-800/80 rounded-2xl overflow-hidden shadow-sm">
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800">
           <h2 className="font-black text-gray-900 dark:text-white">Останні сервісні записи</h2>
-          <button onClick={() => setTab('sto_bookings')} className="text-[#5C3EFE] text-xs font-black hover:underline flex items-center gap-1">
+          <button onClick={() => navigate('/sto/bookings')} className="text-[#5C3EFE] text-xs font-black hover:underline flex items-center gap-1">
             Всі записи <ChevronRight size={14}/>
           </button>
         </div>
@@ -289,13 +292,16 @@ export function STODashboardView({ userProfile, setTab }) {
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {recentLogs.map(log => (
-              <div key={log.id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-white/2 transition-colors">
+              <div key={log.id} className="flex items-center justify-between px-6 py-4 transition-colors"
+                style={{ cursor: 'default' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover, rgba(255,255,255,0.03))'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <div className="flex items-center gap-4">
                   <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center shrink-0">
                     <Car size={16} className="text-[#5C3EFE]"/>
                   </div>
                   <div>
-                    <p className="font-bold text-sm text-gray-900 dark:text-white">{log.title || 'Сервісний запис'}</p>
+                    <p className="font-bold text-sm text-gray-900 dark:text-white">{log.title || log.service || log.work || log.description || 'Сервісний запис'}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{log.date?.split('-').reverse().join('.')}</p>
                   </div>
                 </div>
