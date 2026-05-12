@@ -1,4 +1,18 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense, Component } from 'react'
+
+class ErrorBoundary extends Component {
+  state = { error: null }
+  static getDerivedStateFromError(e) { return { error: e } }
+  render() {
+    if (this.state.error) return (
+      <div style={{ padding: 32, color: '#ef4444', fontFamily: 'monospace', fontSize: 13 }}>
+        <b>Помилка рендеру:</b><br/>{this.state.error?.message}<br/><pre style={{fontSize:11,marginTop:8,whiteSpace:'pre-wrap'}}>{this.state.error?.stack?.slice(0,500)}</pre>
+        <button onClick={() => this.setState({ error: null })} style={{ marginTop: 12, padding: '6px 14px', background: '#5C3EFE', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}>Спробувати знову</button>
+      </div>
+    )
+    return this.props.children
+  }
+}
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { auth, db } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
@@ -35,6 +49,7 @@ const ClientBookingsView = lazy(() => import('./components/views/ClientBookingsV
 const STOBookingsView = lazy(() => import('./components/views/STOBookingsView').then(m => ({ default: m.STOBookingsView })))
 const STOClientsView = lazy(() => import('./components/views/STOClientsView').then(m => ({ default: m.STOClientsView })))
 const STOActsView = lazy(() => import('./components/views/STOActsView').then(m => ({ default: m.STOActsView })))
+const STOSettingsView = lazy(() => import('./components/views/STOSettingsView').then(m => ({ default: m.STOSettingsView })))
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -56,7 +71,7 @@ function AppShell({ children, currentUser, userProfile, isDark, setDark, col, se
         userProfile={userProfile}
         showMobileMenu={showMobileMenu}
         setShowMobileMenu={setShowMobileMenu}
-        onLogout={() => signOut(auth)}
+        onLogout={() => { localStorage.setItem('al_show_auth', '1'); signOut(auth); setMode('auth') }}
       />
       <div className="flex flex-1 flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
         {!isAiRoute && (
@@ -66,7 +81,7 @@ function AppShell({ children, currentUser, userProfile, isDark, setDark, col, se
             incomingTransfer={incomingTransfer}
             onAcceptTransfer={() => setIncomingTransfer(null)}
             onRejectTransfer={() => setIncomingTransfer(null)}
-            onLogout={() => signOut(auth)}
+            onLogout={() => { localStorage.setItem('al_show_auth', '1'); signOut(auth); setMode('auth') }}
             currentUser={currentUser}
             userProfile={userProfile}
             col={col}
@@ -85,9 +100,11 @@ function AppShell({ children, currentUser, userProfile, isDark, setDark, col, se
           />
         )}
         <main className="flex-1 flex flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
-          <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-[#5C3EFE] border-t-transparent rounded-full animate-spin" /></div>}>
-            {children}
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 border-2 border-[#5C3EFE] border-t-transparent rounded-full animate-spin" /></div>}>
+              {children}
+            </Suspense>
+          </ErrorBoundary>
         </main>
       </div>
     </div>
@@ -99,6 +116,7 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState(undefined)
   const [userProfile, setUserProfile] = useState(null)
+  const [authTimedOut, setAuthTimedOut] = useState(false)
   const [mode, setMode] = useState('landing') // 'landing' | 'auth'
   const [col, setCol] = useState(false)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -127,6 +145,15 @@ export default function App() {
   // --- ROBUST DATA ORCHESTRATION ---
   const [relevantUids, setRelevantUids] = useState([])
 
+  // Force-exit loading screen if auth takes too long
+  useEffect(() => {
+    if (currentUser !== undefined) return
+    const wasLoggedIn = localStorage.getItem('al_authed') === '1'
+    const delay = wasLoggedIn ? 4000 : 2000
+    const t = setTimeout(() => setAuthTimedOut(true), delay)
+    return () => clearTimeout(t)
+  }, [currentUser])
+
   // 1. Auth & Profile
   useEffect(() => {
     if (!auth) return
@@ -134,6 +161,7 @@ export default function App() {
       setCurrentUser(user)
       if (!user) {
         localStorage.removeItem('al_authed')
+        localStorage.removeItem('al_profile_type')
         setUserProfile(null)
         setCarList([])
         setHistoryList([])
@@ -142,10 +170,12 @@ export default function App() {
       }
       localStorage.setItem('al_authed', '1')
       try {
-        const snap = await getDoc(doc(db, 'users', user.uid))
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+        const snap = await Promise.race([getDoc(doc(db, 'users', user.uid)), timeout])
         if (snap.exists()) {
           const up = snap.data()
           setUserProfile(up)
+          localStorage.setItem('al_profile_type', up.accountType || 'owner')
           if (up.accountType === 'sto') {
             navigate('/sto', { replace: true })
           }
@@ -154,6 +184,9 @@ export default function App() {
         }
       } catch (e) {
         console.error('Profile error:', e)
+        // On timeout or network error, use cached profile type from localStorage or default to owner
+        const cached = localStorage.getItem('al_profile_type')
+        setUserProfile({ phone: '', city: '', avatarBase64: '', accountType: cached || 'owner' })
       }
     })
     return () => unsub()
@@ -404,7 +437,7 @@ export default function App() {
   }
 
   // --- Loading state ---
-  if (currentUser === undefined || (currentUser && userProfile === null)) {
+  if (!authTimedOut && (currentUser === undefined || (currentUser && userProfile === null))) {
     const wasLoggedIn = localStorage.getItem('al_authed') === '1'
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100%', background: 'var(--bg)' }} className={isDark ? 'dark' : ''}>
@@ -425,13 +458,17 @@ export default function App() {
   }
 
   // --- Not logged in ---
-  if (currentUser === null) {
+  if (currentUser === null || (authTimedOut && currentUser === undefined)) {
+    const wasLoggedIn = localStorage.getItem('al_authed') === '1'
+    const showAuthFlag = localStorage.getItem('al_show_auth') === '1'
+    if (showAuthFlag) localStorage.removeItem('al_show_auth')
+    const showAuth = mode === 'auth' || wasLoggedIn || showAuthFlag
     return (
       <Routes>
         <Route path="/share/:carId" element={<PublicReportViewWrapper />} />
         <Route path="/auth" element={<AuthScreen isDark={isDark} setDark={setDark} onBack={() => navigate('/')} />} />
         <Route path="/" element={
-          mode === 'auth'
+          showAuth
             ? <AuthScreen isDark={isDark} setDark={setDark} onBack={() => setMode('landing')} />
             : <LandingView onLogin={() => setMode('auth')} />
         } />
@@ -552,6 +589,12 @@ export default function App() {
           !isSto ? <Navigate to="/dashboard" replace /> :
           <AppShell {...shellProps}>
             {scrollWrapper('max-w-7xl', <STOActsView userProfile={userProfile} />)}
+          </AppShell>
+        } />
+        <Route path="/sto/settings" element={
+          !isSto ? <Navigate to="/dashboard" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-3xl', <STOSettingsView userProfile={userProfile} setUserProfile={setUserProfile} />)}
           </AppShell>
         } />
 

@@ -46,7 +46,8 @@ export const NAV_STO = [
   { id: 'sto_clients', label: 'CRM Клієнти', icon: Users },
   { id: 'sto_acts', label: 'Акти', icon: FileText },
   // SUBSCRIPTION: { id: 'sto_plans', label: 'Тарифи', icon: CreditCard },
-  { id: 'settings', label: 'Налаштування', icon: Settings },
+  { id: 'sto_settings', label: 'Налаштування СТО', icon: Settings },
+  { id: 'settings', label: 'Мій акаунт', icon: Settings },
   { id: 'admin', label: 'Адмін панель', icon: Users },
 ]
 

@@ -21,8 +21,8 @@ const STATUS_LABEL = {
   rejected: 'Відхилено',
 }
 
-const HOURS = [8,9,10,11,12,13,14,15,16,17,18]
 const SLOT_H = 64
+const DEFAULT_STO_SETTINGS = { workdayStart: 8, workdayEnd: 19, postsCount: 1, workDays: [1,2,3,4,5], slotDuration: 60 }
 
 function getClientName(b) {
   if (b.isOffline) return b.offlineData?.clientName || 'Клієнт'
@@ -76,6 +76,7 @@ function BookingCard({ bk, onClick, style = {} }) {
 }
 
 export function STOBookingsView({ userProfile }) {
+  const [stoSettings, setStoSettings] = useState(DEFAULT_STO_SETTINGS)
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -115,6 +116,20 @@ export function STOBookingsView({ userProfile }) {
     return new Date(d.getTime() - tz).toISOString().split('T')[0]
   }
 
+  // Load STO settings
+  useEffect(() => {
+    const uid = auth.currentUser?.uid
+    if (!uid) return
+    getDoc(doc(db, 'sto_settings', uid)).then(snap => {
+      if (snap.exists()) setStoSettings(s => ({ ...s, ...snap.data() }))
+    }).catch(console.error)
+  }, [])
+
+  const HOURS = Array.from(
+    { length: stoSettings.workdayEnd - stoSettings.workdayStart + 1 },
+    (_, i) => stoSettings.workdayStart + i
+  )
+
   useEffect(() => { fetchBookings() }, [weekOffset])
 
   const fetchBookings = async () => {
@@ -141,6 +156,7 @@ export function STOBookingsView({ userProfile }) {
   const updateStatus = async (bookingId, status) => {
     try {
       setBookings(p => p.map(b => b.id === bookingId ? { ...b, status } : b))
+      setSelBk(p => p?.id === bookingId ? { ...p, status } : p)
       await updateDoc(doc(db, 'bookings', bookingId), { status })
     } catch (e) { console.error(e); fetchBookings() }
   }
@@ -159,7 +175,7 @@ export function STOBookingsView({ userProfile }) {
   const confirmedCount = todayBookings.filter(b => b.status === 'confirmed').length
 
   const nowHour = new Date().getHours() + new Date().getMinutes() / 60
-  const timeLineTop = selDay === todayStr ? (nowHour - 8) * SLOT_H : null
+  const timeLineTop = selDay === todayStr ? (nowHour - stoSettings.workdayStart) * SLOT_H : null
 
   return (
     <div className="flex flex-col gap-5 max-w-[90rem] mx-auto w-full pt-4 px-4 sm:px-6 pb-12">
@@ -303,12 +319,23 @@ export function STOBookingsView({ userProfile }) {
               </div>
               {/* Slots */}
               <div style={{ position: 'relative', borderLeft: '1px solid var(--line)' }}>
-                {/* Hour lines */}
+                {/* Hour lines — also drop targets */}
                 {HOURS.map(h => (
                   <div key={h}
                     onClick={() => { setCreateInitial({ date: selDay, time: `${String(h).padStart(2,'0')}:00` }); setShowCreateModal(true) }}
+                    onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = 'rgba(92,62,254,0.07)' }}
+                    onDragLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    onDrop={e => {
+                      e.currentTarget.style.background = 'transparent'
+                      const id = e.dataTransfer.getData('text/plain')
+                      if (!id) return
+                      const newTime = `${String(h).padStart(2,'0')}:00`
+                      updateDoc(doc(db, 'bookings', id), { time: newTime }).catch(console.error)
+                      setBookings(p => p.map(b => b.id === id ? { ...b, time: newTime } : b))
+                      setSelBk(p => p?.id === id ? { ...p, time: newTime } : p)
+                    }}
                     className="cursor-pointer transition-colors"
-                    style={{ position: 'absolute', top: (h-8)*SLOT_H, left: 0, right: 0, height: SLOT_H, borderTop: '1px dashed var(--line)', zIndex: 0 }}
+                    style={{ position: 'absolute', top: (h-stoSettings.workdayStart)*SLOT_H, left: 0, right: 0, height: SLOT_H, borderTop: '1px dashed var(--line)', zIndex: 0 }}
                   />
                 ))}
                 {/* Current time */}
@@ -323,16 +350,31 @@ export function STOBookingsView({ userProfile }) {
                 )}
                 {/* Booking cards */}
                 <div style={{ position: 'relative', height: HOURS.length * SLOT_H }}>
-                  {selDayBookings.map(bk => {
-                    const [hh, mm] = (bk.time || '09:00').split(':').map(Number)
-                    const topPos = (hh + mm/60 - 8) * SLOT_H
-                    if (topPos < 0 || topPos > HOURS.length * SLOT_H) return null
-                    return (
-                      <div key={bk.id} style={{ position: 'absolute', top: topPos + 2, height: SLOT_H - 4, left: 4, right: 4, zIndex: 2 }}>
-                        <BookingCard bk={bk} onClick={b => setSelBk(b === selBk ? null : b)} />
-                      </div>
-                    )
-                  })}
+                  {(() => {
+                    // Assign column indices to overlapping bookings
+                    const positioned = selDayBookings.map(bk => {
+                      const [hh, mm] = (bk.time || '09:00').split(':').map(Number)
+                      return { bk, top: (hh + mm/60 - stoSettings.workdayStart) * SLOT_H, bottom: (hh + mm/60 - stoSettings.workdayStart + 1) * SLOT_H }
+                    }).filter(b => b.top >= 0 && b.top <= HOURS.length * SLOT_H)
+
+                    // Group overlapping bookings
+                    positioned.forEach((b, i) => { b.col = 0; b.totalCols = 1 })
+                    for (let idx2 = 0; idx2 < positioned.length; idx2++) {
+                      const group = positioned.filter(b => b.top < positioned[idx2].bottom && b.bottom > positioned[idx2].top)
+                      group.forEach((b, idx) => { b.col = idx; b.totalCols = group.length })
+                    }
+
+                    return positioned.map(({ bk, top, col, totalCols }) => {
+                      const colW = `calc((100% - 8px) / ${totalCols})`
+                      const colL = `calc(4px + (100% - 8px) / ${totalCols} * ${col})`
+                      return (
+                        <div key={bk.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', bk.id); e.stopPropagation() }}
+                          style={{ position: 'absolute', top: top + 2, height: SLOT_H - 4, left: colL, width: colW, zIndex: 2, cursor: 'grab' }}>
+                          <BookingCard bk={bk} onClick={b => setSelBk(b === selBk ? null : b)} />
+                        </div>
+                      )
+                    })
+                  })()}
                   {selDayBookings.length === 0 && (
                     <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
                       <div style={{ textAlign: 'center', color: 'var(--text-3)' }}>
@@ -423,18 +465,20 @@ export function STOBookingsView({ userProfile }) {
                       <CheckCircle2 size={15} /> Завершити запис
                     </button>
                   )}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setEditingBooking(selBk)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold al-card hover:border-[var(--brand)] rounded-xl transition-colors"
-                      style={{ color: 'var(--text-2)' }}>
-                      <Edit3 size={14} /> Редагувати
-                    </button>
-                    <button onClick={() => updateStatus(selBk.id, 'rejected')}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold al-card rounded-xl transition-colors"
-                      style={{ color: '#ef4444' }}>
-                      <X size={14} /> Скасувати
-                    </button>
-                  </div>
+                  {!['completed','done','rejected'].includes(selBk.status) && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => setEditingBooking(selBk)}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold al-card hover:border-[var(--brand)] rounded-xl transition-colors"
+                        style={{ color: 'var(--text-2)' }}>
+                        <Edit3 size={14} /> Редагувати
+                      </button>
+                      <button onClick={() => { if (window.confirm('Скасувати цей запис?')) { updateStatus(selBk.id, 'rejected'); setSelBk(null) } }}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-bold al-card rounded-xl transition-colors"
+                        style={{ color: '#ef4444' }}>
+                        <X size={14} /> Скасувати
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -468,13 +512,28 @@ export function STOBookingsView({ userProfile }) {
                   const isToday = ds === todayStr
                   const slotBks = bookings.filter(b => b.date === ds && b.time?.startsWith(String(h).padStart(2,'0') + ':'))
                   return (
-                    <div key={ds} onClick={() => { if (!slotBks.length) { setCreateInitial({ date: ds, time: `${String(h).padStart(2,'0')}:00` }); setShowCreateModal(true) } }}
-                      style={{ height: SLOT_H, borderLeft: '1px solid var(--line)', borderTop: '1px dashed var(--line)', padding: '2px 3px', background: isToday ? 'rgba(92,62,254,0.02)' : 'transparent', display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden', cursor: slotBks.length ? 'default' : 'pointer' }}>
+                    <div key={ds}
+                      onClick={() => { if (!slotBks.length) { setCreateInitial({ date: ds, time: `${String(h).padStart(2,'0')}:00` }); setShowCreateModal(true) } }}
+                      onDragOver={e => { e.preventDefault(); e.currentTarget.style.background = 'rgba(92,62,254,0.1)' }}
+                      onDragLeave={e => { e.currentTarget.style.background = isToday ? 'rgba(92,62,254,0.02)' : 'transparent' }}
+                      onDrop={e => {
+                        e.currentTarget.style.background = isToday ? 'rgba(92,62,254,0.02)' : 'transparent'
+                        const id = e.dataTransfer.getData('text/plain')
+                        if (!id) return
+                        const newDate = ds
+                        const newTime = `${String(h).padStart(2,'0')}:00`
+                        updateDoc(doc(db, 'bookings', id), { date: newDate, time: newTime }).catch(console.error)
+                        setBookings(p => p.map(b => b.id === id ? { ...b, date: newDate, time: newTime } : b))
+                        setSelBk(p => p?.id === id ? { ...p, date: newDate, time: newTime } : p)
+                      }}
+                      style={{ height: SLOT_H, borderLeft: '1px solid var(--line)', borderTop: '1px dashed var(--line)', padding: '2px 3px', background: isToday ? 'rgba(92,62,254,0.02)' : 'transparent', display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden', cursor: slotBks.length ? 'default' : 'pointer', transition: 'background 0.1s' }}>
                       {slotBks.map(bk => {
                         const color = STATUS_COLOR[bk.status] || '#94a3b8'
                         return (
-                          <div key={bk.id} onClick={e => { e.stopPropagation(); setSelDay(ds); setViewMode('day'); setSelBk(bk) }}
-                            style={{ padding: '2px 6px', borderRadius: 6, background: `${color}18`, borderLeft: `2px solid ${color}`, cursor: 'pointer', overflow: 'hidden' }}>
+                          <div key={bk.id} draggable
+                            onDragStart={e => { e.dataTransfer.setData('text/plain', bk.id); e.stopPropagation() }}
+                            onClick={e => { e.stopPropagation(); setSelDay(ds); setViewMode('day'); setSelBk(bk) }}
+                            style={{ padding: '2px 6px', borderRadius: 6, background: `${color}18`, borderLeft: `2px solid ${color}`, cursor: 'grab', overflow: 'hidden' }}>
                             <div style={{ fontSize: 10, fontWeight: 700, color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bk.issue || getCarLabel(bk)}</div>
                           </div>
                         )
@@ -530,22 +589,47 @@ export function STOBookingsView({ userProfile }) {
         </div>
       )}
 
-      {showCreateModal && <CreateBookingBySTOModal userProfile={userProfile} initialParams={createInitial} onClose={() => setShowCreateModal(false)} onSuccess={() => { setShowCreateModal(false); fetchBookings() }} />}
-      {editingBooking && <ViewEditBookingModal booking={editingBooking} userProfile={userProfile} onClose={() => setEditingBooking(null)} onSuccess={() => { setEditingBooking(null); fetchBookings() }} />}
+      {showCreateModal && <CreateBookingBySTOModal userProfile={userProfile} stoSettings={stoSettings} initialParams={createInitial} onClose={() => setShowCreateModal(false)} onSuccess={() => { setShowCreateModal(false); fetchBookings() }} />}
+      {editingBooking && <ViewEditBookingModal booking={editingBooking} userProfile={userProfile} stoSettings={stoSettings} onClose={() => setEditingBooking(null)} onSuccess={() => { setEditingBooking(null); fetchBookings() }} />}
     </div>
   )
 }
 
-function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParams }) {
+async function lookupVin(vin) {
+  const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`)
+  const data = await res.json()
+  const get = v => { const val = data.Results?.find(r => r.Variable === v)?.Value; return (!val || val === 'null' || val === '0') ? '' : val }
+  const make  = get('Make')
+  const model = get('Model') || get('Series') || get('Trim')
+  const year  = get('Model Year')
+  if (!make) return null
+  return { brand: make, model, year: parseInt(year) || null }
+}
+
+function CreateBookingBySTOModal({ userProfile, stoSettings, onClose, onSuccess, initialParams }) {
   const [mode, setMode] = useState('online')
   const [step, setStep] = useState(1)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [foundCar, setFoundCar] = useState(null)
-  const [f, setF] = useState({ date: initialParams?.date || new Date().toISOString().split('T')[0], time: initialParams?.time || '10:00', issue: '' })
-  const [off, setOff] = useState({ plate: '', brand: '', clientName: '', phone: '' })
+  const [f, setF] = useState({ date: initialParams?.date || new Date().toISOString().split('T')[0], time: initialParams?.time || `${String(stoSettings?.workdayStart || 9).padStart(2,'0')}:00`, issue: '', post: 1 })
+  const [off, setOff] = useState({ plate: '', brand: '', clientName: '', phone: '', vin: '' })
+  const [vinStatus, setVinStatus] = useState(null)
   const ic = inp_cls()
+
+  const handleOffVin = async (raw) => {
+    const vin = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
+    setOff(p => ({ ...p, vin }))
+    if (vin.length !== 17) { setVinStatus(null); return }
+    setVinStatus('loading')
+    try {
+      const result = await lookupVin(vin)
+      if (!result) { setVinStatus('notfound'); return }
+      setOff(p => ({ ...p, vin, brand: `${result.brand} ${result.model}`.trim() }))
+      setVinStatus('found')
+    } catch { setVinStatus('error') }
+  }
 
   const handleSearch = async (e) => {
     e.preventDefault()
@@ -564,7 +648,7 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
     if (!f.issue || !foundCar) return
     setLoading(true)
     try {
-      await addDoc(collection(db, 'bookings'), { stoId: auth.currentUser.uid, userId: foundCar.userId || 'unclaimed', carId: foundCar.id, carBrand: foundCar.brand || '', carModel: foundCar.model || '', date: f.date, time: f.time, issue: f.issue, status: 'confirmed', creator: 'sto', isOffline: false, createdAt: Date.now() })
+      await addDoc(collection(db, 'bookings'), { stoId: auth.currentUser.uid, userId: foundCar.userId || 'unclaimed', carId: foundCar.id, carBrand: foundCar.brand || '', carModel: foundCar.model || '', date: f.date, time: f.time, issue: f.issue, post: f.post, status: 'confirmed', creator: 'sto', isOffline: false, createdAt: Date.now() })
       onSuccess()
     } catch(e) { console.error(e); alert('Помилка'); setLoading(false) }
   }
@@ -573,7 +657,7 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
     e.preventDefault()
     setLoading(true)
     try {
-      await addDoc(collection(db, 'bookings'), { stoId: auth.currentUser.uid, userId: 'offline', carId: 'offline', date: f.date, time: f.time, issue: f.issue, status: 'confirmed', creator: 'sto', isOffline: true, offlineData: off, createdAt: Date.now() })
+      await addDoc(collection(db, 'bookings'), { stoId: auth.currentUser.uid, userId: 'offline', carId: 'offline', date: f.date, time: f.time, issue: f.issue, post: f.post, status: 'confirmed', creator: 'sto', isOffline: true, offlineData: off, createdAt: Date.now() })
       onSuccess()
     } catch(e) { console.error(e); alert('Помилка'); setLoading(false) }
   }
@@ -612,8 +696,30 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Дата *"><input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className={ic} required/></Field>
-            <Field label="Час *"><input type="time" value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} required/></Field>
+            <Field label="Час *">
+              <select value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} style={{ background: 'var(--bg-input)', color: 'var(--text)' }} required>
+                {Array.from({ length: (stoSettings?.workdayEnd || 19) - (stoSettings?.workdayStart || 8) + 1 }, (_, i) => {
+                  const h = (stoSettings?.workdayStart || 8) + i
+                  return <option key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</option>
+                })}
+              </select>
+            </Field>
           </div>
+          {(stoSettings?.postsCount || 1) > 1 && (
+            <Field label="Пост">
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {Array.from({ length: stoSettings.postsCount }, (_, i) => i + 1).map(p => (
+                  <button key={p} type="button" onClick={() => setF({...f, post: p})}
+                    style={{ width: 40, height: 40, borderRadius: 10, fontWeight: 700, fontSize: 13, border: '1px solid', cursor: 'pointer', transition: 'all 0.15s',
+                      background: f.post === p ? 'var(--brand)' : 'var(--bg-input)',
+                      borderColor: f.post === p ? 'var(--brand)' : 'var(--line)',
+                      color: f.post === p ? 'white' : 'var(--text-2)' }}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </Field>
+          )}
           <Field label="Опис робіт *"><textarea value={f.issue} onChange={e => setF({...f, issue: e.target.value})} className={`${ic} resize-none h-24`} placeholder="Заміна ГРМ та помпи" required /></Field>
           <PrimaryBtn type="submit" disabled={loading} className="w-full py-4 justify-center mt-2">{loading ? <Loader2 className="animate-spin" size={20}/> : 'Підтвердити та забронювати'}</PrimaryBtn>
         </form>
@@ -621,6 +727,18 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
 
       {mode === 'offline' && (
         <form onSubmit={submitOffline} className="flex flex-col gap-4">
+          <Field label="VIN номер">
+            <div style={{ position: 'relative' }}>
+              <input value={off.vin} onChange={e => handleOffVin(e.target.value)}
+                placeholder="17 символів — марка підтягнеться автоматично"
+                className={ic} maxLength={17} style={{ paddingRight: 32 }} />
+              {vinStatus === 'loading' && <Loader2 size={14} className="animate-spin" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)' }} />}
+              {vinStatus === 'found'   && <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#10B981' }}>✓</span>}
+            </div>
+            {vinStatus === 'notfound' && <p style={{ fontSize: 11, color: '#f59e0b', marginTop: 4 }}>⚠ Авто не знайдено — заповніть марку та модель вручну</p>}
+            {vinStatus === 'error'    && <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>Помилка запиту — заповніть вручну</p>}
+            {vinStatus === 'found'    && <p style={{ fontSize: 11, color: '#10B981', marginTop: 4 }}>✓ Дані підтягнуто автоматично</p>}
+          </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Марка та модель *"><input value={off.brand} onChange={e => setOff({...off, brand: e.target.value})} className={ic} placeholder="VW Golf" required/></Field>
             <Field label="Номер авто *"><input value={off.plate} onChange={e => setOff({...off, plate: e.target.value.toUpperCase()})} className={`${ic} uppercase font-mono`} placeholder="AA0000AA" required/></Field>
@@ -631,8 +749,30 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Дата *"><input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className={ic} required/></Field>
-            <Field label="Час *"><input type="time" value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} required/></Field>
+            <Field label="Час *">
+              <select value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} style={{ background: 'var(--bg-input)', color: 'var(--text)' }} required>
+                {Array.from({ length: (stoSettings?.workdayEnd || 19) - (stoSettings?.workdayStart || 8) + 1 }, (_, i) => {
+                  const h = (stoSettings?.workdayStart || 8) + i
+                  return <option key={h} value={`${String(h).padStart(2,'0')}:00`}>{String(h).padStart(2,'0')}:00</option>
+                })}
+              </select>
+            </Field>
           </div>
+          {(stoSettings?.postsCount || 1) > 1 && (
+            <Field label="Пост">
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {Array.from({ length: stoSettings.postsCount }, (_, i) => i + 1).map(p => (
+                  <button key={p} type="button" onClick={() => setF({...f, post: p})}
+                    style={{ width: 40, height: 40, borderRadius: 10, fontWeight: 700, fontSize: 13, border: '1px solid', cursor: 'pointer', transition: 'all 0.15s',
+                      background: f.post === p ? 'var(--brand)' : 'var(--bg-input)',
+                      borderColor: f.post === p ? 'var(--brand)' : 'var(--line)',
+                      color: f.post === p ? 'white' : 'var(--text-2)' }}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </Field>
+          )}
           <Field label="Опис *"><textarea value={f.issue} onChange={e => setF({...f, issue: e.target.value})} className={`${ic} resize-none h-20`} placeholder="Заміна мастила" required /></Field>
           <PrimaryBtn type="submit" disabled={loading} className="w-full py-4 justify-center mt-2">{loading ? <Loader2 className="animate-spin" size={20}/> : 'Зберегти офлайн запис'}</PrimaryBtn>
         </form>
@@ -641,7 +781,7 @@ function CreateBookingBySTOModal({ userProfile, onClose, onSuccess, initialParam
   )
 }
 
-function ViewEditBookingModal({ booking, userProfile, onClose, onSuccess }) {
+function ViewEditBookingModal({ booking, userProfile, stoSettings, onClose, onSuccess }) {
   const [f, setF] = useState({ date: booking.date || '', time: booking.time || '', issue: booking.issue || '' })
   const [loading, setLoading] = useState(false)
   const [completeMode, setCompleteMode] = useState(false)
@@ -659,13 +799,28 @@ function ViewEditBookingModal({ booking, userProfile, onClose, onSuccess }) {
   const completeOrder = async (e) => {
     e.preventDefault()
     setLoading(true)
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
     try {
       if (!booking.isOffline && booking.carId && booking.userId) {
-        await addDoc(collection(db, 'history'), { title: f.issue || 'Сервісні роботи', cost: Number(cost) || 0, mileage: Number(mileage) || 0, category: 'maintenance', date: f.date || new Date().toISOString().split('T')[0], garage: userProfile?.stoName || 'СТО AutoLog', carId: booking.carId, userId: booking.userId, createdAt: Date.now(), status: 'verified', source: 'sto_booking_completion', stoId: auth.currentUser.uid })
+        await Promise.race([
+          addDoc(collection(db, 'history'), { title: f.issue || 'Сервісні роботи', cost: Number(cost) || 0, mileage: Number(mileage) || 0, category: 'maintenance', date: f.date || new Date().toISOString().split('T')[0], garage: userProfile?.stoName || 'СТО AutoLog', carId: booking.carId, userId: booking.userId, createdAt: Date.now(), status: 'verified', source: 'sto_booking_completion', stoId: auth.currentUser.uid }),
+          timeout
+        ])
       }
-      await updateDoc(doc(db, 'bookings', booking.id), { status: 'completed' })
+      await Promise.race([
+        updateDoc(doc(db, 'bookings', booking.id), { status: 'completed' }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+      ])
       onSuccess()
-    } catch(e) { console.error(e); alert('Помилка'); setLoading(false) }
+    } catch(e) {
+      console.error(e)
+      if (e.message === 'timeout') {
+        alert('Немає зʼєднання з сервером. Перевірте інтернет і спробуйте знову.')
+      } else {
+        alert('Помилка: ' + e.message)
+      }
+      setLoading(false)
+    }
   }
 
   if (completeMode) return (
@@ -689,7 +844,15 @@ function ViewEditBookingModal({ booking, userProfile, onClose, onSuccess }) {
       <form onSubmit={submitEdit} className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Дата *"><input type="date" value={f.date} onChange={e => setF({...f, date: e.target.value})} className={ic} required/></Field>
-          <Field label="Час *"><input type="time" value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} required/></Field>
+          <Field label="Час *">
+            <select value={f.time} onChange={e => setF({...f, time: e.target.value})} className={ic} style={{ background: 'var(--bg-input)', color: 'var(--text)' }} required>
+              {Array.from({ length: (stoSettings?.workdayEnd || 19) - (stoSettings?.workdayStart || 8) + 1 }, (_, i) => {
+                const h = (stoSettings?.workdayStart || 8) + i
+                const val = `${String(h).padStart(2,'0')}:00`
+                return <option key={h} value={val}>{val}</option>
+              })}
+            </select>
+          </Field>
         </div>
         <Field label="Опис робіт *">
           <textarea value={f.issue} onChange={e => setF({...f, issue: e.target.value})} className={`${ic} resize-none h-24`} placeholder="Наприклад: Заміна ГРМ та помпи" required />

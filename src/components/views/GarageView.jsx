@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react'
-import { Plus, Camera, Search, User, Info, Smartphone, FileText, Send, Share2, MoreVertical, Trash2, ImagePlus } from 'lucide-react'
+import { Plus, Camera, Search, User, Info, Smartphone, FileText, Send, Share2, MoreVertical, Trash2, ImagePlus, ShieldCheck, Loader2 } from 'lucide-react'
 import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { fmt, getBrandLogo } from '../../utils'
-import { C, PLANS } from '../../constants'
 import { BRANDS_MODELS } from '../../data/cars'
+
+const CV_REF = 'YOUR_REF_CODE'
+const cvLink = vin => `https://www.carvertical.com/uk/get-report?referralCode=${CV_REF}${vin ? `&vin=${vin}` : ''}`
 
 function CarPhoto({ brand, model }) {
   const logo = getBrandLogo(brand)
@@ -99,38 +101,51 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onSelectCar, userPr
           {carList.map(car => {
             const logo = getBrandLogo(car.brand)
             return (
-              <div key={car.id} className="car-card group" onClick={() => onSelectCar(car)}>
-                <div className="hero">
-                  {car.image ? (
-                    <img src={car.image} alt={car.brand} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 absolute inset-0" />
-                  ) : (
-                    <CarPhoto brand={car.brand} model={car.model} />
-                  )}
-                  <div className="year-badge">{car.year}</div>
-                  <label
-                    className="absolute top-3 right-14 h-8 w-8 rounded-xl backdrop-blur-sm flex items-center justify-center shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
-                    style={{ background: 'rgba(255,255,255,0.9)' }}
-                    onClick={e => e.stopPropagation()}
-                    title={car.image ? "Змінити фото" : "Завантажити фото"}
-                  >
-                    {car.image ? <Camera size={15} style={{ color: 'var(--brand)' }} /> : <ImagePlus size={15} style={{ color: 'var(--text-2)' }} />}
-                    <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(car.id, e)} />
-                  </label>
-                </div>
-                <div className="body">
-                  <div className="brand-row">
-                    <span className="brand-name">{car.brand}</span>
-                    <span className="plate-badge">{car.plate}</span>
+              <div key={car.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="car-card group" onClick={() => onSelectCar(car)}>
+                  <div className="hero">
+                    {car.image ? (
+                      <img src={car.image} alt={car.brand} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 absolute inset-0" />
+                    ) : (
+                      <CarPhoto brand={car.brand} model={car.model} />
+                    )}
+                    <div className="year-badge">{car.year}</div>
+                    <label
+                      className="absolute top-3 right-14 h-8 w-8 rounded-xl backdrop-blur-sm flex items-center justify-center shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
+                      style={{ background: 'rgba(255,255,255,0.9)' }}
+                      onClick={e => e.stopPropagation()}
+                      title={car.image ? "Змінити фото" : "Завантажити фото"}
+                    >
+                      {car.image ? <Camera size={15} style={{ color: 'var(--brand)' }} /> : <ImagePlus size={15} style={{ color: 'var(--text-2)' }} />}
+                      <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(car.id, e)} />
+                    </label>
                   </div>
-                  <div className="car-model">{car.model}</div>
-                  <div className="km-row">
-                    <div>
-                      <div className="km-label">Пробіг</div>
-                      <div className="km-val">{fmt(car.mileage)}<span className="km-unit">км</span></div>
+                  <div className="body">
+                    <div className="brand-row">
+                      <span className="brand-name">{car.brand}</span>
+                      <span className="plate-badge">{car.plate}</span>
                     </div>
-                    <div className="share-btn"><Share2 size={18}/></div>
+                    <div className="car-model">{car.model}</div>
+                    <div className="km-row">
+                      <div>
+                        <div className="km-label">Пробіг</div>
+                        <div className="km-val">{fmt(car.mileage)}<span className="km-unit">км</span></div>
+                      </div>
+                      <div className="share-btn"><Share2 size={18}/></div>
+                    </div>
                   </div>
                 </div>
+                <a href={cvLink(car.vin)} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'linear-gradient(135deg,#1a1a2e,#16213e)', border: '1px solid rgba(255,255,255,0.08)', textDecoration: 'none', transition: 'opacity 200ms' }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+                  <ShieldCheck size={15} style={{ color: '#4ade80', flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#f1f5f9' }}>Перевірити історію авто</div>
+                    <div style={{ fontSize: 10, color: '#64748b' }}>CarVertical — ДТП, пробіг, власники</div>
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#4ade80', flexShrink: 0 }}>→</div>
+                </a>
               </div>
             )
           })}
@@ -150,9 +165,45 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onSelectCar, userPr
 }
 
 function AddCarModal({ onClose, onAdd, isLimited, onGoPlans }) {
-  const [f, setF] = useState({ brand: 'Acura', model: 'ILX', year: new Date().getFullYear(), plate: '', vin: '', mileage: '', image: '' })
+  const [f, setF] = useState({ brand: 'Acura', model: 'ILX', year: new Date().getFullYear(), plate: '', vin: '', mileage: '', image: '', engineL: '', engineCyl: '', fuelType: '', driveType: '', transmission: '', bodyClass: '' })
+  const [vinStatus, setVinStatus] = useState(null)
   const fileRef = useRef(null)
   const ic = inp_cls()
+
+  const handleVinChange = async (raw) => {
+    const vin = raw.toUpperCase().replace(/[^A-Z0-9]/g, '')
+    setF(p => ({ ...p, vin }))
+    if (vin.length !== 17) { setVinStatus(null); return }
+    setVinStatus('loading')
+    try {
+      const res = await fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`)
+      const data = await res.json()
+      const get = v => { const val = data.Results?.find(r => r.Variable === v)?.Value; return (!val || val === 'null' || val === '0' || val === 'Not Applicable') ? '' : val }
+      const make  = get('Make')
+      const model = get('Model') || get('Series') || get('Trim')
+      const year  = get('Model Year')
+      if (!make) { setVinStatus('notfound'); return }
+      const brandKey = Object.keys(BRANDS_MODELS).find(b => b.toLowerCase() === make.toLowerCase()) || make
+      const modelVal = BRANDS_MODELS[brandKey]
+        ? (BRANDS_MODELS[brandKey].find(m => m.toLowerCase() === (model||'').toLowerCase()) || BRANDS_MODELS[brandKey][0])
+        : (model || '')
+      setF(p => ({
+        ...p, vin,
+        brand: brandKey,
+        model: modelVal,
+        year: parseInt(year) || p.year,
+        engineL:      get('Displacement (L)'),
+        engineCyl:    get('Engine Number of Cylinders'),
+        fuelType:     get('Fuel Type - Primary'),
+        driveType:    get('Drive Type'),
+        transmission: get('Transmission Style'),
+        bodyClass:    get('Body Class'),
+      }))
+      setVinStatus('found')
+    } catch {
+      setVinStatus('error')
+    }
+  }
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0]
@@ -233,7 +284,36 @@ function AddCarModal({ onClose, onAdd, isLimited, onGoPlans }) {
         </div>
 
         <Field label="VIN номер">
-          <input value={f.vin} onChange={e => setF({ ...f, vin: e.target.value.toUpperCase() })} placeholder="17-значний номер" className={ic} maxLength={17} />
+          <div style={{ position: 'relative' }}>
+            <input
+              value={f.vin}
+              onChange={e => handleVinChange(e.target.value)}
+              placeholder="17-значний номер — марка підтягнеться автоматично"
+              className={ic} maxLength={17}
+              style={{ paddingRight: 36 }}
+            />
+            {vinStatus === 'loading' && (
+              <Loader2 size={15} className="animate-spin" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)' }} />
+            )}
+            {vinStatus === 'found' && (
+              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#10B981', fontSize: 16 }}>✓</span>
+            )}
+          </div>
+          {vinStatus === 'notfound' && (
+            <p style={{ fontSize: 12, color: '#f59e0b', marginTop: 5, display: 'flex', alignItems: 'center', gap: 5 }}>
+              ⚠ Авто не знайдено в базі — заповніть марку та модель вручну
+            </p>
+          )}
+          {vinStatus === 'error' && (
+            <p style={{ fontSize: 12, color: '#ef4444', marginTop: 5 }}>
+              Помилка запиту — заповніть вручну
+            </p>
+          )}
+          {vinStatus === 'found' && (
+            <p style={{ fontSize: 12, color: '#10B981', marginTop: 5 }}>
+              ✓ Дані підтягнуто автоматично
+            </p>
+          )}
         </Field>
 
         <PrimaryBtn type="submit" className="w-full py-4 justify-center text-base mt-2">

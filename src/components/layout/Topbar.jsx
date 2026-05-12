@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Sun, Moon, Bell, Check, X, AlertCircle, Menu, ChevronRight } from 'lucide-react'
 import { ThemeCtx } from '../../context/ThemeContext'
 import { C } from '../../constants'
+import { doc, updateDoc } from 'firebase/firestore'
+import { db } from '../../firebase'
 
 export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], incomingInvites=[], onAcceptInvite, onRejectInvite, onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu, onMarkRead, onMarkAllRead }) {
   const [showInbox, setShowInbox] = useState(false)
@@ -180,36 +182,13 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
                       ))}
 
                       {bookingNotifications.map(b => (
-                        <div
+                        <BookingNotificationItem
                           key={b.id}
-                          className="group p-4 cursor-pointer transition-colors relative"
-                          style={{ borderBottom: '1px solid var(--line)' }}
-                          onClick={() => { setShowInbox(false); navigate(isSto ? '/sto/bookings' : '/bookings') }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: 'var(--brand)' }} />
-                              <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>Нове оновлення запису</span>
-                            </div>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onMarkRead(b.id) }}
-                              className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg grid place-items-center transition-all"
-                              style={{ background: 'var(--bg-card)', border: '1px solid var(--line)', color: 'var(--brand)' }}
-                            ><Check size={11} /></button>
-                          </div>
-                          {isSto ? (
-                            <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                              <span style={{ color: 'var(--brand)' }}>Нова заявка</span> від клієнта {b.car ? `на авто ${b.car.plate}` : ''}
-                            </p>
-                          ) : (
-                            <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                              Запис {b.status === 'confirmed' ? <span style={{ color: 'var(--good)' }}>підтверджено</span> : <span style={{ color: 'var(--bad)' }}>відхилено</span>}
-                            </p>
-                          )}
-                          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>{b.date || ''} о {b.time || ''}</p>
-                        </div>
+                          b={b}
+                          isSto={isSto}
+                          onMarkRead={onMarkRead}
+                          onNavigate={() => { setShowInbox(false); navigate(isSto ? '/sto/bookings' : '/bookings') }}
+                        />
                       ))}
 
                       {pendingApprovals.map(p => (
@@ -261,5 +240,78 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
         </div>
       </div>
     </header>
+  )
+}
+
+function BookingNotificationItem({ b, isSto, onMarkRead, onNavigate }) {
+  const [status, setStatus] = useState(b.status)
+  const [loading, setLoading] = useState(null)
+
+  const act = async (e, newStatus) => {
+    e.stopPropagation()
+    setLoading(newStatus)
+    try {
+      await updateDoc(doc(db, 'bookings', b.id), { status: newStatus })
+      setStatus(newStatus)
+      onMarkRead(b.id)
+    } catch (err) { console.error(err) }
+    finally { setLoading(null) }
+  }
+
+  const isPending = status === 'pending'
+
+  return (
+    <div className="group p-4 transition-colors relative" style={{ borderBottom: '1px solid var(--line)', cursor: isSto && !isPending ? 'pointer' : 'default' }}
+      onClick={!isSto || !isPending ? onNavigate : undefined}
+      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full flex-none" style={{ background: isPending ? 'var(--brand)' : '#64748b' }} />
+          <span className="text-[11px] font-medium" style={{ color: 'var(--text-3)' }}>
+            {isSto ? 'Нова заявка від клієнта' : 'Оновлення запису'}
+          </span>
+        </div>
+        <button onClick={e => { e.stopPropagation(); onMarkRead(b.id) }}
+          className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-lg grid place-items-center transition-all"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--line)', color: 'var(--brand)' }}>
+          <Check size={11} />
+        </button>
+      </div>
+
+      {isSto ? (
+        <>
+          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text)' }}>
+            {b.car ? `Авто ${b.car.plate}` : 'Запис'} · {b.issue || '—'}
+          </p>
+          <p className="text-[11px] mb-2" style={{ color: 'var(--text-3)' }}>{b.date} о {b.time}</p>
+          {isPending ? (
+            <div className="flex gap-2">
+              <button onClick={e => act(e, 'confirmed')} disabled={!!loading}
+                className="flex-1 py-1.5 rounded-xl text-[11px] font-bold text-white transition-all disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg,#10B981,#34d399)' }}>
+                {loading === 'confirmed' ? '...' : '✓ Підтвердити'}
+              </button>
+              <button onClick={e => act(e, 'rejected')} disabled={!!loading}
+                className="flex-1 py-1.5 rounded-xl text-[11px] font-bold transition-all disabled:opacity-60"
+                style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                {loading === 'rejected' ? '...' : '✕ Відхилити'}
+              </button>
+            </div>
+          ) : (
+            <span className="text-[11px] font-bold" style={{ color: status === 'confirmed' ? '#10B981' : '#ef4444' }}>
+              {status === 'confirmed' ? '✓ Підтверджено' : '✕ Відхилено'}
+            </span>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
+            Запис {status === 'confirmed' ? <span style={{ color: '#10B981' }}>підтверджено</span> : <span style={{ color: '#ef4444' }}>відхилено</span>}
+          </p>
+          <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-3)' }}>{b.date} о {b.time}</p>
+        </>
+      )}
+    </div>
   )
 }

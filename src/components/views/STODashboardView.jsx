@@ -292,13 +292,16 @@ export function STODashboardView({ userProfile }) {
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {recentLogs.map(log => (
-              <div key={log.id} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 dark:hover:bg-white/2 transition-colors">
+              <div key={log.id} className="flex items-center justify-between px-6 py-4 transition-colors"
+                style={{ cursor: 'default' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover, rgba(255,255,255,0.03))'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                 <div className="flex items-center gap-4">
                   <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center shrink-0">
                     <Car size={16} className="text-[#5C3EFE]"/>
                   </div>
                   <div>
-                    <p className="font-bold text-sm text-gray-900 dark:text-white">{log.title || 'Сервісний запис'}</p>
+                    <p className="font-bold text-sm text-gray-900 dark:text-white">{log.title || log.service || log.work || log.description || 'Сервісний запис'}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">{log.date?.split('-').reverse().join('.')}</p>
                   </div>
                 </div>

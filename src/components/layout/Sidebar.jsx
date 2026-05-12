@@ -9,6 +9,7 @@ function getPath(id) {
   if (id === 'sto_clients') return '/sto/clients'
   if (id === 'sto_acts') return '/sto/acts'
   if (id === 'sto_plans') return '/sto/plans'
+  if (id === 'sto_settings') return '/sto/settings'
   return `/${id}`
 }
 
