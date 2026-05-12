@@ -30,16 +30,13 @@ const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
 const app = express();
 const port = process.env.PORT || 3000;
+const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN || 'https://autolog-q9hd.onrender.com';
+const WEBHOOK_PATH = '/tg-webhook';
+const USE_WEBHOOK = process.env.USE_WEBHOOK !== 'false';
+
+app.use(express.json());
 app.get('/', (req, res) => res.send('AutoLog Bot is active! 🤖'));
 app.get('/health', (req, res) => res.status(200).send('OK'));
-app.listen(port, () => console.log(`🌍 Render-ready server listening on port ${port}`))
-   .on('error', (err) => {
-     if (err.code === 'EADDRINUSE') {
-       console.log(`⚠️ Port ${port} is already in use. Express server skipped, but Bot should still work.`);
-     } else {
-       console.error('❌ Express server error:', err.message);
-     }
-   });
 
 let serviceAccount;
 const keyPath = path.join(__dirname, 'serviceAccountKey.json');
@@ -730,39 +727,42 @@ const scheduleReminders = () => {
 
 scheduleReminders();
 
-async function launchWithRetry(maxAttempts = 6, delayMs = 10000) {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      console.log(`🚀 Bot launch attempt ${attempt}/${maxAttempts}...`);
-      // Drop pending updates and force release of any prior polling lock
-      await bot.telegram.deleteWebhook({ drop_pending_updates: false }).catch(() => {});
-      await bot.launch({ dropPendingUpdates: false });
-      console.log('🤖 AutoLog Bot is Online & Smart!');
-      console.log('✅ Polling started successfully.');
-      return;
-    } catch (err) {
-      console.error(`❌ Attempt ${attempt} failed:`, err.message);
-      if (err.message.includes('401')) {
-        console.error('⚠️ ПЕРЕВІРТЕ BOT_TOKEN');
+// Wire webhook handler on Express
+app.use(bot.webhookCallback(WEBHOOK_PATH));
+
+app.listen(port, async () => {
+  console.log(`🌍 Server listening on port ${port}`);
+  if (USE_WEBHOOK) {
+    const url = `${WEBHOOK_DOMAIN}${WEBHOOK_PATH}`;
+    // Try set webhook with retries — inbound API call can also fail temporarily
+    for (let i = 1; i <= 6; i++) {
+      try {
+        console.log(`🪝 Setting webhook (attempt ${i}/6): ${url}`);
+        await bot.telegram.setWebhook(url, { drop_pending_updates: false });
+        console.log('✅ Webhook set! Bot is online.');
         return;
-      }
-      if (attempt < maxAttempts) {
-        console.log(`⏳ Waiting ${delayMs/1000}s before retry (old container should release lock)...`);
-        await new Promise(r => setTimeout(r, delayMs));
-      } else {
-        console.error('💀 All launch attempts exhausted');
+      } catch (e) {
+        console.error(`❌ setWebhook attempt ${i} failed:`, e.message);
+        if (i < 6) await new Promise(r => setTimeout(r, 10000));
       }
     }
+    console.error('💀 Could not set webhook after 6 attempts');
+  } else {
+    // Fallback: polling
+    try {
+      await bot.telegram.deleteWebhook({ drop_pending_updates: false }).catch(() => {});
+      await bot.launch();
+      console.log('🤖 Polling started');
+    } catch (e) {
+      console.error('❌ Polling launch error:', e.message);
+    }
   }
-}
-
-launchWithRetry();
-
-process.once('SIGINT', () => {
-    console.log('Stopping bot (SIGINT)...');
-    bot.stop('SIGINT');
 });
-process.once('SIGTERM', () => {
-    console.log('Stopping bot (SIGTERM)...');
-    bot.stop('SIGTERM');
-});
+
+const safeStop = (sig) => {
+  console.log(`Stopping bot (${sig})...`);
+  try { bot.stop(sig); } catch (e) { /* ignore: not running */ }
+  process.exit(0);
+};
+process.once('SIGINT',  () => safeStop('SIGINT'));
+process.once('SIGTERM', () => safeStop('SIGTERM'));
