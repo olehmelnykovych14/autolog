@@ -729,18 +729,34 @@ const scheduleReminders = () => {
 };;
 
 scheduleReminders();
-console.log("🚀 Starting bot.launch()...");
-bot.launch()
-  .then(() => {
-    console.log('🤖 AutoLog Bot is Online & Smart!');
-    console.log('✅ Polling started successfully.');
-  })
-  .catch((err) => {
-    console.error('❌ Bot Launch Error:', err.message);
-    if (err.message.includes('401')) {
-      console.error('⚠️ ПЕРЕВІРТЕ BOT_TOKEN у файлі bot-server/.env');
+
+async function launchWithRetry(maxAttempts = 6, delayMs = 10000) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      console.log(`🚀 Bot launch attempt ${attempt}/${maxAttempts}...`);
+      // Drop pending updates and force release of any prior polling lock
+      await bot.telegram.deleteWebhook({ drop_pending_updates: false }).catch(() => {});
+      await bot.launch({ dropPendingUpdates: false });
+      console.log('🤖 AutoLog Bot is Online & Smart!');
+      console.log('✅ Polling started successfully.');
+      return;
+    } catch (err) {
+      console.error(`❌ Attempt ${attempt} failed:`, err.message);
+      if (err.message.includes('401')) {
+        console.error('⚠️ ПЕРЕВІРТЕ BOT_TOKEN');
+        return;
+      }
+      if (attempt < maxAttempts) {
+        console.log(`⏳ Waiting ${delayMs/1000}s before retry (old container should release lock)...`);
+        await new Promise(r => setTimeout(r, delayMs));
+      } else {
+        console.error('💀 All launch attempts exhausted');
+      }
     }
-  });
+  }
+}
+
+launchWithRetry();
 
 process.once('SIGINT', () => {
     console.log('Stopping bot (SIGINT)...');
