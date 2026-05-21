@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Plus, Camera, Search, User, Info, Smartphone, FileText, Send, Share2, MoreVertical, Trash2, ImagePlus, ShieldCheck, Loader2 } from 'lucide-react'
+import { Plus, Camera, Search, User, Info, Smartphone, FileText, Send, Share2, MoreVertical, Trash2, ImagePlus, ShieldCheck, Loader2, Pencil } from 'lucide-react'
 import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { fmt, getBrandLogo } from '../../utils'
 import { BRANDS_MODELS } from '../../data/cars'
@@ -58,8 +58,9 @@ const compressImage = (file) => {
   })
 }
 
-export function GarageView({ carList, onAddCar, onUpdateCar, onSelectCar, userProfile, onGoPlans }) {
+export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSelectCar, userProfile, onGoPlans }) {
   const [showAdd, setShowAdd] = useState(false)
+  const [editCar, setEditCar] = useState(null)
   // SUBSCRIPTION: car limit disabled for free launch
   // const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
   // const isLimited = carList.length >= activePlan.carLimit
@@ -111,7 +112,7 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onSelectCar, userPr
                     )}
                     <div className="year-badge">{car.year}</div>
                     <label
-                      className="absolute top-3 right-14 h-8 w-8 rounded-xl backdrop-blur-sm flex items-center justify-center shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
+                      className="absolute top-3 right-[9.25rem] h-8 w-8 rounded-xl backdrop-blur-sm flex items-center justify-center shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
                       style={{ background: 'rgba(255,255,255,0.9)' }}
                       onClick={e => e.stopPropagation()}
                       title={car.image ? "Змінити фото" : "Завантажити фото"}
@@ -119,6 +120,29 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onSelectCar, userPr
                       {car.image ? <Camera size={15} style={{ color: 'var(--brand)' }} /> : <ImagePlus size={15} style={{ color: 'var(--text-2)' }} />}
                       <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(car.id, e)} />
                     </label>
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); setEditCar(car) }}
+                      className="absolute top-3 right-[5.5rem] h-8 w-8 rounded-xl backdrop-blur-sm flex items-center justify-center shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
+                      style={{ background: 'rgba(255,255,255,0.9)' }}
+                      title="Редагувати"
+                    >
+                      <Pencil size={14} style={{ color: 'var(--brand)' }} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation()
+                        if (confirm(`Видалити авто ${car.brand} ${car.model}? Сервісну історію також буде видалено.`)) {
+                          onDeleteCar?.(car.id)
+                        }
+                      }}
+                      className="absolute top-3 right-[3.5rem] h-8 w-8 rounded-xl backdrop-blur-sm flex items-center justify-center shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
+                      style={{ background: 'rgba(255,255,255,0.9)' }}
+                      title="Видалити"
+                    >
+                      <Trash2 size={14} style={{ color: '#ef4444' }} />
+                    </button>
                   </div>
                   <div className="body">
                     <div className="brand-row">
@@ -153,14 +177,64 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onSelectCar, userPr
       )}
 
       {showAdd && (
-        <AddCarModal 
-          onClose={() => setShowAdd(false)} 
-          onAdd={onAddCar} 
+        <AddCarModal
+          onClose={() => setShowAdd(false)}
+          onAdd={onAddCar}
           isLimited={isLimited}
           onGoPlans={onGoPlans}
         />
       )}
+
+      {editCar && (
+        <EditCarModal
+          car={editCar}
+          onClose={() => setEditCar(null)}
+          onSave={(updates) => { onUpdateCar?.(editCar.id, updates); setEditCar(null) }}
+        />
+      )}
     </div>
+  )
+}
+
+function EditCarModal({ car, onClose, onSave }) {
+  const ic = inp_cls()
+  const [f, setF] = useState({
+    plate: car.plate || '',
+    mileage: car.mileage || 0,
+    year: car.year || new Date().getFullYear(),
+    vin: car.vin || '',
+  })
+  const submit = (e) => {
+    e.preventDefault()
+    onSave({
+      plate: f.plate.toUpperCase(),
+      mileage: parseInt(f.mileage) || 0,
+      year: parseInt(f.year) || car.year,
+      vin: f.vin.toUpperCase(),
+    })
+  }
+  return (
+    <Modal title={`Редагувати ${car.brand} ${car.model}`} onClose={onClose}>
+      <form onSubmit={submit} className="flex flex-col gap-5">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Рік">
+            <input type="number" min="1900" max={new Date().getFullYear() + 1} value={f.year} onChange={e => setF({ ...f, year: e.target.value })} className={ic} />
+          </Field>
+          <Field label="Держ. номер">
+            <input value={f.plate} onChange={e => setF({ ...f, plate: e.target.value.toUpperCase() })} className={ic} />
+          </Field>
+        </div>
+        <Field label="Пробіг (км)">
+          <input type="number" value={f.mileage} onChange={e => setF({ ...f, mileage: e.target.value })} className={ic} />
+        </Field>
+        <Field label="VIN">
+          <input value={f.vin} onChange={e => setF({ ...f, vin: e.target.value.toUpperCase() })} className={ic} maxLength={17} />
+        </Field>
+        <PrimaryBtn type="submit" className="w-full py-4 justify-center text-base mt-2">
+          Зберегти зміни
+        </PrimaryBtn>
+      </form>
+    </Modal>
   )
 }
 
@@ -185,7 +259,7 @@ function AddCarModal({ onClose, onAdd, isLimited, onGoPlans }) {
       if (!make) { setVinStatus('notfound'); return }
       const brandKey = Object.keys(BRANDS_MODELS).find(b => b.toLowerCase() === make.toLowerCase()) || make
       const modelVal = BRANDS_MODELS[brandKey]
-        ? (BRANDS_MODELS[brandKey].find(m => m.toLowerCase() === (model||'').toLowerCase()) || BRANDS_MODELS[brandKey][0])
+        ? (BRANDS_MODELS[brandKey].find(m => m.toLowerCase() === (model||'').toLowerCase()) || model || '')
         : (model || '')
       setF(p => ({
         ...p, vin,

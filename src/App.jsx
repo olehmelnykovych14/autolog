@@ -71,7 +71,7 @@ function AppShell({ children, currentUser, userProfile, isDark, setDark, col, se
         userProfile={userProfile}
         showMobileMenu={showMobileMenu}
         setShowMobileMenu={setShowMobileMenu}
-        onLogout={() => { localStorage.setItem('al_show_auth', '1'); signOut(auth); setMode('auth') }}
+        onLogout={() => { localStorage.setItem('al_show_auth', '1'); signOut(auth) }}
       />
       <div className="flex flex-1 flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
         {!isAiRoute && (
@@ -81,7 +81,7 @@ function AppShell({ children, currentUser, userProfile, isDark, setDark, col, se
             incomingTransfer={incomingTransfer}
             onAcceptTransfer={() => setIncomingTransfer(null)}
             onRejectTransfer={() => setIncomingTransfer(null)}
-            onLogout={() => { localStorage.setItem('al_show_auth', '1'); signOut(auth); setMode('auth') }}
+            onLogout={() => { localStorage.setItem('al_show_auth', '1'); signOut(auth) }}
             currentUser={currentUser}
             userProfile={userProfile}
             col={col}
@@ -154,6 +154,13 @@ export default function App() {
     return () => clearTimeout(t)
   }, [currentUser])
 
+  // Clear show-auth flag once user has hit auth screen
+  useEffect(() => {
+    if (currentUser === null && mode === 'auth') {
+      localStorage.removeItem('al_show_auth')
+    }
+  }, [currentUser, mode])
+
   // 1. Auth & Profile
   useEffect(() => {
     if (!auth) return
@@ -184,9 +191,10 @@ export default function App() {
         }
       } catch (e) {
         console.error('Profile error:', e)
-        // On timeout or network error, use cached profile type from localStorage or default to owner
         const cached = localStorage.getItem('al_profile_type')
-        setUserProfile({ phone: '', city: '', avatarBase64: '', accountType: cached || 'owner' })
+        const accountType = cached || 'owner'
+        setUserProfile({ phone: '', city: '', avatarBase64: '', accountType })
+        if (accountType === 'sto') navigate('/sto', { replace: true })
       }
     })
     return () => unsub()
@@ -208,29 +216,43 @@ export default function App() {
     }).catch(console.error)
   }, [currentUser])
 
-  // 3. Real-time Cars & History (owner only)
+  // 3. Real-time Cars & History (owner only) — chunked listeners (Firestore 'in' limit = 10)
   useEffect(() => {
     if (relevantUids.length === 0 || userProfile?.accountType === 'sto') {
       setCarList([])
       setHistoryList([])
       return
     }
-    const carQ = query(collection(db, 'cars'), where('userId', 'in', relevantUids.slice(0, 10)))
-    const unsubCars = onSnapshot(carQ, (snap) => {
-      setCarList(snap.docs.map(d => ({ ...d.data(), id: d.id })))
-    }, (err) => console.error('Cars listener error:', err))
+    const chunks = []
+    for (let i = 0; i < relevantUids.length; i += 10) chunks.push(relevantUids.slice(i, i + 10))
 
-    const histQ = query(collection(db, 'history'), where('userId', 'in', relevantUids.slice(0, 10)))
-    const unsubHist = onSnapshot(histQ, (snap) => {
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id }))
-      list.sort((a, b) => (new Date(b.date) - new Date(a.date)) || (b.createdAt - a.createdAt))
-      setHistoryList(list)
-    }, (err) => console.error('History listener error:', err))
+    const carsByChunk = chunks.map(() => [])
+    const histByChunk = chunks.map(() => [])
+    const unsubs = []
 
-    return () => {
-      unsubCars()
-      unsubHist()
-    }
+    chunks.forEach((chunk, idx) => {
+      unsubs.push(onSnapshot(
+        query(collection(db, 'cars'), where('userId', 'in', chunk)),
+        (snap) => {
+          carsByChunk[idx] = snap.docs.map(d => ({ ...d.data(), id: d.id }))
+          const merged = [...new Map(carsByChunk.flat().map(c => [c.id, c])).values()]
+          setCarList(merged)
+        },
+        (err) => console.error('Cars listener error:', err)
+      ))
+      unsubs.push(onSnapshot(
+        query(collection(db, 'history'), where('userId', 'in', chunk)),
+        (snap) => {
+          histByChunk[idx] = snap.docs.map(d => ({ ...d.data(), id: d.id }))
+          const merged = [...new Map(histByChunk.flat().map(h => [h.id, h])).values()]
+          merged.sort((a, b) => (new Date(b.date) - new Date(a.date)) || (b.createdAt - a.createdAt))
+          setHistoryList(merged)
+        },
+        (err) => console.error('History listener error:', err)
+      ))
+    })
+
+    return () => unsubs.forEach(u => u())
   }, [relevantUids])
 
   useEffect(() => {
@@ -309,12 +331,14 @@ export default function App() {
 
   const markAllNotificationsAsRead = async () => {
     if (!currentUser || bookingNotifications.length === 0) return
-    const batch = writeBatch(db)
-    bookingNotifications.forEach(b => {
-      batch.update(doc(db, 'bookings', b.id), { readByRecipient: true })
-    })
+    // Firestore batch limit = 500 ops; chunk to be safe
     try {
-      await batch.commit()
+      for (let i = 0; i < bookingNotifications.length; i += 450) {
+        const chunk = bookingNotifications.slice(i, i + 450)
+        const batch = writeBatch(db)
+        chunk.forEach(b => batch.update(doc(db, 'bookings', b.id), { readByRecipient: true }))
+        await batch.commit()
+      }
     } catch (e) { console.error(e) }
   }
 
@@ -341,6 +365,20 @@ export default function App() {
     if (!currentUser) return
     try {
       await updateDoc(doc(db, 'cars', carId), updates)
+    } catch (e) { console.error(e) }
+  }
+
+  const deleteCar = async (carId) => {
+    if (!currentUser || !carId) return
+    try {
+      const histSnap = await getDocs(query(collection(db, 'history'), where('carId', '==', carId)))
+      for (let i = 0; i < histSnap.docs.length; i += 450) {
+        const chunk = histSnap.docs.slice(i, i + 450)
+        const batch = writeBatch(db)
+        chunk.forEach(d => batch.delete(d.ref))
+        await batch.commit()
+      }
+      await deleteDoc(doc(db, 'cars', carId))
     } catch (e) { console.error(e) }
   }
 
@@ -461,7 +499,6 @@ export default function App() {
   if (currentUser === null || (authTimedOut && currentUser === undefined)) {
     const wasLoggedIn = localStorage.getItem('al_authed') === '1'
     const showAuthFlag = localStorage.getItem('al_show_auth') === '1'
-    if (showAuthFlag) localStorage.removeItem('al_show_auth')
     const showAuth = mode === 'auth' || wasLoggedIn || showAuthFlag
     return (
       <Routes>
@@ -530,7 +567,7 @@ export default function App() {
         <Route path="/garage" element={
           isSto ? <Navigate to="/sto" replace /> :
           <AppShell {...shellProps}>
-            {scrollWrapper('max-w-7xl', <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => {}} />)}
+            {scrollWrapper('max-w-7xl', <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onDeleteCar={deleteCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => {}} />)}
           </AppShell>
         } />
         <Route path="/bookings" element={
@@ -598,9 +635,13 @@ export default function App() {
           </AppShell>
         } />
 
+        {/* Route aliases (BUG #15) */}
+        <Route path="/ai-mechanic" element={<Navigate to="/ai" replace />} />
+        <Route path="/service-booking" element={<Navigate to="/bookings" replace />} />
+
         {/* Default redirect */}
         <Route path="/" element={<Navigate to={defaultRoute} replace />} />
-        <Route path="*" element={<Navigate to={defaultRoute} replace />} />
+        <Route path="*" element={<NotFoundPage defaultRoute={defaultRoute} />} />
       </Routes>
 
       {/* Global modals */}
@@ -618,7 +659,7 @@ export default function App() {
                 createdAt: Date.now(),
                 notified: false
               })
-              setTeamMembers(p => [...p, mbr])
+              setTeamMembers(p => [...p, { ...mbr, status: 'pending' }])
             } catch (e) { console.error('Invite error:', e) }
           }}
         />
@@ -648,6 +689,22 @@ export default function App() {
         />
       )}
     </ThemeCtx.Provider>
+  )
+}
+
+function NotFoundPage({ defaultRoute }) {
+  const navigate = useNavigate()
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg)', color: 'var(--text)' }}>
+      <div style={{ textAlign: 'center', maxWidth: 420 }}>
+        <div style={{ fontSize: 96, fontWeight: 900, color: 'var(--brand)', letterSpacing: '-0.05em', lineHeight: 1 }}>404</div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, marginTop: 16, marginBottom: 8 }}>Сторінку не знайдено</h1>
+        <p style={{ color: 'var(--text-3)', marginBottom: 24, fontSize: 14 }}>Можливо, ви ввели неправильну адресу або сторінку було видалено.</p>
+        <button onClick={() => navigate(defaultRoute, { replace: true })} style={{ padding: '12px 24px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer' }}>
+          На головну
+        </button>
+      </div>
+    </div>
   )
 }
 

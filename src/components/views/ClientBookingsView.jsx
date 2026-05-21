@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Calendar, Clock, MapPin, Search, ChevronRight, CheckCircle2, XCircle, Clock4, Info, ShieldCheck } from 'lucide-react'
-import { collection, query, where, getDocs, orderBy, addDoc, doc, getDoc } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, addDoc, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { PrimaryBtn, Modal, Field, inp_cls } from '../common/Common'
 
@@ -128,9 +128,25 @@ export function ClientBookingsView({ carList, preselectedSto, onClearPreselected
             ) : myBookings.map(b => {
               const car = carList.find(c => c.id === b.carId)
               const stoName = stos.find(s => s.id === b.stoId)?.stoName || 'СТО Партнер'
+              const canCancel = b.status === 'pending' || b.status === 'confirmed'
+              const canDelete = b.status === 'rejected' || b.status === 'cancelled'
+              const handleCancel = async () => {
+                if (!confirm('Скасувати цей запис? СТО буде сповіщено.')) return
+                try {
+                  await updateDoc(doc(db, 'bookings', b.id), { status: 'cancelled', cancelledAt: Date.now(), readByRecipient: false })
+                  setMyBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'cancelled' } : x))
+                } catch (e) { console.error(e); alert('Не вдалося скасувати запис') }
+              }
+              const handleDelete = async () => {
+                if (!confirm('Видалити запис з історії?')) return
+                try {
+                  await deleteDoc(doc(db, 'bookings', b.id))
+                  setMyBookings(prev => prev.filter(x => x.id !== b.id))
+                } catch (e) { console.error(e); alert('Не вдалося видалити запис') }
+              }
               return (
                 <div key={b.id} className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
-                   <div>
+                   <div className="flex-1 min-w-0">
                      <div className="flex items-center gap-3 mb-2">
                        <span className="px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 text-[10px] uppercase font-black tracking-widest rounded-md">{stoName}</span>
                        <StatusBadge status={b.status} />
@@ -138,15 +154,27 @@ export function ClientBookingsView({ carList, preselectedSto, onClearPreselected
                      <p className="text-lg font-black text-gray-900 dark:text-white">{car ? `${car.brand} ${car.model}` : 'Автомобіль'}</p>
                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{b.issue}</p>
                    </div>
-                   <div className="flex items-center gap-6 px-5 py-4 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/40 rounded-2xl whitespace-nowrap">
-                      <div>
-                        <p className="text-[10px] uppercase font-black tracking-widest text-[#5C3EFE] mb-0.5">ДАТА ВІЗИТУ</p>
-                        <p className="font-bold border-b border-dashed border-indigo-200 dark:border-indigo-800 pb-0.5">{b.date?.split('-').reverse().join('.') || '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] uppercase font-black tracking-widest text-[#5C3EFE] mb-0.5">ЧАС</p>
-                        <p className="font-bold border-b border-dashed border-indigo-200 dark:border-indigo-800 pb-0.5">{b.time || '—'}</p>
-                      </div>
+                   <div className="flex items-center gap-3 flex-wrap">
+                     <div className="flex items-center gap-6 px-5 py-4 bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/40 rounded-2xl whitespace-nowrap">
+                        <div>
+                          <p className="text-[10px] uppercase font-black tracking-widest text-[#5C3EFE] mb-0.5">ДАТА ВІЗИТУ</p>
+                          <p className="font-bold border-b border-dashed border-indigo-200 dark:border-indigo-800 pb-0.5">{b.date?.split('-').reverse().join('.') || '—'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase font-black tracking-widest text-[#5C3EFE] mb-0.5">ЧАС</p>
+                          <p className="font-bold border-b border-dashed border-indigo-200 dark:border-indigo-800 pb-0.5">{b.time || '—'}</p>
+                        </div>
+                     </div>
+                     {canCancel && (
+                       <button onClick={handleCancel} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all">
+                         Скасувати
+                       </button>
+                     )}
+                     {canDelete && (
+                       <button onClick={handleDelete} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-50 dark:bg-gray-700 text-gray-500 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all">
+                         Видалити
+                       </button>
+                     )}
                    </div>
                 </div>
               )
@@ -258,7 +286,7 @@ function BookingRequestModal({ sto, carList, onClose, onSuccess }) {
          </Field>
 
          <PrimaryBtn type="submit" disabled={loading || carList.length === 0} className="w-full py-4 justify-center text-base mt-2">
-            {loading ? 'Надсилання...' : 'ПІДТВЕРДИТИ ЗАПРОС'}
+            {loading ? 'Надсилання...' : 'ПІДТВЕРДИТИ ЗАПИТ'}
          </PrimaryBtn>
        </form>
     </Modal>

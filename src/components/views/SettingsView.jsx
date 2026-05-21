@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Camera, Check, MapPin, Smartphone, User, Loader2, Send, ExternalLink, Bell, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
-import { updateProfile } from 'firebase/auth'
-import { doc, updateDoc, setDoc, collection, getDocs, addDoc, deleteDoc } from 'firebase/firestore'
-import { db } from '../../firebase'
+import { updateProfile, deleteUser, signOut } from 'firebase/auth'
+import { doc, updateDoc, setDoc, collection, getDocs, addDoc, deleteDoc, query, where, writeBatch, deleteField } from 'firebase/firestore'
+import { db, auth } from '../../firebase'
 
 const REMINDER_TYPES = [
   { id: 'insurance', label: '🛡️ Страховка (ОСЦПВ)', icon: '🛡️' },
@@ -295,9 +295,11 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
               </div>
             </div>
             <p className="text-sm text-gray-400 font-medium mb-4">{currentUser?.email}</p>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-[10px] font-black rounded-lg border border-green-100 dark:border-green-800/40 tracking-wider uppercase">
-              Акаунт Верифіковано
-            </div>
+            {currentUser?.emailVerified && (
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-[10px] font-black rounded-lg border border-green-100 dark:border-green-800/40 tracking-wider uppercase">
+                Email Верифіковано
+              </div>
+            )}
           </div>
         </div>
 
@@ -376,12 +378,29 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
         </div>
 
         {userProfile?.telegramId ? (
-          <div className="p-4 bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-800/40 flex items-center justify-between">
+          <div className="p-4 bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-800/40 flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 text-green-600 dark:text-green-400">
               <Check size={18} />
               <p className="text-sm font-bold uppercase tracking-widest text-[10px]">Акаунт підключено</p>
             </div>
-            <p className="text-xs font-medium text-gray-400">ID: {userProfile.telegramId}</p>
+            <div className="flex items-center gap-3">
+              <p className="text-xs font-medium text-gray-400">ID: {userProfile.telegramId}</p>
+              <button
+                onClick={async () => {
+                  if (!confirm('Відключити Telegram від акаунту?')) return
+                  try {
+                    await updateDoc(doc(db, 'users', currentUser.uid), { telegramId: deleteField(), tgLinkingToken: deleteField() })
+                    setUserProfile({ ...userProfile, telegramId: null, tgLinkingToken: null })
+                  } catch (e) {
+                    console.error(e)
+                    alert('Не вдалося відключити Telegram')
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white dark:bg-gray-800 text-red-500 border border-red-100 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+              >
+                Відключити
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -416,6 +435,76 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
       </div>
 
       <RemindersSection currentUser={currentUser} hasTelegram={!!userProfile?.telegramId} />
+
+      <DangerZone currentUser={currentUser} />
+    </div>
+  )
+}
+
+function DangerZone({ currentUser }) {
+  const [busy, setBusy] = useState(false)
+
+  const handleDelete = async () => {
+    if (!currentUser) return
+    const confirm1 = window.prompt('Видалення акаунту незворотне. Усі ваші авто, історія, записи будуть видалені.\n\nНапишіть "ВИДАЛИТИ" щоб підтвердити:')
+    if (confirm1 !== 'ВИДАЛИТИ') return
+    setBusy(true)
+    try {
+      const uid = currentUser.uid
+      const collectionsToWipe = [
+        ['cars', 'userId'],
+        ['history', 'userId'],
+        ['bookings', 'userId'],
+      ]
+      for (const [col, field] of collectionsToWipe) {
+        const snap = await getDocs(query(collection(db, col), where(field, '==', uid)))
+        for (let i = 0; i < snap.docs.length; i += 450) {
+          const chunk = snap.docs.slice(i, i + 450)
+          const batch = writeBatch(db)
+          chunk.forEach(d => batch.delete(d.ref))
+          await batch.commit()
+        }
+      }
+      const remSnap = await getDocs(collection(db, 'users', uid, 'reminders'))
+      for (const d of remSnap.docs) await deleteDoc(d.ref)
+      await deleteDoc(doc(db, 'users', uid))
+      try {
+        await deleteUser(currentUser)
+      } catch (e) {
+        if (e.code === 'auth/requires-recent-login') {
+          alert('Для безпеки потрібно увійти знову. Зараз вас буде вилогінено — увійдіть і повторіть видалення.')
+          await signOut(auth)
+          return
+        }
+        throw e
+      }
+      localStorage.clear()
+    } catch (e) {
+      console.error(e)
+      alert('Помилка видалення акаунту: ' + (e.message || ''))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-[2.5rem] border border-red-100 dark:border-red-900/40 p-8 shadow-sm">
+      <div className="flex items-center gap-4 mb-4">
+        <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center text-red-500">
+          <Trash2 size={22} />
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Видалення акаунту</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Видалить ваш профіль, авто, історію та записи. Дію не можна скасувати.</p>
+        </div>
+      </div>
+      <button
+        onClick={handleDelete}
+        disabled={busy}
+        className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest bg-red-500 text-white hover:bg-red-600 active:scale-95 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+      >
+        {busy ? <Loader2 size={18} className="animate-spin" /> : <><Trash2 size={16} /> Видалити акаунт</>}
+      </button>
     </div>
   )
 }
