@@ -353,40 +353,41 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
 
                   {m.role === 'bot' && (
                     <div className="bg-white dark:bg-[#0F172A] border border-gray-100 dark:border-gray-800/80 rounded-2xl rounded-bl-md px-5 py-4 shadow-sm max-w-full">
-                      <ReactMarkdown
-                        className="markdown-content text-sm text-gray-800 dark:text-gray-200 leading-relaxed"
-                        components={{
-                          a: ({ node, ...props }) => {
-                            const isMarket = props.href?.includes('exist.ua') || props.href?.includes('avto.pro')
-                            if (isMarket) return (
-                              <a {...props} target="_blank" rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-2 mr-2 bg-indigo-50 dark:bg-indigo-900/30 text-[#5C3EFE] border border-indigo-200 dark:border-indigo-800 rounded-xl hover:bg-[#5C3EFE] hover:text-white transition-colors text-xs font-bold no-underline">
-                                {props.children}
-                              </a>
-                            )
-                            return <a {...props} className="text-[#5C3EFE] underline hover:opacity-80" target="_blank" rel="noopener noreferrer" />
-                          },
-                          table: ({ node, ...props }) => (
-                            <div className="mt-3 overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-700">
-                              <table {...props} className="w-full text-xs" />
-                            </div>
-                          ),
-                          thead: ({ node, ...props }) => (
-                            <thead {...props} className="bg-indigo-50 dark:bg-indigo-900/30 text-[#5C3EFE] text-[10px] uppercase tracking-widest font-black" />
-                          ),
-                          tr: ({ node, ...props }) => (
-                            <tr {...props} className="border-b border-gray-50 dark:border-gray-800" />
-                          ),
-                          td: ({ node, ...props }) => (
-                            <td {...props} className="px-3 py-2 text-gray-700 dark:text-gray-300" />
-                          ),
-                          th: ({ node, ...props }) => (
-                            <th {...props} className="px-3 py-2 text-left" />
-                          ),
-                        }}
-                      >
-                        {m.text}
-                      </ReactMarkdown>
+                      <div className="markdown-content text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+                        <ReactMarkdown
+                          components={{
+                            a: ({ node, ...props }) => {
+                              const isMarket = props.href?.includes('exist.ua') || props.href?.includes('avto.pro')
+                              if (isMarket) return (
+                                <a {...props} target="_blank" rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-2 mr-2 bg-indigo-50 dark:bg-indigo-900/30 text-[#5C3EFE] border border-indigo-200 dark:border-indigo-800 rounded-xl hover:bg-[#5C3EFE] hover:text-white transition-colors text-xs font-bold no-underline">
+                                  {props.children}
+                                </a>
+                              )
+                              return <a {...props} className="text-[#5C3EFE] underline hover:opacity-80" target="_blank" rel="noopener noreferrer" />
+                            },
+                            table: ({ node, ...props }) => (
+                              <div className="mt-3 overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-700">
+                                <table {...props} className="w-full text-xs" />
+                              </div>
+                            ),
+                            thead: ({ node, ...props }) => (
+                              <thead {...props} className="bg-indigo-50 dark:bg-indigo-900/30 text-[#5C3EFE] text-[10px] uppercase tracking-widest font-black" />
+                            ),
+                            tr: ({ node, ...props }) => (
+                              <tr {...props} className="border-b border-gray-50 dark:border-gray-800" />
+                            ),
+                            td: ({ node, ...props }) => (
+                              <td {...props} className="px-3 py-2 text-gray-700 dark:text-gray-300" />
+                            ),
+                            th: ({ node, ...props }) => (
+                              <th {...props} className="px-3 py-2 text-left" />
+                            ),
+                          }}
+                        >
+                          {m.text}
+                        </ReactMarkdown>
+                      </div>
 
                       {(m.text.toLowerCase().includes('запис') || m.text.toLowerCase().includes('сто') || m.text.toLowerCase().includes('book')) && (
                         <button
