@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Calendar, Clock, MapPin, Search, ChevronRight, CheckCircle2, XCircle, Clock4, Info, ShieldCheck } from 'lucide-react'
 import { collection, query, where, getDocs, orderBy, addDoc, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
-import { PrimaryBtn, Modal, Field, inp_cls } from '../common/Common'
+import { PrimaryBtn, Modal, Field, inp_cls, ConfirmModal } from '../common/Common'
 
 export function ClientBookingsView({ carList, preselectedSto, onClearPreselected }) {
   const [activeTab, setActiveTab] = useState('new') // 'new' | 'my'
@@ -11,6 +11,7 @@ export function ClientBookingsView({ carList, preselectedSto, onClearPreselected
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selectedSto, setSelectedSto] = useState(null)
+  const [confirmDlg, setConfirmDlg] = useState(null) // { title, message, confirmLabel, onConfirm }
 
   useEffect(() => {
     fetchStos()
@@ -130,19 +131,17 @@ export function ClientBookingsView({ carList, preselectedSto, onClearPreselected
               const stoName = stos.find(s => s.id === b.stoId)?.stoName || 'СТО Партнер'
               const canCancel = b.status === 'pending' || b.status === 'confirmed'
               const canDelete = b.status === 'rejected' || b.status === 'cancelled'
-              const handleCancel = async () => {
-                if (!confirm('Скасувати цей запис? СТО буде сповіщено.')) return
+              const doCancel = async () => {
                 try {
                   await updateDoc(doc(db, 'bookings', b.id), { status: 'cancelled', cancelledAt: Date.now(), readByRecipient: false })
                   setMyBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'cancelled' } : x))
-                } catch (e) { console.error(e); alert('Не вдалося скасувати запис') }
+                } catch (e) { console.error(e) }
               }
-              const handleDelete = async () => {
-                if (!confirm('Видалити запис з історії?')) return
+              const doDelete = async () => {
                 try {
                   await deleteDoc(doc(db, 'bookings', b.id))
                   setMyBookings(prev => prev.filter(x => x.id !== b.id))
-                } catch (e) { console.error(e); alert('Не вдалося видалити запис') }
+                } catch (e) { console.error(e) }
               }
               return (
                 <div key={b.id} className="bg-white dark:bg-gray-800 p-6 rounded-3xl border border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
@@ -166,12 +165,28 @@ export function ClientBookingsView({ carList, preselectedSto, onClearPreselected
                         </div>
                      </div>
                      {canCancel && (
-                       <button onClick={handleCancel} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all">
+                       <button
+                         onClick={() => setConfirmDlg({
+                           title: 'Скасувати запис?',
+                           message: 'СТО буде сповіщено про скасування.',
+                           confirmLabel: 'Скасувати запис',
+                           onConfirm: doCancel
+                         })}
+                         className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-100 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
+                       >
                          Скасувати
                        </button>
                      )}
                      {canDelete && (
-                       <button onClick={handleDelete} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-50 dark:bg-gray-700 text-gray-500 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all">
+                       <button
+                         onClick={() => setConfirmDlg({
+                           title: 'Видалити запис?',
+                           message: 'Запис буде видалено з вашої історії.',
+                           confirmLabel: 'Видалити',
+                           onConfirm: doDelete
+                         })}
+                         className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-gray-50 dark:bg-gray-700 text-gray-500 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all"
+                       >
                          Видалити
                        </button>
                      )}
@@ -184,11 +199,22 @@ export function ClientBookingsView({ carList, preselectedSto, onClearPreselected
       )}
 
       {selectedSto && (
-        <BookingRequestModal 
-          sto={selectedSto} 
-          carList={carList} 
-          onClose={() => setSelectedSto(null)} 
-          onSuccess={handleBookingSuccess} 
+        <BookingRequestModal
+          sto={selectedSto}
+          carList={carList}
+          onClose={() => setSelectedSto(null)}
+          onSuccess={handleBookingSuccess}
+        />
+      )}
+
+      {confirmDlg && (
+        <ConfirmModal
+          title={confirmDlg.title}
+          message={confirmDlg.message}
+          confirmLabel={confirmDlg.confirmLabel}
+          variant="danger"
+          onConfirm={() => { confirmDlg.onConfirm(); setConfirmDlg(null) }}
+          onCancel={() => setConfirmDlg(null)}
         />
       )}
     </div>

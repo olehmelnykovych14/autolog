@@ -85,3 +85,64 @@ export function Card({ title, sub, icon, children, className = '' }) {
     </div>
   )
 }
+
+export function ConfirmModal({ title, message, confirmLabel = 'Підтвердити', variant = 'danger', onConfirm, onCancel }) {
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)', animation: 'bgFade 200ms ease both' }}
+      onClick={onCancel}
+    >
+      <div
+        className="w-full max-w-sm flex flex-col overflow-hidden"
+        style={{
+          background: 'var(--bg-card)',
+          border: '1px solid var(--line)',
+          borderRadius: '1.75rem',
+          boxShadow: 'var(--shadow-lg)',
+          animation: 'modalSpring 350ms cubic-bezier(.34,1.56,.64,1) both'
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Icon */}
+        <div className="flex flex-col items-center px-7 pt-8 pb-5 gap-4">
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
+            style={{
+              background: variant === 'danger' ? 'rgba(239,68,68,0.12)' : 'var(--brand-soft)',
+              color: variant === 'danger' ? '#ef4444' : 'var(--brand)'
+            }}
+          >
+            {variant === 'danger' ? '🗑' : '⚠️'}
+          </div>
+          <div className="text-center">
+            <h3 className="text-base font-black mb-1" style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}>{title}</h3>
+            {message && <p className="text-sm font-medium" style={{ color: 'var(--text-3)', lineHeight: 1.5 }}>{message}</p>}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 px-5 pb-6">
+          <button
+            onClick={onCancel}
+            className="flex-1 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-80"
+            style={{ background: 'var(--bg-input)', color: 'var(--text-2)' }}
+          >
+            Скасувати
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 py-3 rounded-xl font-bold text-sm transition-all hover:opacity-90 active:scale-95"
+            style={{
+              background: variant === 'danger' ? '#ef4444' : 'var(--brand)',
+              color: '#fff'
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+

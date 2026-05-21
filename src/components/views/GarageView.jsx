@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { Plus, Camera, Search, User, Info, Smartphone, FileText, Send, Share2, MoreVertical, Trash2, ImagePlus, ShieldCheck, Loader2, Pencil } from 'lucide-react'
-import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
+import { Modal, Field, inp_cls, PrimaryBtn, ConfirmModal } from '../common/Common'
 import { fmt, getBrandLogo } from '../../utils'
 import { BRANDS_MODELS } from '../../data/cars'
 
@@ -61,9 +61,8 @@ const compressImage = (file) => {
 export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSelectCar, userProfile, onGoPlans }) {
   const [showAdd, setShowAdd] = useState(false)
   const [editCar, setEditCar] = useState(null)
+  const [confirmDlg, setConfirmDlg] = useState(null)
   // SUBSCRIPTION: car limit disabled for free launch
-  // const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
-  // const isLimited = carList.length >= activePlan.carLimit
   const isLimited = false
 
   const handlePhotoUpload = async (carId, e) => {
@@ -143,9 +142,11 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
                         type="button"
                         title="Видалити"
                         onClick={() => {
-                          if (confirm(`Видалити авто ${car.brand} ${car.model}? Сервісну історію також буде видалено.`)) {
-                            onDeleteCar?.(car.id)
-                          }
+                          setConfirmDlg({
+                            brand: car.brand,
+                            model: car.model,
+                            id: car.id
+                          })
                         }}
                         className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
                         style={{ background: 'rgba(180,30,30,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(239,68,68,0.35)' }}
@@ -200,6 +201,17 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
           car={editCar}
           onClose={() => setEditCar(null)}
           onSave={(updates) => { onUpdateCar?.(editCar.id, updates); setEditCar(null) }}
+        />
+      )}
+
+      {confirmDlg && (
+        <ConfirmModal
+          title={`Видалити ${confirmDlg.brand} ${confirmDlg.model}?`}
+          message="Сервісну історію автомобіля також буде видалено. Цю дію не можна скасувати."
+          confirmLabel="Видалити авто"
+          variant="danger"
+          onConfirm={() => { onDeleteCar?.(confirmDlg.id); setConfirmDlg(null) }}
+          onCancel={() => setConfirmDlg(null)}
         />
       )}
     </div>
