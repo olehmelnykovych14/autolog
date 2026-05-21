@@ -26,3 +26,12 @@ sessions.json
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+
+# Playwright e2e
+e2e/_state/
+e2e/_report/
+e2e/_results/
+test-results/
+playwright-report/
