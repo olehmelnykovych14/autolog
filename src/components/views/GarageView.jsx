@@ -111,38 +111,48 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
                       <CarPhoto brand={car.brand} model={car.model} />
                     )}
                     <div className="year-badge">{car.year}</div>
-                    <label
-                      className="absolute top-3 right-[9.25rem] h-8 w-8 rounded-xl backdrop-blur-sm flex items-center justify-center shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
-                      style={{ background: 'rgba(255,255,255,0.9)' }}
+
+                    {/* Action buttons — compact pill group, top-right */}
+                    <div
+                      className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200"
                       onClick={e => e.stopPropagation()}
-                      title={car.image ? "Змінити фото" : "Завантажити фото"}
                     >
-                      {car.image ? <Camera size={15} style={{ color: 'var(--brand)' }} /> : <ImagePlus size={15} style={{ color: 'var(--text-2)' }} />}
-                      <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(car.id, e)} />
-                    </label>
-                    <button
-                      type="button"
-                      onClick={e => { e.stopPropagation(); setEditCar(car) }}
-                      className="absolute top-3 right-[5.5rem] h-8 w-8 rounded-xl backdrop-blur-sm flex items-center justify-center shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
-                      style={{ background: 'rgba(255,255,255,0.9)' }}
-                      title="Редагувати"
-                    >
-                      <Pencil size={14} style={{ color: 'var(--brand)' }} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={e => {
-                        e.stopPropagation()
-                        if (confirm(`Видалити авто ${car.brand} ${car.model}? Сервісну історію також буде видалено.`)) {
-                          onDeleteCar?.(car.id)
-                        }
-                      }}
-                      className="absolute top-3 right-[3.5rem] h-8 w-8 rounded-xl backdrop-blur-sm flex items-center justify-center shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 active:scale-95"
-                      style={{ background: 'rgba(255,255,255,0.9)' }}
-                      title="Видалити"
-                    >
-                      <Trash2 size={14} style={{ color: '#ef4444' }} />
-                    </button>
+                      {/* Upload photo */}
+                      <label
+                        title={car.image ? 'Змінити фото' : 'Завантажити фото'}
+                        className="h-8 w-8 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 hover:scale-110 active:scale-95"
+                        style={{ background: 'rgba(15,15,30,0.65)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                      >
+                        <Camera size={14} style={{ color: 'rgba(255,255,255,0.85)' }} />
+                        <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(car.id, e)} />
+                      </label>
+
+                      {/* Edit */}
+                      <button
+                        type="button"
+                        title="Редагувати"
+                        onClick={() => setEditCar(car)}
+                        className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
+                        style={{ background: 'rgba(15,15,30,0.65)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                      >
+                        <Pencil size={14} style={{ color: 'rgba(255,255,255,0.85)' }} />
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        title="Видалити"
+                        onClick={() => {
+                          if (confirm(`Видалити авто ${car.brand} ${car.model}? Сервісну історію також буде видалено.`)) {
+                            onDeleteCar?.(car.id)
+                          }
+                        }}
+                        className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
+                        style={{ background: 'rgba(180,30,30,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(239,68,68,0.35)' }}
+                      >
+                        <Trash2 size={14} style={{ color: '#fca5a5' }} />
+                      </button>
+                    </div>
                   </div>
                   <div className="body">
                     <div className="brand-row">
