@@ -225,6 +225,7 @@ function StatusBadge({ status }) {
   if (status === 'pending') return <span className="flex items-center gap-1 text-[10px] font-black uppercase text-amber-500"><Clock4 size={12}/> В ОБРОБЦІ</span>
   if (status === 'confirmed') return <span className="flex items-center gap-1 text-[10px] font-black uppercase text-green-500"><CheckCircle2 size={12}/> ПІДТВЕРДЖЕНО</span>
   if (status === 'rejected') return <span className="flex items-center gap-1 text-[10px] font-black uppercase text-red-500"><XCircle size={12}/> ВІДХИЛЕНО</span>
+  if (status === 'cancelled') return <span className="flex items-center gap-1 text-[10px] font-black uppercase text-gray-500"><XCircle size={12}/> СКАСОВАНО</span>
   return null
 }
 

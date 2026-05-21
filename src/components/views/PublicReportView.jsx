@@ -10,6 +10,7 @@ export function PublicReportView({ carId }) {
   const [historyList, setHistoryList] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -18,7 +19,7 @@ export function PublicReportView({ carId }) {
         const carSnap = await getDoc(carRef)
         
         if (!carSnap.exists()) {
-          setError(`АВТО З ID [${carId}] ТРАНЗИТОМ ЧЕРЕЗ FIREBASE НЕ ЗНАЙДЕНО`)
+          setNotFound(true)
           setLoading(false)
           return
         }
@@ -62,6 +63,19 @@ export function PublicReportView({ carId }) {
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">Збираємо дані...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (notFound) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50 dark:bg-gray-950 p-6 text-center text-gray-900 dark:text-white">
+        <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-3xl p-8 border border-gray-100 dark:border-gray-800 shadow-xl animate-in fade-in duration-300">
+          <ShieldCheck size={48} className="mx-auto text-red-500 mb-4 animate-pulse" />
+          <h1 className="text-2xl font-black uppercase tracking-tight mb-2">Звіт не знайдено</h1>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">Можливо, посилання застаріло або власник видалив авто.</p>
+          <a href="/" className="inline-block px-6 py-3 bg-[#5C3EFE] text-white rounded-xl text-sm font-black uppercase hover:opacity-90 transition shadow-lg shadow-indigo-500/20">На головну</a>
         </div>
       </div>
     )

@@ -164,7 +164,12 @@ export default function App() {
   // 1. Auth & Profile
   useEffect(() => {
     if (!auth) return
-    const unsub = onAuthStateChanged(auth, async (user) => {
+    let unsubProfile = null
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (unsubProfile) {
+        unsubProfile()
+        unsubProfile = null
+      }
       setCurrentUser(user)
       if (!user) {
         localStorage.removeItem('al_authed')
@@ -176,9 +181,9 @@ export default function App() {
         return
       }
       localStorage.setItem('al_authed', '1')
-      try {
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-        const snap = await Promise.race([getDoc(doc(db, 'users', user.uid)), timeout])
+      
+      // Subscribe to user document changes in real time
+      unsubProfile = onSnapshot(doc(db, 'users', user.uid), (snap) => {
         if (snap.exists()) {
           const up = snap.data()
           setUserProfile(up)
@@ -187,17 +192,21 @@ export default function App() {
             navigate('/sto', { replace: true })
           }
         } else {
+          // Default profile if the document doesn't exist yet (will update automatically when setDoc resolves)
           setUserProfile({ phone: '', city: '', avatarBase64: '', accountType: 'owner' })
         }
-      } catch (e) {
-        console.error('Profile error:', e)
+      }, (err) => {
+        console.error('Profile real-time error:', err)
         const cached = localStorage.getItem('al_profile_type')
         const accountType = cached || 'owner'
         setUserProfile({ phone: '', city: '', avatarBase64: '', accountType })
         if (accountType === 'sto') navigate('/sto', { replace: true })
-      }
+      })
     })
-    return () => unsub()
+    return () => {
+      unsubAuth()
+      if (unsubProfile) unsubProfile()
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // 2. Invitation & Team Tracking (one-time fetch)

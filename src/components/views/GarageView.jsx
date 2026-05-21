@@ -101,8 +101,8 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
           {carList.map(car => {
             const logo = getBrandLogo(car.brand)
             return (
-              <div key={car.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div className="car-card group" onClick={() => onSelectCar(car)}>
+              <div key={car.id} data-car-id={car.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="car-card group" data-car-id={car.id} onClick={() => onSelectCar(car)}>
                   <div className="hero">
                     {car.image ? (
                       <img src={car.image} alt={car.brand} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 absolute inset-0" />
