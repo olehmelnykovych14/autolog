@@ -79,13 +79,20 @@ export function STOSettingsView({ userProfile, setUserProfile }) {
     }).catch(console.error).finally(() => setLoading(false))
   }, [])
 
-  const set = (k, v) => setS(p => ({ ...p, [k]: v }))
+  const set = (k, v) => setS(p => {
+    const next = { ...p, [k]: v }
+    // Keep workdayEnd > workdayStart (at least 1h)
+    if (k === 'workdayStart' && next.workdayEnd <= v) next.workdayEnd = Math.min(v + 1, 23)
+    if (k === 'workdayEnd'   && v <= next.workdayStart) next.workdayStart = Math.max(v - 1, 0)
+    return next
+  })
 
-  const toggleDay = (d) => set('workDays', s.workDays.includes(d) ? s.workDays.filter(x => x !== d) : [...s.workDays, d].sort())
+  const toggleDay = (d) => set('workDays', s.workDays.includes(d) ? s.workDays.filter(x => x !== d) : [...s.workDays, d].sort((a, b) => a - b))
 
   const save = async () => {
     const uid = auth.currentUser?.uid
     if (!uid) return
+    if (s.workdayEnd <= s.workdayStart) { alert('Кінець робочого дня має бути пізніше за початок'); return }
     setSaving(true)
     try {
       await setDoc(doc(db, 'sto_settings', uid), s, { merge: true })

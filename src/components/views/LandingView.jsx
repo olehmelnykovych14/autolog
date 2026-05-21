@@ -254,10 +254,75 @@ const STYLE = `
 @media (max-width:900px) {
   .al-features-grid { grid-template-columns:1fr; }
   .al-feat-cell.large { grid-column:span 1; }
-  .al-how-grid,.al-carfax-inner,.al-sto-grid { grid-template-columns:1fr; }
+  .al-how-grid,.al-carfax-inner,.al-sto-grid { grid-template-columns:1fr;gap:48px; }
   .al-testi-grid { grid-template-columns:1fr; }
   .al-float-card { display:none; }
   .al-nav-links { display:none; }
+}
+
+@media (max-width:640px) {
+  .al-con { padding:0 16px; }
+  .al-nav-inner { padding:0 16px;gap:12px; }
+  .al-nav-logo { font-size:18px; }
+  .al-nav-logo .mark { width:30px;height:30px; }
+  .al-nav-right { gap:6px; }
+  .al-btn-ghost { display:none; }
+  .al-btn-primary { padding:8px 14px;font-size:13px; }
+
+  .al-hero { padding:96px 0 64px;min-height:auto; }
+  .al-hero-badge { font-size:11px;padding:5px 12px;margin-bottom:20px; }
+  .al-hero-title { font-size:clamp(34px,10vw,48px); }
+  .al-hero-sub { font-size:15px;margin:18px auto 28px; }
+  .al-btn-lg { padding:14px 22px;font-size:15px;border-radius:14px; }
+  .al-hero-cta { gap:10px; }
+
+  .al-records-wrap { margin-top:48px; }
+  .al-record-row { padding:10px 12px;gap:8px;flex-wrap:wrap; }
+  .al-record-row > span:nth-child(3) { font-size:10px;flex-basis:100%;order:4;color:var(--text-3); }
+  .al-record-row > span:nth-child(2) { font-size:12px;min-width:0; }
+  .al-record-row > span:nth-child(4) { font-size:12px; }
+
+  .al-trust { padding:28px 0; }
+  .al-trust-inner { gap:20px;font-size:11px; }
+  .al-trust-num { font-size:18px; }
+
+  .al-features,.al-how,.al-carfax,.al-sto,.al-testi,.al-cta { padding:72px 0; }
+  .al-features-grid { margin-top:40px;border-radius:20px; }
+  .al-feat-cell { padding:28px 22px; }
+  .al-feat-cell h3 { font-size:18px; }
+
+  .al-h2 { font-size:clamp(26px,7vw,36px); }
+  .al-section-p { font-size:15px; }
+
+  .al-mockup,.al-report-card,.al-vin-demo { padding:20px;border-radius:20px; }
+  .al-report-grade { gap:14px;padding-bottom:18px;margin-bottom:18px; }
+  .al-grade-circle { width:60px;height:60px;font-size:22px; }
+  .al-grade-info h3 { font-size:16px; }
+  .al-report-checks { grid-template-columns:1fr 1fr;gap:8px; }
+  .al-check-item { padding:12px; }
+  .al-ci-val { font-size:18px; }
+  .al-report-footer { flex-direction:column;gap:12px;align-items:flex-start; }
+
+  .al-vin-grid { grid-template-columns:repeat(9,1fr);gap:3px; }
+  .al-vc { font-size:11px; }
+  .al-chips-row { flex-wrap:wrap; }
+  .al-chip { font-size:11px;padding:8px 10px; }
+
+  .al-testi-card { padding:22px;border-radius:20px; }
+  .al-testi-text { font-size:14px; }
+
+  .al-cta-box { padding:48px 22px;border-radius:28px; }
+  .al-cta-box p { font-size:15px;margin-bottom:28px; }
+  .al-cta-btns { flex-direction:column;gap:10px; }
+  .al-cta-btns .al-btn-lg { width:100%;justify-content:center; }
+
+  .al-footer { padding:48px 0 28px; }
+  .al-footer-inner { gap:32px; }
+  .al-footer-bottom { flex-direction:column;align-items:flex-start;gap:8px; }
+
+  .al-blob-1 { width:400px;height:400px;top:-150px;left:-150px; }
+  .al-blob-2 { width:320px;height:320px;right:-120px; }
+  .al-blob-3 { width:260px;height:260px; }
 }
 `
 

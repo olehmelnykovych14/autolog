@@ -3,6 +3,7 @@ import { Calendar as CalIcon, User, Car, Plus, Search, Info, Loader2, Edit3, Che
 import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
+import { layoutOverlap } from '../../lib/overlapLayout'
 
 const STATUS_COLOR = {
   confirmed:    '#10B981',
@@ -136,17 +137,30 @@ export function STOBookingsView({ userProfile }) {
     if (!auth.currentUser) return
     try {
       const snap = await getDocs(query(collection(db, 'bookings'), where('stoId', '==', auth.currentUser.uid)))
-      const list = []
-      for (const d of snap.docs) {
-        const b = { id: d.id, ...d.data() }
-        if (b.userId && b.userId !== 'offline') {
-          try { const s = await getDoc(doc(db, 'users', b.userId)); if (s.exists()) b.driver = s.data() } catch {}
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+
+      // Collect unique user/car ids, fetch in parallel batches (Firestore 'in' limit = 10)
+      const userIds = [...new Set(list.map(b => b.userId).filter(id => id && id !== 'offline'))]
+      const carIds  = [...new Set(list.map(b => b.carId ).filter(id => id && id !== 'offline'))]
+      const fetchByIds = async (col, ids) => {
+        const map = {}
+        for (let i = 0; i < ids.length; i += 10) {
+          const batch = ids.slice(i, i + 10)
+          if (!batch.length) continue
+          const s = await getDocs(query(collection(db, col), where('__name__', 'in', batch)))
+          s.docs.forEach(d => { map[d.id] = d.data() })
         }
-        if (b.carId && b.carId !== 'offline') {
-          try { const s = await getDoc(doc(db, 'cars', b.carId)); if (s.exists()) b.car = s.data() } catch {}
-        }
-        list.push(b)
+        return map
       }
+      const [users, cars] = await Promise.all([
+        fetchByIds('users', userIds).catch(() => ({})),
+        fetchByIds('cars',  carIds ).catch(() => ({})),
+      ])
+      list.forEach(b => {
+        if (b.userId && users[b.userId]) b.driver = users[b.userId]
+        if (b.carId  && cars[b.carId])   b.car    = cars[b.carId]
+      })
+
       list.sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1)
       setBookings(list)
     } catch (e) { console.error(e) }
@@ -168,7 +182,7 @@ export function STOBookingsView({ userProfile }) {
     if (id) updateStatus(id, targetStatus)
   }
 
-  const selDayBookings = bookings.filter(b => b.date === selDay)
+  const selDayBookings = bookings.filter(b => b.date === selDay && b.time)
   const todayBookings  = bookings.filter(b => b.date === todayStr)
   const pendingCount   = todayBookings.filter(b => b.status === 'pending').length
   const inProgCount    = todayBookings.filter(b => b.status === 'in-progress').length
@@ -357,12 +371,7 @@ export function STOBookingsView({ userProfile }) {
                       return { bk, top: (hh + mm/60 - stoSettings.workdayStart) * SLOT_H, bottom: (hh + mm/60 - stoSettings.workdayStart + 1) * SLOT_H }
                     }).filter(b => b.top >= 0 && b.top <= HOURS.length * SLOT_H)
 
-                    // Group overlapping bookings
-                    positioned.forEach((b, i) => { b.col = 0; b.totalCols = 1 })
-                    for (let idx2 = 0; idx2 < positioned.length; idx2++) {
-                      const group = positioned.filter(b => b.top < positioned[idx2].bottom && b.bottom > positioned[idx2].top)
-                      group.forEach((b, idx) => { b.col = idx; b.totalCols = group.length })
-                    }
+                    layoutOverlap(positioned)
 
                     return positioned.map(({ bk, top, col, totalCols }) => {
                       const colW = `calc((100% - 8px) / ${totalCols})`
@@ -370,7 +379,7 @@ export function STOBookingsView({ userProfile }) {
                       return (
                         <div key={bk.id} draggable onDragStart={e => { e.dataTransfer.setData('text/plain', bk.id); e.stopPropagation() }}
                           style={{ position: 'absolute', top: top + 2, height: SLOT_H - 4, left: colL, width: colW, zIndex: 2, cursor: 'grab' }}>
-                          <BookingCard bk={bk} onClick={b => setSelBk(b === selBk ? null : b)} />
+                          <BookingCard bk={bk} onClick={b => setSelBk(p => p?.id === b.id ? null : b)} />
                         </div>
                       )
                     })
@@ -614,7 +623,7 @@ function CreateBookingBySTOModal({ userProfile, stoSettings, onClose, onSuccess,
   const [err, setErr] = useState('')
   const [foundCar, setFoundCar] = useState(null)
   const [f, setF] = useState({ date: initialParams?.date || new Date().toISOString().split('T')[0], time: initialParams?.time || `${String(stoSettings?.workdayStart || 9).padStart(2,'0')}:00`, issue: '', post: 1 })
-  const [off, setOff] = useState({ plate: '', brand: '', clientName: '', phone: '', vin: '' })
+  const [off, setOff] = useState({ plate: '', brand: '', clientName: '', phone: '', vin: '', year: '' })
   const [vinStatus, setVinStatus] = useState(null)
   const ic = inp_cls()
 
@@ -626,7 +635,7 @@ function CreateBookingBySTOModal({ userProfile, stoSettings, onClose, onSuccess,
     try {
       const result = await lookupVin(vin)
       if (!result) { setVinStatus('notfound'); return }
-      setOff(p => ({ ...p, vin, brand: `${result.brand} ${result.model}`.trim() }))
+      setOff(p => ({ ...p, vin, brand: `${result.brand} ${result.model}`.trim(), year: result.year || p.year }))
       setVinStatus('found')
     } catch { setVinStatus('error') }
   }

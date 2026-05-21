@@ -57,13 +57,11 @@ export function STOClientsView() {
       const hist  = histSnap.docs.map(d => ({ id: d.id, ...d.data() }))
       const books = bookSnap.docs.map(d => ({ id: d.id, ...d.data() }))
 
-      // Collect all unique real userIds (skip offline)
+      // Collect real userIds
       const allUserIds = [...new Set([
         ...hist.map(h => h.userId),
         ...books.map(b => b.userId),
       ].filter(id => id && id !== 'offline' && id !== 'unclaimed'))]
-
-      if (!allUserIds.length) { setClients([]); setLoading(false); return }
 
       // Fetch user profiles in batches of 10 (Firestore IN limit)
       const userMap = {}
@@ -72,6 +70,29 @@ export function STOClientsView() {
         const snap = await getDocs(query(collection(db, 'users'), where('__name__', 'in', batch)))
         snap.docs.forEach(d => { userMap[d.id] = { id: d.id, ...d.data() } })
       }
+
+      // Add offline clients — group by phone (fallback to plate) so repeat visits aggregate
+      const offlineBooks = books.filter(b => b.isOffline || b.userId === 'offline' || b.userId === 'unclaimed')
+      const offlineMap = {}
+      offlineBooks.forEach(b => {
+        const phone = b.offlineData?.phone || ''
+        const plate = b.offlineData?.plate || ''
+        const key = phone || plate || `offline_${b.id}`
+        const id = `offline:${key}`
+        if (!offlineMap[id]) {
+          offlineMap[id] = {
+            id,
+            displayName: b.offlineData?.clientName || phone || plate || 'Офлайн клієнт',
+            phone, email: '',
+            _offline: true,
+          }
+          // Attach matching offline bookings under a synthetic userId for stats aggregation
+        }
+        b.userId = id
+      })
+      Object.assign(userMap, offlineMap)
+
+      if (!Object.keys(userMap).length) { setClients([]); setLoading(false); return }
 
       // Build client stats
       const result = Object.values(userMap).map(u => {
@@ -473,7 +494,8 @@ function QuickBookingModal({ client, onClose }) {
       })
       setDone(true)
       setTimeout(onClose, 1200)
-    } catch {
+    } catch (e) {
+      console.error('QuickBooking save error:', e)
       setSaving(false)
     }
   }
