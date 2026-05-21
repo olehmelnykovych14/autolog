@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Camera, Check, MapPin, Smartphone, User, Loader2, Send, ExternalLink, Bell, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
-import { Field, inp_cls, PrimaryBtn } from '../common/Common'
+import { Field, inp_cls, PrimaryBtn, ConfirmModal } from '../common/Common'
 import { updateProfile, deleteUser, signOut } from 'firebase/auth'
 import { doc, updateDoc, setDoc, collection, getDocs, addDoc, deleteDoc, query, where, writeBatch, deleteField } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
@@ -186,6 +186,7 @@ function RemindersSection({ currentUser, hasTelegram }) {
 
 export function SettingsView({ currentUser, userProfile, setUserProfile }) {
   const ic = inp_cls()
+  const fileRef = useRef(null)
   const [name, setName] = useState(currentUser?.displayName || '')
   const [phone, setPhone] = useState('')
   const [city, setCity] = useState('')
@@ -195,7 +196,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
   const [avatar, setAvatar] = useState('')
   const [saving, setSaving] = useState(false)
   const [tgLoading, setTgLoading] = useState(false)
-  const fileRef = useRef(null)
+  const [confirmDlg, setConfirmDlg] = useState(null)
 
   useEffect(() => {
     if (userProfile) {
@@ -386,16 +387,17 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
             <div className="flex items-center gap-3">
               <p className="text-xs font-medium text-gray-400">ID: {userProfile.telegramId}</p>
               <button
-                onClick={async () => {
-                  if (!confirm('Відключити Telegram від акаунту?')) return
-                  try {
-                    await updateDoc(doc(db, 'users', currentUser.uid), { telegramId: deleteField(), tgLinkingToken: deleteField() })
-                    setUserProfile({ ...userProfile, telegramId: null, tgLinkingToken: null })
-                  } catch (e) {
-                    console.error(e)
-                    alert('Не вдалося відключити Telegram')
+                onClick={() => setConfirmDlg({
+                  title: 'Відключити Telegram?',
+                  message: 'Ви більше не будете отримувати сповіщення та нагадування через бот.',
+                  confirmLabel: 'Відключити',
+                  onConfirm: async () => {
+                    try {
+                      await updateDoc(doc(db, 'users', currentUser.uid), { telegramId: deleteField(), tgLinkingToken: deleteField() })
+                      setUserProfile({ ...userProfile, telegramId: null, tgLinkingToken: null })
+                    } catch (e) { console.error(e) }
                   }
-                }}
+                })}
                 className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white dark:bg-gray-800 text-red-500 border border-red-100 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
               >
                 Відключити
@@ -437,6 +439,17 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
       <RemindersSection currentUser={currentUser} hasTelegram={!!userProfile?.telegramId} />
 
       <DangerZone currentUser={currentUser} />
+
+      {confirmDlg && (
+        <ConfirmModal
+          title={confirmDlg.title}
+          message={confirmDlg.message}
+          confirmLabel={confirmDlg.confirmLabel}
+          variant="danger"
+          onConfirm={async () => { await confirmDlg.onConfirm(); setConfirmDlg(null) }}
+          onCancel={() => setConfirmDlg(null)}
+        />
+      )}
     </div>
   )
 }

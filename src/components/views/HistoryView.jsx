@@ -145,7 +145,8 @@ export function HistoryView({ historyList, carList, onAddService, onUpdateServic
                   <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${CAT_CLR[rec.category] || 'bg-gray-100 text-gray-600'}`}>
                     {CAT[rec.category] || 'Інше'}
                   </span>
-                  {rec.status === 'verified' && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded-md border border-blue-100 dark:border-blue-800/40 tracking-wider uppercase"><ShieldCheck size={12}/>Verified</span>}
+                  {rec.status === 'verified' && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded-md border border-blue-100 dark:border-blue-800/40 tracking-wider uppercase"><ShieldCheck size={12}/>Verified СТО</span>}
+                  {rec.status === 'self_reported' && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] font-bold rounded-md border border-gray-200 dark:border-gray-600 tracking-wider uppercase"><AlertCircle size={12}/>Self-reported</span>}
                   {rec.status === 'pending_approval' && <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold rounded-md border border-amber-100 dark:border-amber-800/40 tracking-wider uppercase"><Clock size={12}/>Очікує</span>}
                 </div>
                 <h4 className="text-lg font-bold text-gray-900 dark:text-white truncate group-hover:text-[#5C3EFE] transition-colors">{rec.title}</h4>

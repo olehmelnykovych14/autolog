@@ -386,7 +386,9 @@ export default function App() {
     if (!currentUser) return
     try {
       const ts = Date.now()
-      await addDoc(collection(db, 'history'), { ...svc, userId: currentUser.uid, createdAt: ts })
+      // owner-created records are 'self_reported'; only STO-added records get 'verified'
+      const status = userProfile?.accountType === 'sto' ? 'verified' : 'self_reported'
+      await addDoc(collection(db, 'history'), { ...svc, userId: currentUser.uid, createdAt: ts, status })
       if (svc.carId && svc.mileage) {
         const car = carList.find(c => String(c.id) === String(svc.carId))
         if (car && svc.mileage > (car.mileage || 0)) {
