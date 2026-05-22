@@ -467,6 +467,8 @@ export default function App() {
 
   const deleteCar = async (carId) => {
     if (!currentUser || !carId) return
+    
+    // 1. Best-effort history cleanup
     try {
       const histSnap = await getDocs(query(collection(db, 'history'), where('carId', '==', carId)))
       for (let i = 0; i < histSnap.docs.length; i += 450) {
@@ -475,8 +477,16 @@ export default function App() {
         chunk.forEach(d => batch.delete(d.ref))
         await batch.commit()
       }
+    } catch (e) {
+      console.error('Failed to clean up history for car:', carId, e)
+    }
+
+    // 2. Guaranteed car deletion
+    try {
       await deleteDoc(doc(db, 'cars', carId))
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error('Failed to delete car:', carId, e)
+    }
   }
 
   const addService = async svc => {
