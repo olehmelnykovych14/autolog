@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { initializeFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,7 +18,9 @@ let app, auth, analytics, db;
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  db = getFirestore(app);
+  db = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: false,
+  });
   if (typeof window !== "undefined") {
     analytics = getAnalytics(app);
     enableIndexedDbPersistence(db).catch(err => {

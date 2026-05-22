@@ -16,7 +16,7 @@ function getPath(id) {
 export function Sidebar({ col, isAdmin, userProfile, showMobileMenu, setShowMobileMenu, onLogout }) {
   const isDark = useContext(ThemeCtx)
   const location = useLocation()
-  const isSto = userProfile?.accountType === 'sto'
+  const isSto = userProfile?.accountType === 'sto' || userProfile?.role === 'СТО' || userProfile?.role === 'sto'
   const navSource = isSto ? NAV_STO : NAV_OWNER
   const links = navSource.filter(n => n.id !== 'admin' || isAdmin)
 

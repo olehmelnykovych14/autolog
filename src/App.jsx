@@ -13,7 +13,8 @@ class ErrorBoundary extends Component {
     return this.props.children
   }
 }
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom'
+
 import { auth, db } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { doc, getDoc, getDocs, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, onSnapshot } from 'firebase/firestore'
@@ -50,6 +51,11 @@ const STOBookingsView = lazy(() => import('./components/views/STOBookingsView').
 const STOClientsView = lazy(() => import('./components/views/STOClientsView').then(m => ({ default: m.STOClientsView })))
 const STOActsView = lazy(() => import('./components/views/STOActsView').then(m => ({ default: m.STOActsView })))
 const STOSettingsView = lazy(() => import('./components/views/STOSettingsView').then(m => ({ default: m.STOSettingsView })))
+const PlansView = lazy(() => import('./components/views/PlansView').then(m => ({ default: m.PlansView })))
+const FindSTOView = lazy(() => import('./components/views/FindSTOView').then(m => ({ default: m.FindSTOView })))
+const BlogView = lazy(() => import('./components/views/BlogView'))
+const ArticleView = lazy(() => import('./components/views/ArticleView'))
+
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -111,7 +117,67 @@ function AppShell({ children, currentUser, userProfile, isDark, setDark, col, se
   )
 }
 
+// A premium dark glassmorphic layout wrapper for public guest views (pricing, find STO)
+function PublicPageLayout({ children }) {
+  const navigate = useNavigate()
+  return (
+    <div className="min-h-screen bg-[#06061a] text-[#e8eaf6] font-sans relative overflow-hidden flex flex-col">
+      {/* Decorative Blur Blobs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-radial from-[#5c3efe]/15 to-transparent blur-[80px] pointer-events-none z-0" />
+      <div className="absolute bottom-[20%] right-[-10%] w-[400px] h-[400px] rounded-full bg-radial from-[#7c5cff]/10 to-transparent blur-[80px] pointer-events-none z-0" />
+
+      {/* Navigation Header */}
+      <header className="sticky top-0 z-50 bg-[#06061a]/85 backdrop-blur-md border-b border-white/8">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3 no-underline text-white font-bold text-xl">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#5C3EFE] to-[#7C5CFF] flex items-center justify-center shadow-lg shadow-[#5c3efe]/30">
+              <img src="/logo.png" alt="Logo" className="w-5.5 h-5.5 object-contain" />
+            </div>
+            <span>AutoLog</span>
+          </Link>
+          <div className="flex items-center gap-6">
+            <Link to="/blog" className="text-sm font-semibold text-gray-355 hover:text-white transition-colors no-underline">
+              Блог
+            </Link>
+            <Link to="/pricing" className="text-sm font-semibold text-gray-355 hover:text-white transition-colors no-underline">
+              Тарифи
+            </Link>
+            <Link to="/sto-map" className="text-sm font-semibold text-gray-355 hover:text-white transition-colors no-underline">
+              Знайти СТО
+            </Link>
+            <button
+              onClick={() => navigate('/auth')}
+              className="px-4 py-2 text-xs font-black uppercase tracking-widest text-white rounded-xl bg-gradient-to-r from-[#5c3efe] to-[#7c5cff] border-0 cursor-pointer hover:shadow-lg hover:shadow-[#5c3efe]/25 hover:-translate-y-[1px] active:translate-y-0 transition-all"
+            >
+              Увійти
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="relative z-10 flex-1 max-w-6xl mx-auto w-full px-6 py-12">
+        <Suspense fallback={
+          <div className="flex items-center justify-center py-20">
+            <div style={{ width: 36, height: 36, border: '3px solid var(--line-2)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+          </div>
+        }>
+          {children}
+        </Suspense>
+      </main>
+
+      {/* Main Footer */}
+      <footer className="relative z-10 py-8 px-6 text-center border-t border-white/5 bg-[#050512]">
+        <p className="text-xs text-gray-500">
+          © {new Date().getFullYear()} AutoLog. Усі права захищено. Зроблено з любов’ю для водіїв України.
+        </p>
+      </footer>
+    </div>
+  )
+}
+
 export default function App() {
+
   const navigate = useNavigate()
 
   const [currentUser, setCurrentUser] = useState(undefined)
@@ -141,6 +207,19 @@ export default function App() {
     { id: 1, name: 'Олександр (Ви)', email: 'owner@autolog.ua', role: 'owner', status: 'active' }
   ])
   const [showInviteModal, setShowInviteModal] = useState(false)
+
+  // Update plan in Firestore and state
+  const updatePlan = async (planId) => {
+    if (!currentUser) return
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), { plan: planId })
+      setUserProfile(p => ({ ...p, plan: planId }))
+    } catch (e) {
+      console.error(e)
+      throw e
+    }
+  }
+
 
   // --- ROBUST DATA ORCHESTRATION ---
   const [relevantUids, setRelevantUids] = useState([])
@@ -187,9 +266,13 @@ export default function App() {
         if (snap.exists()) {
           const up = snap.data()
           setUserProfile(up)
-          localStorage.setItem('al_profile_type', up.accountType || 'owner')
-          if (up.accountType === 'sto') {
-            navigate('/sto', { replace: true })
+          const isUpSto = up.accountType === 'sto' || up.role === 'СТО' || up.role === 'sto'
+          localStorage.setItem('al_profile_type', isUpSto ? 'sto' : 'owner')
+          if (isUpSto) {
+            const path = window.location.pathname
+            if (!path.startsWith('/sto')) {
+              navigate('/sto', { replace: true })
+            }
           }
         } else {
           // Default profile if the document doesn't exist yet (will update automatically when setDoc resolves)
@@ -200,7 +283,12 @@ export default function App() {
         const cached = localStorage.getItem('al_profile_type')
         const accountType = cached || 'owner'
         setUserProfile({ phone: '', city: '', avatarBase64: '', accountType })
-        if (accountType === 'sto') navigate('/sto', { replace: true })
+        if (accountType === 'sto') {
+          const path = window.location.pathname
+          if (!path.startsWith('/sto')) {
+            navigate('/sto', { replace: true })
+          }
+        }
       })
     })
     return () => {
@@ -227,7 +315,7 @@ export default function App() {
 
   // 3. Real-time Cars & History (owner only) — chunked listeners (Firestore 'in' limit = 10)
   useEffect(() => {
-    if (relevantUids.length === 0 || userProfile?.accountType === 'sto') {
+    if (relevantUids.length === 0 || userProfile?.accountType === 'sto' || userProfile?.role === 'СТО' || userProfile?.role === 'sto') {
       setCarList([])
       setHistoryList([])
       return
@@ -281,7 +369,7 @@ export default function App() {
       setBookingNotifications([])
       return
     }
-    const isSto = userProfile.accountType === 'sto'
+    const isSto = userProfile.accountType === 'sto' || userProfile.role === 'СТО' || userProfile.role === 'sto'
     const q = isSto
       ? query(collection(db, 'bookings'), where('stoId', '==', currentUser.uid))
       : query(collection(db, 'bookings'), where('userId', '==', currentUser.uid))
@@ -366,7 +454,7 @@ export default function App() {
   const addCar = async car => {
     if (!currentUser) return
     try {
-      await addDoc(collection(db, 'cars'), { ...car, userId: currentUser.uid })
+      await addDoc(collection(db, 'cars'), { ...car, userId: currentUser.uid, isPublic: true })
     } catch (e) { console.error(e) }
   }
 
@@ -396,7 +484,7 @@ export default function App() {
     try {
       const ts = Date.now()
       // owner-created records are 'self_reported'; only STO-added records get 'verified'
-      const status = userProfile?.accountType === 'sto' ? 'verified' : 'self_reported'
+      const status = (userProfile?.accountType === 'sto' || userProfile?.role === 'СТО' || userProfile?.role === 'sto') ? 'verified' : 'self_reported'
       await addDoc(collection(db, 'history'), { ...svc, userId: currentUser.uid, createdAt: ts, status })
       if (svc.carId && svc.mileage) {
         const car = carList.find(c => String(c.id) === String(svc.carId))
@@ -486,7 +574,7 @@ export default function App() {
   }
 
   // --- Loading state ---
-  if (!authTimedOut && (currentUser === undefined || (currentUser && userProfile === null))) {
+  if ((currentUser === undefined && !authTimedOut) || (currentUser && userProfile === null)) {
     const wasLoggedIn = localStorage.getItem('al_authed') === '1'
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100%', background: 'var(--bg)' }} className={isDark ? 'dark' : ''}>
@@ -511,22 +599,45 @@ export default function App() {
     const wasLoggedIn = localStorage.getItem('al_authed') === '1'
     const showAuthFlag = localStorage.getItem('al_show_auth') === '1'
     const showAuth = mode === 'auth' || wasLoggedIn || showAuthFlag
+
+    const handleAuthBack = () => {
+      localStorage.removeItem('al_show_auth')
+      localStorage.removeItem('al_authed')
+      setMode('landing')
+      navigate('/')
+    }
+
     return (
-      <Routes>
-        <Route path="/share/:carId" element={<PublicReportViewWrapper />} />
-        <Route path="/auth" element={<AuthScreen isDark={isDark} setDark={setDark} onBack={() => navigate('/')} />} />
-        <Route path="/" element={
-          showAuth
-            ? <AuthScreen isDark={isDark} setDark={setDark} onBack={() => setMode('landing')} />
-            : <LandingView onLogin={() => setMode('auth')} />
-        } />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100%', background: 'var(--bg)' }}>
+          <div style={{ width: 36, height: 36, border: '3px solid var(--line-2)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+        </div>
+      }>
+        <Routes>
+          <Route path="/share/:carId" element={<PublicReportViewWrapper />} />
+          <Route path="/auth" element={<AuthScreen isDark={isDark} setDark={setDark} onBack={handleAuthBack} />} />
+          <Route path="/" element={
+            showAuth
+              ? <AuthScreen isDark={isDark} setDark={setDark} onBack={handleAuthBack} />
+              : <LandingView onLogin={() => setMode('auth')} />
+          } />
+          <Route path="/drivers" element={<LandingView onLogin={() => setMode('auth')} />} />
+          <Route path="/sto" element={<LandingView onLogin={() => setMode('auth')} />} />
+          <Route path="/telegram-bot" element={<LandingView onLogin={() => setMode('auth')} />} />
+          
+          <Route path="/blog" element={<BlogView />} />
+          <Route path="/blog/:slug" element={<ArticleView />} />
+          <Route path="/pricing" element={<PublicPageLayout><PlansView carList={[]} userProfile={null} onUpdatePlan={() => {}} currentUser={null} /></PublicPageLayout>} />
+          <Route path="/sto-map" element={<PublicPageLayout><FindSTOView setTab={() => {}} onBookSTO={() => {}} currentUser={null} /></PublicPageLayout>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     )
   }
 
+
   // --- Shared route accessible while logged in ---
-  const isSto = userProfile?.accountType === 'sto'
+  const isSto = userProfile?.accountType === 'sto' || userProfile?.role === 'СТО' || userProfile?.role === 'sto'
   const defaultRoute = isSto ? '/sto' : '/dashboard'
 
   const shellProps = {
@@ -551,6 +662,22 @@ export default function App() {
       <Routes>
         {/* Public shared report — no shell */}
         <Route path="/share/:carId" element={<PublicReportViewWrapper />} />
+
+        {/* Public blog & pricing accessible to authenticated users */}
+        <Route path="/blog" element={<BlogView />} />
+        <Route path="/blog/:slug" element={<ArticleView />} />
+        <Route path="/pricing" element={
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <PlansView carList={carList} userProfile={userProfile} onUpdatePlan={updatePlan} currentUser={currentUser} />)}
+          </AppShell>
+        } />
+        <Route path="/plans" element={<Navigate to="/pricing" replace />} />
+        <Route path="/sto-map" element={
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <FindSTOView setTab={() => {}} onBookSTO={(sto) => { setPreselectedSto(sto); navigate('/bookings'); }} currentUser={currentUser} />)}
+          </AppShell>
+        } />
+
 
         {/* AI view — full screen, no topbar (shell handles that via isAiRoute) */}
         <Route path="/ai" element={

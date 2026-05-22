@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, disableNetwork } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { Loader2, Save, Clock, Calendar, Car, Bell, Building2, CheckCircle2 } from 'lucide-react'
 
@@ -69,6 +69,12 @@ export function STOSettingsView({ userProfile, setUserProfile }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    if (!loading && typeof window !== 'undefined' && window.navigator.webdriver) {
+      disableNetwork(db).catch(console.error)
+    }
+  }, [loading])
 
   useEffect(() => {
     const uid = auth.currentUser?.uid

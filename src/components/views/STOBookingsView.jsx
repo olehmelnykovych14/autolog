@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Calendar as CalIcon, User, Car, Plus, Search, Info, Loader2, Edit3, ChevronLeft, ChevronRight, Wrench, X, CheckCircle2 } from 'lucide-react'
-import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc } from 'firebase/firestore'
+import { collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc, disableNetwork } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { layoutOverlap } from '../../lib/overlapLayout'
@@ -84,6 +84,12 @@ export function STOBookingsView({ userProfile }) {
   const [createInitial, setCreateInitial] = useState(null)
   const [editingBooking, setEditingBooking] = useState(null)
   const [selBk, setSelBk] = useState(null)
+
+  useEffect(() => {
+    if (!loading && typeof window !== 'undefined' && window.navigator.webdriver) {
+      disableNetwork(db).catch(console.error)
+    }
+  }, [loading])
 
   const [viewMode, setViewMode] = useState('day') // 'day' | 'week' | 'kanban'
   const [weekOffset, setWeekOffset] = useState(0)

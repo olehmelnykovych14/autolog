@@ -43,9 +43,13 @@ export function AuthScreen({ isDark, setDark, onBack }) {
           accountType
         }
         if (accountType === 'sto') {
+          payload.role = 'СТО'
           payload.stoName = stoName
           payload.stoAddress = stoAddress
           payload.stoEdrpou = stoEdrpou
+          payload.companyName = stoName
+          payload.address = stoAddress
+          payload.edrpou = stoEdrpou
         }
         await setDoc(doc(db, 'users', cred.user.uid), payload, { merge: true })
       }

@@ -23,7 +23,7 @@ export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, on
   }
 
   const navigate = useNavigate()
-  const isSto = userProfile?.accountType === 'sto'
+  const isSto = userProfile?.accountType === 'sto' || userProfile?.role === 'СТО' || userProfile?.role === 'sto'
   const totalNotifications = pendingApprovals.length + bookingNotifications.length + incomingInvites.length
 
   return (

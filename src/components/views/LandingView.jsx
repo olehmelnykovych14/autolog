@@ -1,4 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
+import { PAGE_METADATA } from '../../constants/seo'
+
 
 const STYLE = `
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -342,12 +346,50 @@ function IcoChevron() {
 }
 
 export function LandingView({ onLogin }) {
+  const location = useLocation()
+  const meta = PAGE_METADATA[location.pathname] || PAGE_METADATA['/']
+
+  useEffect(() => {
+    if (meta) {
+      document.title = meta.title
+      let descMeta = document.querySelector('meta[name="description"]')
+      if (!descMeta) {
+        descMeta = document.createElement('meta')
+        descMeta.setAttribute('name', 'description')
+        document.head.appendChild(descMeta)
+      }
+      descMeta.setAttribute('content', meta.description)
+    }
+  }, [meta])
+
   const containerRef = useRef(null)
   const blob1Ref = useRef(null)
   const blob2Ref = useRef(null)
   const [scrolled, setScrolled] = useState(false)
   const [tickOffset, setTickOffset] = useState(0)
   const [vinLit, setVinLit] = useState(0)
+
+  // Scroll to active section based on URL path
+  useEffect(() => {
+    const path = location.pathname
+    let targetId = ''
+    if (path === '/drivers') targetId = 'features'
+    else if (path === '/sto') targetId = 'sto'
+    else if (path === '/telegram-bot') targetId = 'telegram-bot'
+    
+    if (targetId) {
+      setTimeout(() => {
+        const el = document.getElementById(targetId)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 150)
+    } else if (path === '/') {
+      const el = containerRef.current
+      if (el) el.scrollTop = 0
+    }
+  }, [location.pathname])
+
 
   // scroll nav
   useEffect(() => {
@@ -402,6 +444,36 @@ export function LandingView({ onLogin }) {
   return (
     <div ref={containerRef} className="al-landing" style={{ height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
       <style>{STYLE}</style>
+      <Helmet>
+        <title>{meta.title}</title>
+        <meta name="description" content={meta.description} />
+        <link rel="canonical" href={meta.canonical} />
+        <meta property="og:title" content={meta.title} />
+        <meta property="og:description" content={meta.description} />
+        <meta property="og:url" content={meta.canonical} />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://www.autolog.com.ua/logo.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://www.autolog.com.ua/logo.png" />
+        <script type="application/ld+json">
+          {`
+            {
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "name": "AutoLog",
+              "url": "https://www.autolog.com.ua",
+              "logo": "https://www.autolog.com.ua/logo.png",
+              "description": "Веди облік сервісів, витрат і пробігу свого авто безкоштовно. Без App Store, працює з браузера.",
+              "sameAs": [
+                "https://t.me/autologGarage_bot"
+              ]
+            }
+          `}
+        </script>
+      </Helmet>
+
       <div className="al-noise" />
       <div className="al-blob al-blob-1" ref={blob1Ref} />
       <div className="al-blob al-blob-2" ref={blob2Ref} />
@@ -417,9 +489,14 @@ export function LandingView({ onLogin }) {
             AutoLog
           </div>
           <div className="al-nav-links">
-            <button className="al-nav-link">Функції</button>
-            <button className="al-nav-link">Як це працює</button>
+            <Link to="/drivers" className="al-nav-link">Для водіїв</Link>
+            <Link to="/sto" className="al-nav-link">Для СТО</Link>
+            <Link to="/telegram-bot" className="al-nav-link">Telegram-бот</Link>
+            <Link to="/pricing" className="al-nav-link">Тарифи</Link>
+            <Link to="/sto-map" className="al-nav-link">Знайти СТО</Link>
+            <Link to="/blog" className="al-nav-link">Блог</Link>
           </div>
+
           <div className="al-nav-right">
             <button className="al-btn-ghost" onClick={onLogin}>Увійти</button>
             <button className="al-btn-primary" onClick={onLogin}>
@@ -461,8 +538,8 @@ export function LandingView({ onLogin }) {
             Новий сервіс для авто власників
           </div>
           <h1 className="al-hero-title">
-            Весь сервіс вашого авто<br />
-            <span className="grad">в одному місці</span>
+            Сервісна книжка <br />
+            <span className="grad">для твого автомобіля</span>
           </h1>
           <p className="al-hero-sub">
             Додайте авто, фіксуйте кожне ТО і ремонт, відстежуйте <strong>витрати та пробіг</strong> — і завжди знайдіть, що відбувається з вашим автомобілем.
@@ -723,7 +800,93 @@ export function LandingView({ onLogin }) {
 
       <div className="al-grad-line" style={{ position: 'relative', zIndex: 1 }} />
 
+      {/* TELEGRAM BOT */}
+      <section className="al-telegram-bot" id="telegram-bot" style={{ position: 'relative', zIndex: 1, padding: '120px 0' }}>
+        <div className="al-con">
+          <div className="al-sto-grid">
+            <div className="al-reveal">
+              <div className="al-eyebrow">Мобільність</div>
+              <h2 className="al-h2">Telegram-бот для швидкого обліку витрат авто</h2>
+              <p className="al-section-p" style={{ marginBottom: '40px' }}>
+                Вносьте витрати на паливо, мийку чи ТО прямо через месенджер. Бот миттєво синхронізує дані з вашим кабінетом AutoLog. Спробуйте зараз!
+              </p>
+              
+              <div className="al-sto-features">
+                {[
+                  { title: '🎙️ Голосовий запис', text: 'Просто скажіть: "Заміна масла 2500 гривень на 125 тисячах". Бот сам розпізнає та внесе дані.' },
+                  { title: '⚡ Миттєва синхронізація', text: 'Усі записи відразу з’являються у вашому веб-кабінеті та впливають на аналітику.' },
+                  { title: '📸 Фотозвіти чеків', text: 'Просто надішліть боту фото чека чи квитанції, і вони будуть додані до сервісного запису.' },
+                  { title: '🔔 Розумні нагадування', text: 'Бот завчасно повідомить вас у Telegram про наближення дати ТО чи необхідність заміни масла.' },
+                ].map((item, idx) => (
+                  <div key={idx} className="al-sto-feat">
+                    <div className="al-sto-fi" style={{ background: 'rgba(92,62,254,0.12)', color: '#7C5CFF' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                    </div>
+                    <div>
+                      <h4 style={{ color: '#fff', fontSize: '15px', fontWeight: '700' }}>{item.title}</h4>
+                      <p style={{ color: 'var(--text-2)', fontSize: '13px', lineHeight: '1.5' }}>{item.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div style={{ marginTop: '30px' }}>
+                <a
+                  href="https://t.me/autologGarage_bot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="al-btn-lg primary"
+                  style={{ textDecoration: 'none' }}
+                >
+                  Запустити бот @autologGarage_bot
+                </a>
+              </div>
+            </div>
+            
+            <div className="al-reveal d2">
+              <div className="al-mockup" style={{ padding: '24px', background: '#0e0e27', borderColor: 'rgba(255,255,255,0.06)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '16px', marginBottom: '16px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #0088cc, #00a8ff)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 'bold' }}>
+                    🤖
+                  </div>
+                  <div>
+                    <h4 style={{ color: '#fff', margin: 0, fontSize: '15px', fontWeight: 'bold' }}>AutoLog Garage</h4>
+                    <span style={{ fontSize: '12px', color: '#0088cc' }}>bot · online</span>
+                  </div>
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: '260px', justifyContent: 'flex-end' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-end', maxWidth: '80%' }}>
+                    <div style={{ background: '#5C3EFE', color: '#fff', padding: '12px 16px', borderRadius: '18px 18px 2px 18px', fontSize: '13px' }}>
+                      🎤 <em>Голосове повідомлення: "Заміна масла 2500 гривень на 125 тисячах пробігу"</em>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-start', maxWidth: '80%' }}>
+                    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e8eaf6', padding: '12px 16px', borderRadius: '18px 18px 18px 2px', fontSize: '13px' }}>
+                      <p style={{ fontWeight: 'bold', color: '#10B981', marginBottom: '6px' }}>✅ Додано новий сервісний запис!</p>
+                      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <li>🚙 <b>Автомобіль:</b> Acura ILX</li>
+                        <li>🔧 <b>Категорія:</b> ТО (Заміна масла)</li>
+                        <li>🛣️ <b>Пробіг:</b> 125 000 км</li>
+                        <li>💰 <b>Вартість:</b> 2 500 ₴</li>
+                      </ul>
+                      <p style={{ fontSize: '11px', color: 'var(--text-2)', opacity: 0.5, marginTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '6px' }}>
+                        Дані успішно синхронізовано з хмарою AutoLog.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="al-grad-line" style={{ position: 'relative', zIndex: 1 }} />
+
       {/* TESTIMONIALS */}
+
       <section className="al-testi" style={{ position: 'relative', zIndex: 1 }}>
         <div className="al-con">
           <div style={{ textAlign: 'center' }} className="al-reveal">
@@ -778,23 +941,25 @@ export function LandingView({ onLogin }) {
               </div>
               <p className="al-footer-desc">Розумний автожурнал для власників та СТО. Зберігайте, верифікуйте, діліться.</p>
             </div>
-            <div className="al-footer-col">
+             <div className="al-footer-col">
               <h5>Продукт</h5>
-              <a>Функції</a>
-              <a>AI Механік</a>
-              <a>Для СТО</a>
+              <Link to="/drivers">Для водіїв</Link>
+              <Link to="/pricing">Тарифи</Link>
+              <Link to="/sto-map">Знайти СТО</Link>
+              <Link to="/telegram-bot">Telegram-бот</Link>
             </div>
             <div className="al-footer-col">
               <h5>Компанія</h5>
-              <a>Про нас</a>
-              <a>Блог</a>
-              <a>Контакти</a>
+              <Link to="/blog">Блог</Link>
+              <Link to="/sto">Для СТО</Link>
+              <a onClick={onLogin} style={{ cursor: 'pointer' }}>Увійти</a>
             </div>
             <div className="al-footer-col">
               <h5>Правовий</h5>
               <a>Умови використання</a>
               <a>Конфіденційність</a>
             </div>
+
           </div>
           <div className="al-footer-bottom">
             <p>© 2026 AutoLog. Зроблено в Україні 🇺🇦</p>

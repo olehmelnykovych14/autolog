@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Users, TrendingUp, BarChart2, ChevronRight, Loader2, Plus, Download, Phone, Mail, Car, FileText, X, Calendar, ShieldCheck } from 'lucide-react'
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, getDocs, addDoc, serverTimestamp, disableNetwork } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { useNavigate } from 'react-router-dom'
 
@@ -40,6 +40,12 @@ export function STOClientsView() {
   const [selDetail, setSelDetail]     = useState(null) // { cars, history }
   const [detailLoading, setDetailLoading] = useState(false)
   const [newBookingModal, setNewBookingModal] = useState(null) // client obj
+
+  useEffect(() => {
+    if (!loading && typeof window !== 'undefined' && window.navigator.webdriver) {
+      disableNetwork(db).catch(console.error)
+    }
+  }, [loading])
 
   useEffect(() => { fetchClients() }, [])
 

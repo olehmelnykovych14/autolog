@@ -1,14 +1,19 @@
-import React, { useState, useContext } from 'react'
+import React, { useState, useContext, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Check, Info, LayoutDashboard, Send, Wrench, ShieldCheck, Zap } from 'lucide-react'
+import { Helmet } from 'react-helmet-async'
 import { C, PLANS } from '../../constants'
 import { ThemeCtx } from '../../context/ThemeContext'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
+import { PAGE_METADATA } from '../../constants/seo'
 
-export function PlansView({ carList, userProfile, onUpdatePlan, currentUser }) {
+export function PlansView({ carList = [], userProfile, onUpdatePlan, currentUser }) {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const currentPlan = userProfile?.plan || 'Free'
+
 
 
   const handleUpgrade = async (plan) => {
@@ -50,8 +55,14 @@ export function PlansView({ carList, userProfile, onUpdatePlan, currentUser }) {
   }
 
   const handleSelect = async (planId) => {
+    if (!currentUser) {
+      alert('Будь ласка, увійдіть або зареєструйтеся, щоб обрати тарифний план.')
+      navigate('/auth')
+      return
+    }
     if (planId === currentPlan) return
     const plan = PLANS.find(p => p.id === planId)
+
     if (plan && plan.price > 0) {
       return handleUpgrade(plan)
     }
@@ -70,9 +81,32 @@ export function PlansView({ carList, userProfile, onUpdatePlan, currentUser }) {
   }
 
   const activePlanData = PLANS.find(p => p.id === currentPlan) || PLANS[0]
+  const meta = PAGE_METADATA['/pricing']
+
+  useEffect(() => {
+    if (meta) {
+      document.title = meta.title
+      let descMeta = document.querySelector('meta[name="description"]')
+      if (!descMeta) {
+        descMeta = document.createElement('meta')
+        descMeta.setAttribute('name', 'description')
+        document.head.appendChild(descMeta)
+      }
+      descMeta.setAttribute('content', meta.description)
+    }
+  }, [meta])
 
   return (
     <div className="flex flex-col gap-6 relative">
+      <Helmet>
+        <title>{meta.title}</title>
+        <meta name="description" content={meta.description} />
+        <link rel="canonical" href={meta.canonical} />
+        <meta property="og:title" content={meta.title} />
+        <meta property="og:description" content={meta.description} />
+        <meta property="og:url" content={meta.canonical} />
+        <meta property="og:type" content="website" />
+      </Helmet>
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Тарифи</h1>
       {showSuccess && (
         <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-2xl shadow-xl z-50 flex items-center gap-2 animate-bounce">
@@ -141,11 +175,18 @@ export function PlansView({ carList, userProfile, onUpdatePlan, currentUser }) {
 }
 
 export function STOPricingView({ currentUser, userProfile, setUserProfile, setTab }) {
+  const navigate = useNavigate()
   const isDark = useContext(ThemeCtx)
   const [loading, setLoading] = useState(null)
 
   const handlePurchase = async (planType) => {
+    if (!currentUser) {
+      alert('Будь ласка, увійдіть або зареєструйтеся, щоб обрати тарифний план.')
+      navigate('/auth')
+      return
+    }
     setLoading(planType)
+
     await new Promise(r => setTimeout(r, 1500))
     if (currentUser) {
       try {

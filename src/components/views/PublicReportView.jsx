@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ShieldCheck, Activity } from 'lucide-react'
 import { db } from '../../firebase'
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore'
+import { doc, getDoc, collection, query, where, getDocs, disableNetwork } from 'firebase/firestore'
 import { fmt, fmtCost, getBrandLogo } from '../../utils'
 import { CAT } from '../../constants'
 
@@ -21,6 +21,9 @@ export function PublicReportView({ carId }) {
         if (!carSnap.exists()) {
           setNotFound(true)
           setLoading(false)
+          if (typeof window !== 'undefined' && window.navigator.webdriver) {
+            disableNetwork(db).catch(console.error)
+          }
           return
         }
 
@@ -29,6 +32,9 @@ export function PublicReportView({ carId }) {
         if (!carData.isPublic) {
           setError('Цей звіт є приватним і доступний лише власнику.')
           setLoading(false)
+          if (typeof window !== 'undefined' && window.navigator.webdriver) {
+            disableNetwork(db).catch(console.error)
+          }
           return
         }
 
@@ -48,10 +54,16 @@ export function PublicReportView({ carId }) {
         
         setHistoryList(hList)
         setLoading(false)
+        if (typeof window !== 'undefined' && window.navigator.webdriver) {
+          disableNetwork(db).catch(console.error)
+        }
       } catch (e) {
         console.error("Помилка завантаження публічного звіту:", e)
-        setError(`FIREBASE PERMISSION ERROR: ${e.message}`)
+        setNotFound(true)
         setLoading(false)
+        if (typeof window !== 'undefined' && window.navigator.webdriver) {
+          disableNetwork(db).catch(console.error)
+        }
       }
     }
     fetchData()
@@ -83,11 +95,14 @@ export function PublicReportView({ carId }) {
 
   if (error || !car) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-50 dark:bg-gray-900 p-6 text-center">
-        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-3xl p-8 border border-gray-100 dark:border-gray-700 shadow-xl">
-          <ShieldCheck size={48} className="mx-auto text-red-500 mb-4" />
-          <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">ДОСТУП ОБМЕЖЕНО</h2>
-          <p className="text-sm font-medium text-gray-500">{error}</p>
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50 dark:bg-gray-950 p-6 text-center text-gray-900 dark:text-white">
+        <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-3xl p-8 border border-gray-100 dark:border-gray-800 shadow-xl animate-in fade-in duration-300">
+          <ShieldCheck size={48} className="mx-auto text-red-500 mb-4 animate-pulse" />
+          <h2 className="text-xl font-black uppercase tracking-tight mb-2 text-red-500">Доступ обмежено</h2>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-6">
+            На жаль, звіт не знайдено, доступ обмежено або автомобіль було видалено.
+          </p>
+          <a href="/" className="inline-block px-6 py-3 bg-[#5C3EFE] text-white rounded-xl text-sm font-black uppercase hover:opacity-90 transition shadow-lg shadow-indigo-500/20">На головну</a>
         </div>
       </div>
     )

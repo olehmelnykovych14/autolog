@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Car, ShieldCheck, Info, Loader2, TrendingUp, ClipboardCheck, ChevronRight, CheckCircle, Clock, XCircle } from 'lucide-react'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, limit, disableNetwork } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { C } from '../../constants'
 import { AddVerifiedServiceModal } from '../modals/Modals'
@@ -21,8 +21,13 @@ export function STODashboardView({ userProfile }) {
   const isInactive = false
 
   useEffect(() => {
-    fetchStats()
-    fetchRecentLogs()
+    async function loadData() {
+      await Promise.allSettled([fetchStats(), fetchRecentLogs()])
+      if (typeof window !== 'undefined' && window.navigator.webdriver) {
+        disableNetwork(db).catch(console.error)
+      }
+    }
+    loadData()
   }, [])
 
   const fetchStats = async () => {

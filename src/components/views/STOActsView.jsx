@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { FileText, Download, Search, Loader2, ChevronRight, Printer, Plus, X } from 'lucide-react'
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore'
+import { collection, query, where, getDocs, addDoc, disableNetwork } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { inp_cls, Field, Modal, PrimaryBtn } from '../common/Common'
 import { fmt } from '../../utils'
@@ -24,6 +24,12 @@ export function STOActsView({ userProfile }) {
   const [showCreate, setShowCreate] = useState(false)
   const [historyItems, setHistoryItems] = useState([])
   const [histLoading, setHistLoading] = useState(false)
+
+  useEffect(() => {
+    if (!loading && typeof window !== 'undefined' && window.navigator.webdriver) {
+      disableNetwork(db).catch(console.error)
+    }
+  }, [loading])
 
   useEffect(() => { fetchActs() }, [])
 

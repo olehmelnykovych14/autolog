@@ -1,19 +1,25 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Search, MapPin, Phone, Star, Wrench, Calendar, ChevronRight, Loader2 } from 'lucide-react'
+import { Helmet } from 'react-helmet-async'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { inp_cls } from '../common/Common'
 import { CAT } from '../../constants'
+import { PAGE_METADATA } from '../../constants/seo'
+
 
 const SERVICES = ['ТО', 'Ремонт', 'Діагностика', 'Шиномонтаж', 'Мийка', 'Тюнінг']
 
-export function FindSTOView({ setTab, onBookSTO }) {
+export function FindSTOView({ setTab, onBookSTO, currentUser }) {
+  const navigate = useNavigate()
   const ic = inp_cls()
   const [stos, setStos] = useState([])
   const [loading, setLoading] = useState(true)
   const [cityFilter, setCityFilter] = useState('')
   const [serviceFilter, setServiceFilter] = useState('')
   const [search, setSearch] = useState('')
+
 
   useEffect(() => {
     const fetch = async () => {
@@ -43,8 +49,32 @@ export function FindSTOView({ setTab, onBookSTO }) {
     return matchCity && matchSearch && matchService
   })
 
+  const meta = PAGE_METADATA['/sto-map']
+
+  useEffect(() => {
+    if (meta) {
+      document.title = meta.title
+      let descMeta = document.querySelector('meta[name="description"]')
+      if (!descMeta) {
+        descMeta = document.createElement('meta')
+        descMeta.setAttribute('name', 'description')
+        document.head.appendChild(descMeta)
+      }
+      descMeta.setAttribute('content', meta.description)
+    }
+  }, [meta])
+
   return (
     <div className="flex flex-col gap-6">
+      <Helmet>
+        <title>{meta.title}</title>
+        <meta name="description" content={meta.description} />
+        <link rel="canonical" href={meta.canonical} />
+        <meta property="og:title" content={meta.title} />
+        <meta property="og:description" content={meta.description} />
+        <meta property="og:url" content={meta.canonical} />
+        <meta property="og:type" content="website" />
+      </Helmet>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-black tracking-tight" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>Знайти СТО</h1>
@@ -99,7 +129,7 @@ export function FindSTOView({ setTab, onBookSTO }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(sto => (
-            <STOCard key={sto.id} sto={sto} onBook={() => onBookSTO?.(sto)} setTab={setTab} />
+            <STOCard key={sto.id} sto={sto} onBook={() => onBookSTO?.(sto)} setTab={setTab} currentUser={currentUser} navigate={navigate} />
           ))}
         </div>
       )}
@@ -107,8 +137,19 @@ export function FindSTOView({ setTab, onBookSTO }) {
   )
 }
 
-function STOCard({ sto, onBook }) {
+
+function STOCard({ sto, onBook, currentUser, navigate }) {
+  const handleBookClick = () => {
+    if (!currentUser) {
+      alert('Будь ласка, увійдіть або зареєструйтеся, щоб записатися на СТО.')
+      navigate('/auth')
+      return
+    }
+    onBook()
+  }
+
   return (
+
     <div className="al-card p-5 flex flex-col gap-4 al-card-hover cursor-default">
       <div className="flex items-start gap-3">
         <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black flex-none"
@@ -151,12 +192,13 @@ function STOCard({ sto, onBook }) {
       )}
 
       <button
-        onClick={onBook}
+        onClick={handleBookClick}
         className="mt-auto w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95"
         style={{ background: 'var(--brand)', color: '#fff' }}
       >
         <Calendar size={15} /> Записатись
       </button>
+
     </div>
   )
 }

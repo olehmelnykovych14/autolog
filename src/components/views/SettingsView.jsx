@@ -249,7 +249,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
         await updateProfile(currentUser, { displayName: name })
       }
       const up = { ...userProfile, displayName: name, phone, city, avatarBase64: avatar }
-      if (userProfile?.accountType === 'sto') {
+      if (userProfile?.accountType === 'sto' || userProfile?.role === 'СТО' || userProfile?.role === 'sto') {
         up.stoName = stoName
         up.stoAddress = stoAddress
         up.services = stoServices
@@ -327,7 +327,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
             </Field>
           </div>
 
-          {userProfile?.accountType === 'sto' && (
+          {(userProfile?.accountType === 'sto' || userProfile?.role === 'СТО' || userProfile?.role === 'sto') && (
             <div className="space-y-6 pt-6 border-t border-gray-50 dark:border-gray-700/50">
               <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-4 text-[#5C3EFE]">Дані СТО</h3>
               <Field label="Назва СТО">
@@ -390,7 +390,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
                 onClick={() => setConfirmDlg({
                   title: 'Відключити Telegram?',
                   message: 'Ви більше не будете отримувати сповіщення та нагадування через бот.',
-                  confirmLabel: 'Відключити',
+                  confirmLabel: 'ВІДКЛЮЧИТИ',
                   onConfirm: async () => {
                     try {
                       await updateDoc(doc(db, 'users', currentUser.uid), { telegramId: deleteField(), tgLinkingToken: deleteField() })
@@ -400,7 +400,7 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
                 })}
                 className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white dark:bg-gray-800 text-red-500 border border-red-100 dark:border-red-900/40 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
               >
-                Відключити
+                ВІДКЛЮЧИТИ TELEGRAM
               </button>
             </div>
           </div>
@@ -432,6 +432,22 @@ export function SettingsView({ currentUser, userProfile, setUserProfile }) {
                 </div>
               </div>
             )}
+            <button
+              onClick={() => setConfirmDlg({
+                title: 'Відключити Telegram?',
+                message: 'Ви більше не будете отримувати сповіщення та нагадування через бот.',
+                confirmLabel: 'ВІДКЛЮЧИТИ',
+                onConfirm: async () => {
+                  try {
+                    await updateDoc(doc(db, 'users', currentUser.uid), { telegramId: deleteField(), tgLinkingToken: deleteField() })
+                    setUserProfile({ ...userProfile, telegramId: null, tgLinkingToken: null })
+                  } catch (e) { console.error(e) }
+                }
+              })}
+              className="w-full py-3 rounded-2xl text-xs font-black uppercase tracking-widest bg-gray-50 dark:bg-gray-800/40 hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 border border-gray-100 dark:border-gray-750/30 transition-all flex items-center justify-center gap-2"
+            >
+              ВІДКЛЮЧИТИ TELEGRAM
+            </button>
           </div>
         )}
       </div>
