@@ -7,36 +7,33 @@ const PASSWORD = process.env.TEST_PASSWORD || 'QaBot20260518!'
 export const STO_EMAIL = process.env.STO_EMAIL || 'qa.sto.20260521@autolog.test'
 export const STO_PASSWORD = process.env.STO_PASSWORD || 'QaSto20260521!'
 
-/** Login as STO partner account. Handles already-authenticated states gracefully. */
+/**
+ * Logout any currently-authenticated user. Safe to call even if not logged in.
+ * @param {import('@playwright/test').Page} page
+ */
+async function ensureLoggedOut(page) {
+  const logoutBtn = page.getByRole('button', { name: /Вийти/i })
+  if (await logoutBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await logoutBtn.click()
+    await page.waitForTimeout(1500)
+    await page.goto('/')
+    await page.waitForTimeout(1000)
+  }
+}
+
+/**
+ * Login as STO partner account.
+ * Always logs out any existing user first, then logs in as STO.
+ * @param {import('@playwright/test').Page} page
+ */
 export async function loginSto(page) {
   await page.goto('/')
-  // Short wait to let auth state restore from IndexedDB
   await page.waitForTimeout(1500)
 
-  // Check if the STO user is already logged in (STO pages have /sto routes)
-  const currentUrl = page.url()
-  const stoSidebarLink = page.getByRole('link', { name: /STO|Записи|Клієнти/ }).first()
-  const isStoLoggedIn = await stoSidebarLink.isVisible({ timeout: 1500 }).catch(() => false)
-  if (isStoLoggedIn) {
-    await page.goto('/sto')
-    await page.waitForLoadState('domcontentloaded')
-    return
-  }
+  // Always log out current user (owner or stale STO session) before re-login
+  await ensureLoggedOut(page)
 
-  // If any user is logged in (owner), we need to log out first
-  const loggedInNav = await page.getByRole('link', { name: 'Дашборд' }).isVisible({ timeout: 1500 }).catch(() => false)
-  if (loggedInNav) {
-    // Click logout button in the sidebar
-    const logoutBtn = page.getByRole('button', { name: /Вийти/i })
-    if (await logoutBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await logoutBtn.click()
-      await page.waitForTimeout(1000)
-      await page.goto('/')
-      await page.waitForTimeout(1500)
-    }
-  }
-
-  // Now log in as STO
+  // Login as STO
   const loginBtn = page.getByRole('button', { name: 'Увійти', exact: true })
   await expect(loginBtn).toBeVisible({ timeout: 8_000 })
   await loginBtn.click()
@@ -48,27 +45,34 @@ export async function loginSto(page) {
 }
 
 /**
- * Programmatic Firebase login.
- * Firebase auth state lives in IndexedDB which Playwright's storageState cannot capture,
- * so each authenticated test must log in via the UI.
- *
- * This function is idempotent: if already authenticated (sidebar link visible),
- * it skips the login flow and navigates directly to /dashboard.
+ * Programmatic Firebase login as test owner account.
+ * Idempotent: skips login UI if already authenticated as the correct user.
+ * If wrong user (e.g. STO) is logged in, logs them out first.
+ * @param {import('@playwright/test').Page} page
  */
 export async function login(page) {
   await page.goto('/')
-  // Short wait to let auth state restore from IndexedDB
   await page.waitForTimeout(1500)
 
-  // If already authenticated, the sidebar shows a "Дашборд" link — skip login
+  // Check if already logged in
   const alreadyLoggedIn = await page.getByRole('link', { name: 'Дашборд' }).isVisible({ timeout: 2000 }).catch(() => false)
   if (alreadyLoggedIn) {
-    await page.goto('/dashboard')
-    await expect(page.getByRole('link', { name: 'Дашборд' })).toBeVisible({ timeout: 10_000 })
-    return
+    // Verify it's NOT the STO account by checking body text for STO email
+    const bodyText = await page.locator('body').textContent().catch(() => '')
+    const isStoUser = bodyText.includes(STO_EMAIL)
+    if (!isStoUser) {
+      // Correct owner user is already logged in — just go to dashboard
+      await page.goto('/dashboard')
+      await expect(page.getByRole('link', { name: 'Дашборд' })).toBeVisible({ timeout: 10_000 })
+      return
+    }
+    // STO user is logged in — log them out first
+    await ensureLoggedOut(page)
+    await page.goto('/')
+    await page.waitForTimeout(1000)
   }
 
-  // Not authenticated — go through login UI
+  // Not authenticated (or just logged out) — go through login UI
   const loginBtn = page.getByRole('button', { name: 'Увійти', exact: true })
   await expect(loginBtn).toBeVisible({ timeout: 8_000 })
   await loginBtn.click()
@@ -81,6 +85,8 @@ export async function login(page) {
 
 /**
  * Login + navigate to a specific route.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} route
  */
 export async function loginAndGo(page, route) {
   await login(page)
