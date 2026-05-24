@@ -77,7 +77,7 @@ function AppShell({ children, currentUser, userProfile, isDark, setDark, col, se
         userProfile={userProfile}
         showMobileMenu={showMobileMenu}
         setShowMobileMenu={setShowMobileMenu}
-        onLogout={() => { localStorage.setItem('al_show_auth', '1'); signOut(auth) }}
+        onLogout={() => { signOut(auth) }}
       />
       <div className="flex flex-1 flex-col min-h-0 relative overflow-hidden" style={{ background: 'var(--bg)' }}>
         {!isAiRoute && (
@@ -87,7 +87,7 @@ function AppShell({ children, currentUser, userProfile, isDark, setDark, col, se
             incomingTransfer={incomingTransfer}
             onAcceptTransfer={() => setIncomingTransfer(null)}
             onRejectTransfer={() => setIncomingTransfer(null)}
-            onLogout={() => { localStorage.setItem('al_show_auth', '1'); signOut(auth) }}
+            onLogout={() => { signOut(auth) }}
             currentUser={currentUser}
             userProfile={userProfile}
             col={col}
@@ -146,7 +146,7 @@ function PublicPageLayout({ children }) {
               Знайти СТО
             </Link>
             <button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/login')}
               className="px-4 py-2 text-xs font-black uppercase tracking-widest text-white rounded-xl bg-gradient-to-r from-[#5c3efe] to-[#7c5cff] border-0 cursor-pointer hover:shadow-lg hover:shadow-[#5c3efe]/25 hover:-translate-y-[1px] active:translate-y-0 transition-all"
             >
               Увійти

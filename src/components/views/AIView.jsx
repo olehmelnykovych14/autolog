@@ -486,6 +486,7 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
               className="w-full pl-5 pr-14 py-4 rounded-2xl text-sm focus:outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 focus:border-[#5C3EFE] focus:ring-4 focus:ring-[#5C3EFE]/10"
             />
             <button
+              data-testid="ai-send-btn"
               onClick={() => send()}
               disabled={(!input.trim() && !media) || typing}
               className="absolute right-2 w-10 h-10 rounded-xl flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all disabled:opacity-30 shadow-lg"

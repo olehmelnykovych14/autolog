@@ -114,7 +114,7 @@ export default function ArticleView() {
               Блог
             </Link>
             <button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/login')}
               className="px-4 py-2 text-xs font-black uppercase tracking-widest text-white rounded-xl bg-gradient-to-r from-[#5c3efe] to-[#7c5cff] border-0 cursor-pointer hover:shadow-lg hover:shadow-[#5c3efe]/25 hover:-translate-y-[1px] active:translate-y-0 transition-all"
             >
               Увійти
@@ -231,7 +231,7 @@ export default function ArticleView() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/login')}
               className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white rounded-xl bg-gradient-to-r from-[#5c3efe] to-[#7c5cff] border-0 cursor-pointer shadow-md shadow-[#5c3efe]/25 hover:shadow-lg hover:shadow-[#5c3efe]/35 active:-translate-y-0 hover:-translate-y-[1px] transition-all whitespace-nowrap"
             >
               Спробувати AutoLog →

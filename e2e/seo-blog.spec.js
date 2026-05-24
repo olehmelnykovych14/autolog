@@ -102,7 +102,7 @@ test.describe('AutoLog SEO & Premium Blog — Public E2E Flow', () => {
     });
 
     await page.locator('button:has-text("Обрати")').first().click();
-    await page.waitForURL(/\/auth$/);
+    await page.waitForURL(/\/login$/);
   });
 
   test('sto map guest fallback logic', async ({ page }) => {

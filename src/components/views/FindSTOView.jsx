@@ -142,7 +142,7 @@ function STOCard({ sto, onBook, currentUser, navigate }) {
   const handleBookClick = () => {
     if (!currentUser) {
       alert('Будь ласка, увійдіть або зареєструйтеся, щоб записатися на СТО.')
-      navigate('/auth')
+      navigate('/login')
       return
     }
     onBook()

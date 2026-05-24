@@ -57,7 +57,7 @@ export function PlansView({ carList = [], userProfile, onUpdatePlan, currentUser
   const handleSelect = async (planId) => {
     if (!currentUser) {
       alert('Будь ласка, увійдіть або зареєструйтеся, щоб обрати тарифний план.')
-      navigate('/auth')
+      navigate('/login')
       return
     }
     if (planId === currentPlan) return
@@ -182,7 +182,7 @@ export function STOPricingView({ currentUser, userProfile, setUserProfile, setTa
   const handlePurchase = async (planType) => {
     if (!currentUser) {
       alert('Будь ласка, увійдіть або зареєструйтеся, щоб обрати тарифний план.')
-      navigate('/auth')
+      navigate('/login')
       return
     }
     setLoading(planType)

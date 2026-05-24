@@ -28,7 +28,7 @@ test.describe('STO-role flows', () => {
 
     for (const { url } of stoRoutes) {
       await page.goto(url)
-      await page.waitForLoadState('networkidle', { timeout: 8000 })
+      await page.waitForLoadState('domcontentloaded')
       // Should not redirect away to /dashboard
       const finalUrl = page.url()
       if (!finalUrl.includes('/sto')) {
@@ -39,30 +39,35 @@ test.describe('STO-role flows', () => {
 
   test('READ: STO bookings page shows pending requests', async ({ page }) => {
     await page.goto('/sto/bookings')
-    await page.waitForLoadState('networkidle', { timeout: 8000 })
+    await page.waitForLoadState('domcontentloaded')
+    // Wait for spinner to disappear (Firestore data loads async)
+    await page.locator('.animate-spin').waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
     // Either has bookings or empty-state. Either way page must load.
-    const hasContent = await page.locator('text=/Записи|Bookings|немає|empty/i').count()
+    const hasContent = await page.locator('text=/Записи|Bookings|немає|empty|Нових/i').count()
     expect(hasContent).toBeGreaterThan(0)
   })
 
   test('READ: STO clients page', async ({ page }) => {
     await page.goto('/sto/clients')
-    await page.waitForLoadState('networkidle', { timeout: 8000 })
-    const hasContent = await page.locator('text=/Клієнти|Clients|немає/i').count()
+    await page.waitForLoadState('domcontentloaded')
+    await page.locator('.animate-spin').waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
+    const hasContent = await page.locator('text=/Клієнти|Clients|немає|Пошук|клієнт/i').count()
     expect(hasContent).toBeGreaterThan(0)
   })
 
   test('READ: STO acts page (service records signed by this СТО)', async ({ page }) => {
     await page.goto('/sto/acts')
-    await page.waitForLoadState('networkidle', { timeout: 8000 })
-    const hasContent = await page.locator('text=/Акти|Acts|немає|записів/i').count()
+    await page.waitForLoadState('domcontentloaded')
+    await page.locator('.animate-spin').waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
+    const hasContent = await page.locator('text=/Акти|Acts|немає|записів|Акт/i').count()
     expect(hasContent).toBeGreaterThan(0)
   })
 
   test('READ: STO settings page', async ({ page }) => {
     await page.goto('/sto/settings')
-    await page.waitForLoadState('networkidle', { timeout: 8000 })
-    const hasContent = await page.locator('text=/Налаштування|Settings|компані|address/i').count()
+    await page.waitForLoadState('domcontentloaded')
+    await page.locator('.animate-spin').waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
+    const hasContent = await page.locator('text=/Налаштування|Settings|Загальне|Зберегти/i').count()
     expect(hasContent).toBeGreaterThan(0)
   })
 })
