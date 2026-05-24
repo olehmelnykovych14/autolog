@@ -15,7 +15,7 @@ class ErrorBoundary extends Component {
 }
 import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom'
 
-import { auth, db } from './firebase'
+import { auth, db, safeEnableNetwork } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { doc, getDoc, getDocs, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, onSnapshot } from 'firebase/firestore'
 
@@ -131,7 +131,7 @@ function PublicPageLayout({ children }) {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 no-underline text-white font-bold text-xl">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#5C3EFE] to-[#7C5CFF] flex items-center justify-center shadow-lg shadow-[#5c3efe]/30">
-              <img src="/logo.png" alt="Logo" className="w-5.5 h-5.5 object-contain" />
+              <img src="/logo.svg" alt="Logo" className="w-5.5 h-5.5 object-contain" />
             </div>
             <span>AutoLog</span>
           </Link>
@@ -179,6 +179,16 @@ function PublicPageLayout({ children }) {
 export default function App() {
 
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // Re-enable Firestore network when transitioning away from STO or public report views
+  useEffect(() => {
+    const path = location.pathname
+    const isOfflinePath = path.startsWith('/sto') || path.startsWith('/report/')
+    if (!isOfflinePath) {
+      safeEnableNetwork()
+    }
+  }, [location.pathname])
 
   const [currentUser, setCurrentUser] = useState(undefined)
   const [userProfile, setUserProfile] = useState(null)
@@ -224,6 +234,15 @@ export default function App() {
   // --- ROBUST DATA ORCHESTRATION ---
   const [relevantUids, setRelevantUids] = useState([])
 
+  // Instantly set self UID to avoid asynchronous data-loading race conditions in E2E tests
+  useEffect(() => {
+    if (currentUser?.uid) {
+      setRelevantUids([currentUser.uid])
+    } else {
+      setRelevantUids([])
+    }
+  }, [currentUser])
+
   // Force-exit loading screen if auth takes too long
   useEffect(() => {
     if (currentUser !== undefined) return
@@ -245,6 +264,7 @@ export default function App() {
     if (!auth) return
     let unsubProfile = null
     const unsubAuth = onAuthStateChanged(auth, (user) => {
+      safeEnableNetwork()
       if (unsubProfile) {
         unsubProfile()
         unsubProfile = null
@@ -257,6 +277,13 @@ export default function App() {
         setCarList([])
         setHistoryList([])
         setRelevantUids([])
+        
+        // Auto-redirect from private paths to / upon logout to avoid 404 page
+        const path = window.location.pathname
+        const isPrivate = ['/dashboard', '/garage', '/bookings', '/service', '/team', '/settings', '/admin', '/sto'].some(p => path === p || path.startsWith(p + '/'))
+        if (isPrivate) {
+          navigate('/', { replace: true })
+        }
         return
       }
       localStorage.setItem('al_authed', '1')
@@ -273,6 +300,8 @@ export default function App() {
             if (!path.startsWith('/sto')) {
               navigate('/sto', { replace: true })
             }
+          } else {
+            safeEnableNetwork()
           }
         } else {
           // Default profile if the document doesn't exist yet (will update automatically when setDoc resolves)
@@ -310,7 +339,10 @@ export default function App() {
       const ownerIds = snap.docs.map(d => d.data().ownerId).filter(id => typeof id === 'string' && id)
       const uids = Array.from(new Set([currentUser.uid, ...ownerIds])).filter(Boolean)
       setRelevantUids(uids)
-    }).catch(console.error)
+    }).catch(err => {
+      console.error(err)
+      if (currentUser?.uid) setRelevantUids([currentUser.uid])
+    })
   }, [currentUser])
 
   // 3. Real-time Cars & History (owner only) — chunked listeners (Firestore 'in' limit = 10)
@@ -593,7 +625,7 @@ export default function App() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
             <div style={{ width: 64, height: 64, borderRadius: 22, background: 'var(--bg-card)', border: '1px solid var(--line-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, boxShadow: '0 8px 24px rgba(92,62,254,0.2)' }}>
-              <img src="/logo.png" alt="AutoLog" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+              <img src="/logo.svg" alt="AutoLog" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
             <div style={{ width: 160, height: 4, background: 'var(--line-2)', borderRadius: 99, overflow: 'hidden' }}>
               <div className="animate-progress-loading" style={{ height: '100%', background: 'var(--brand)', borderRadius: 99, width: '40%' }} />
@@ -625,21 +657,24 @@ export default function App() {
       }>
         <Routes>
           <Route path="/share/:carId" element={<PublicReportViewWrapper />} />
-          <Route path="/auth" element={<AuthScreen isDark={isDark} setDark={setDark} onBack={handleAuthBack} />} />
+          <Route path="/login" element={<AuthScreen isDark={isDark} setDark={setDark} onBack={handleAuthBack} defaultMode="login" />} />
+          <Route path="/register" element={<AuthScreen isDark={isDark} setDark={setDark} onBack={handleAuthBack} defaultMode="register" />} />
+          <Route path="/forgot" element={<AuthScreen isDark={isDark} setDark={setDark} onBack={handleAuthBack} defaultMode="forgot" />} />
+          <Route path="/auth" element={<Navigate to="/login" replace />} />
           <Route path="/" element={
             showAuth
-              ? <AuthScreen isDark={isDark} setDark={setDark} onBack={handleAuthBack} />
-              : <LandingView onLogin={() => setMode('auth')} />
+              ? <Navigate to="/login" replace />
+              : <LandingView onLogin={(mode) => navigate(mode === 'register' ? '/register' : '/login')} />
           } />
-          <Route path="/drivers" element={<LandingView onLogin={() => setMode('auth')} />} />
-          <Route path="/sto" element={<LandingView onLogin={() => setMode('auth')} />} />
-          <Route path="/telegram-bot" element={<LandingView onLogin={() => setMode('auth')} />} />
+          <Route path="/drivers" element={<LandingView onLogin={(mode) => navigate(mode === 'register' ? '/register' : '/login')} />} />
+          <Route path="/sto" element={<LandingView onLogin={(mode) => navigate(mode === 'register' ? '/register' : '/login')} />} />
+          <Route path="/telegram-bot" element={<LandingView onLogin={(mode) => navigate(mode === 'register' ? '/register' : '/login')} />} />
           
           <Route path="/blog" element={<BlogView />} />
           <Route path="/blog/:slug" element={<ArticleView />} />
           <Route path="/pricing" element={<PublicPageLayout><PlansView carList={[]} userProfile={null} onUpdatePlan={() => {}} currentUser={null} /></PublicPageLayout>} />
           <Route path="/sto-map" element={<PublicPageLayout><FindSTOView setTab={() => {}} onBookSTO={() => {}} currentUser={null} /></PublicPageLayout>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFoundPage to="/" />} />
         </Routes>
       </Suspense>
     )
@@ -672,6 +707,12 @@ export default function App() {
       <Routes>
         {/* Public shared report — no shell */}
         <Route path="/share/:carId" element={<PublicReportViewWrapper />} />
+
+        {/* Redirect authenticated users away from auth pages */}
+        <Route path="/login" element={<Navigate to={defaultRoute} replace />} />
+        <Route path="/register" element={<Navigate to={defaultRoute} replace />} />
+        <Route path="/forgot" element={<Navigate to={defaultRoute} replace />} />
+        <Route path="/auth" element={<Navigate to={defaultRoute} replace />} />
 
         {/* Public blog & pricing accessible to authenticated users */}
         <Route path="/blog" element={<BlogView />} />
@@ -721,7 +762,7 @@ export default function App() {
         <Route path="/bookings" element={
           isSto ? <Navigate to="/sto/bookings" replace /> :
           <AppShell {...shellProps}>
-            {scrollWrapper('max-w-7xl', <ClientBookingsView carList={carList} preselectedSto={preselectedSto} onClearPreselected={() => setPreselectedSto(null)} />)}
+            {scrollWrapper('max-w-7xl', <ClientBookingsView carList={carList} preselectedSto={preselectedSto} onClearPreselected={() => setPreselectedSto(null)} currentUser={currentUser} />)}
           </AppShell>
         } />
         <Route path="/service" element={
@@ -789,7 +830,7 @@ export default function App() {
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to={defaultRoute} replace />} />
-        <Route path="*" element={<NotFoundPage defaultRoute={defaultRoute} />} />
+        <Route path="*" element={<NotFoundPage to={defaultRoute} />} />
       </Routes>
 
       {/* Global modals */}
@@ -840,17 +881,16 @@ export default function App() {
   )
 }
 
-function NotFoundPage({ defaultRoute }) {
-  const navigate = useNavigate()
+function NotFoundPage({ to = '/' }) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--bg)', color: 'var(--text)' }}>
       <div style={{ textAlign: 'center', maxWidth: 420 }}>
         <div style={{ fontSize: 96, fontWeight: 900, color: 'var(--brand)', letterSpacing: '-0.05em', lineHeight: 1 }}>404</div>
         <h1 style={{ fontSize: 24, fontWeight: 800, marginTop: 16, marginBottom: 8 }}>Сторінку не знайдено</h1>
         <p style={{ color: 'var(--text-3)', marginBottom: 24, fontSize: 14 }}>Можливо, ви ввели неправильну адресу або сторінку було видалено.</p>
-        <button onClick={() => navigate(defaultRoute, { replace: true })} style={{ padding: '12px 24px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer' }}>
+        <Link to={to} style={{ display: 'inline-block', textDecoration: 'none', padding: '12px 24px', background: 'var(--brand)', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, cursor: 'pointer', transition: 'opacity 200ms' }} onMouseEnter={e => e.currentTarget.style.opacity = '0.9'} onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
           На головну
-        </button>
+        </Link>
       </div>
     </div>
   )

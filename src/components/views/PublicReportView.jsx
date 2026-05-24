@@ -116,7 +116,7 @@ export function PublicReportView({ carId }) {
       <div className="w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-4 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-             <img src="/logo.png" alt="AutoLog" className="w-8 h-8 rounded-xl object-contain drop-shadow-md" />
+             <img src="/logo.svg" alt="AutoLog" className="w-8 h-8 rounded-xl object-contain drop-shadow-md" />
              <span className="font-black text-lg tracking-tight uppercase">AutoLog Report</span>
           </div>
           <a href="/" className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-black uppercase hover:bg-gray-200 dark:hover:bg-gray-700 transition">

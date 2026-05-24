@@ -42,12 +42,12 @@ test.describe('AI Mechanic', () => {
     await expect(sendIcon, 'Send button still disabled after typing (BUG #16)').toBeEnabled({ timeout: 3000 })
   })
 
-  test('quick prompt button populates input or starts conversation', async ({ page }) => {
+  test('quick prompt button triggers chat (count of prompt text increases)', async ({ page }) => {
+    const baseline = await page.locator('text=/Коли робити ТО/').count()
     await page.getByRole('button', { name: /Коли робити ТО/ }).click()
-    await page.waitForTimeout(1500)
-    // Either input filled OR message added to chat
-    const inputVal = await page.getByPlaceholder(/Опишіть проблему/).inputValue()
-    const bodyHasPrompt = await page.locator('text=/Коли робити ТО/').count()
-    expect(inputVal.length > 0 || bodyHasPrompt > 1).toBeTruthy()
+    // Wait for the bot response to appear (the second markdown message block)
+    await expect(page.locator('.markdown-content').nth(1)).toBeVisible({ timeout: 30_000 })
+    const after = await page.locator('text=/Коли робити ТО/').count()
+    expect(after, 'Quick prompt did not trigger reaction').toBeGreaterThan(baseline)
   })
 })

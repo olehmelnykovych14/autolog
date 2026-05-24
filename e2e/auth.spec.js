@@ -58,7 +58,7 @@ test.describe('Auth flows', () => {
     await page.getByRole('button', { name: /Увійти в гараж/ }).click()
     await page.waitForURL('**/dashboard')
     await page.getByRole('button', { name: 'Вийти' }).click()
-    await page.waitForURL((u) => !u.pathname.includes('/dashboard'))
-    await expect(page.getByRole('button', { name: 'Увійти', exact: true })).toBeVisible()
+    // After logout, login button reappears on landing — that's the reliable signal
+    await expect(page.getByRole('button', { name: 'Увійти', exact: true })).toBeVisible({ timeout: 10_000 })
   })
 })

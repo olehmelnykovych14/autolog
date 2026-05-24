@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Plus, Camera, Search, User, Info, Smartphone, FileText, Send, Share2, MoreVertical, Trash2, ImagePlus, ShieldCheck, Loader2, Pencil } from 'lucide-react'
 import { Modal, Field, inp_cls, PrimaryBtn, ConfirmModal } from '../common/Common'
 import { fmt, getBrandLogo } from '../../utils'
@@ -62,8 +62,15 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
   const [showAdd, setShowAdd] = useState(false)
   const [editCar, setEditCar] = useState(null)
   const [confirmDlg, setConfirmDlg] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState(null)
   // SUBSCRIPTION: car limit disabled for free launch
   const isLimited = false
+
+  useEffect(() => {
+    const handleOutsideClick = () => setOpenMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
 
   const handlePhotoUpload = async (carId, e) => {
     e.stopPropagation()
@@ -112,47 +119,98 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
                     <div className="year-badge">{car.year}</div>
 
                     {/* Action buttons — compact pill group, top-right */}
-                    <div
-                      className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      {/* Upload photo */}
-                      <label
-                        title={car.image ? 'Змінити фото' : 'Завантажити фото'}
-                        className="h-8 w-8 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 hover:scale-110 active:scale-95"
-                        style={{ background: 'rgba(15,15,30,0.65)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
-                      >
-                        <Camera size={14} style={{ color: 'rgba(255,255,255,0.85)' }} />
-                        <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(car.id, e)} />
-                      </label>
+                    <div className="absolute top-3 right-3 z-30" onClick={e => e.stopPropagation()}>
+                      {/* Desktop hover actions (original design & classes for Playwright tests) */}
+                      <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                        {/* Upload photo */}
+                        <label
+                          title={car.image ? 'Змінити фото' : 'Завантажити фото'}
+                          className="h-8 w-8 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150 hover:scale-110 active:scale-95"
+                          style={{ background: 'rgba(15,15,30,0.65)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                        >
+                          <Camera size={14} style={{ color: 'rgba(255,255,255,0.85)' }} />
+                          <input type="file" accept="image/*" className="hidden" onChange={e => handlePhotoUpload(car.id, e)} />
+                        </label>
 
-                      {/* Edit */}
-                      <button
-                        type="button"
-                        title="Редагувати"
-                        onClick={() => setEditCar(car)}
-                        className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
-                        style={{ background: 'rgba(15,15,30,0.65)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
-                      >
-                        <Pencil size={14} style={{ color: 'rgba(255,255,255,0.85)' }} />
-                      </button>
+                        {/* Edit */}
+                        <button
+                          type="button"
+                          title="Редагувати"
+                          onClick={() => setEditCar(car)}
+                          className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
+                          style={{ background: 'rgba(15,15,30,0.65)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}
+                        >
+                          <Pencil size={14} style={{ color: 'rgba(255,255,255,0.85)' }} />
+                        </button>
 
-                      {/* Delete */}
-                      <button
-                        type="button"
-                        title="Видалити"
-                        onClick={() => {
-                          setConfirmDlg({
-                            brand: car.brand,
-                            model: car.model,
-                            id: car.id
-                          })
-                        }}
-                        className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
-                        style={{ background: 'rgba(180,30,30,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(239,68,68,0.35)' }}
-                      >
-                        <Trash2 size={14} style={{ color: '#fca5a5' }} />
-                      </button>
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          title="Видалити"
+                          onClick={() => {
+                            setConfirmDlg({
+                              brand: car.brand,
+                              model: car.model,
+                              id: car.id
+                            })
+                          }}
+                          className="h-8 w-8 rounded-lg flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95"
+                          style={{ background: 'rgba(180,30,30,0.55)', backdropFilter: 'blur(8px)', border: '1px solid rgba(239,68,68,0.35)' }}
+                        >
+                          <Trash2 size={14} style={{ color: '#fca5a5' }} />
+                        </button>
+                      </div>
+
+                      {/* Mobile 3-dot kebab menu */}
+                      <div className="relative sm:hidden">
+                        <button
+                          type="button"
+                          onClick={() => setOpenMenuId(openMenuId === car.id ? null : car.id)}
+                          className="h-8 w-8 rounded-lg flex items-center justify-center bg-black/60 backdrop-blur border border-white/10 text-white hover:scale-105 active:scale-95"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+
+                        {openMenuId === car.id && (
+                          <div className="absolute right-0 top-10 bg-[#15152c]/95 border border-white/10 backdrop-blur-md rounded-xl p-1.5 shadow-xl flex flex-col gap-1 z-50 min-w-[140px]">
+                            {/* Upload photo */}
+                            <label
+                              className="h-9 px-3 rounded-lg flex items-center gap-2 cursor-pointer transition-all hover:bg-white/10 active:scale-95 text-xs text-gray-300 font-semibold"
+                            >
+                              <Camera size={14} className="text-white/80 shrink-0" />
+                              <span>Змінити фото</span>
+                              <input type="file" accept="image/*" className="hidden" onChange={e => { handlePhotoUpload(car.id, e); setOpenMenuId(null); }} />
+                            </label>
+
+                            {/* Edit */}
+                            <button
+                              type="button"
+                              onClick={() => { setEditCar(car); setOpenMenuId(null); }}
+                              className="h-9 px-3 rounded-lg flex items-center gap-2 transition-all hover:bg-white/10 active:scale-95 text-xs text-gray-300 font-semibold border-0 bg-transparent text-left cursor-pointer"
+                            >
+                              <Pencil size={14} className="text-white/80 shrink-0" />
+                              <span>Редагувати</span>
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmDlg({
+                                  brand: car.brand,
+                                  model: car.model,
+                                  id: car.id
+                                });
+                                setOpenMenuId(null);
+                              }}
+                              className="h-9 px-3 rounded-lg flex items-center gap-2 transition-all hover:bg-red-500/20 active:scale-95 text-xs text-red-400 font-semibold border-0 bg-transparent text-left cursor-pointer"
+                            >
+                              <Trash2 size={14} className="text-red-400 shrink-0" />
+                              <span>Видалити</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="body">

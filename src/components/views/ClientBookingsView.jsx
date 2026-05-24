@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { Calendar, Clock, MapPin, Search, ChevronRight, CheckCircle2, XCircle, Clock4, Info, ShieldCheck } from 'lucide-react'
-import { collection, query, where, getDocs, orderBy, addDoc, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, orderBy, addDoc, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { PrimaryBtn, Modal, Field, inp_cls, ConfirmModal } from '../common/Common'
 
-export function ClientBookingsView({ carList, preselectedSto, onClearPreselected }) {
+export function ClientBookingsView({ carList, preselectedSto, onClearPreselected, currentUser }) {
   const [activeTab, setActiveTab] = useState('new') // 'new' | 'my'
   const [stos, setStos] = useState([])
   const [myBookings, setMyBookings] = useState([])
@@ -14,9 +14,52 @@ export function ClientBookingsView({ carList, preselectedSto, onClearPreselected
   const [confirmDlg, setConfirmDlg] = useState(null) // { title, message, confirmLabel, onConfirm }
 
   useEffect(() => {
-    fetchStos()
-    fetchMyBookings()
-  }, [])
+    // 1. Listen to STOs (real-time, dual-query to satisfy security rules and cover both fields)
+    let list1 = []
+    let list2 = []
+    const q1 = query(collection(db, 'users'), where('accountType', '==', 'sto'))
+    const q2 = query(collection(db, 'users'), where('role', '==', 'sto'))
+
+    const updateStos = () => {
+      const merged = [...new Map([...list1, ...list2].map(u => [u.id, u])).values()]
+      setStos(merged)
+    }
+
+    const unsub1 = onSnapshot(q1, (snap) => {
+      console.log("ClientBookingsView unsub1 (accountType==sto) snap size:", snap.size)
+      list1 = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      updateStos()
+    }, (err) => console.error('Error fetching STOs by accountType:', err))
+
+    const unsub2 = onSnapshot(q2, (snap) => {
+      console.log("ClientBookingsView unsub2 (role==sto) snap size:", snap.size)
+      list2 = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      updateStos()
+    }, (err) => console.error('Error fetching STOs by role:', err))
+
+    // 2. Listen to my bookings (real-time)
+    let unsubBookings = () => {}
+    if (currentUser) {
+      const qBookings = query(collection(db, 'bookings'), where('userId', '==', currentUser.uid))
+      unsubBookings = onSnapshot(qBookings, (snap) => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        list.sort((a, b) => b.createdAt - a.createdAt)
+        setMyBookings(list)
+        setLoading(false)
+      }, (err) => {
+        console.error('Error fetching bookings:', err)
+        setLoading(false)
+      })
+    } else {
+      setLoading(false)
+    }
+
+    return () => {
+      unsub1()
+      unsub2()
+      unsubBookings()
+    }
+  }, [currentUser])
 
   useEffect(() => {
     if (preselectedSto) {
@@ -25,37 +68,9 @@ export function ClientBookingsView({ carList, preselectedSto, onClearPreselected
     }
   }, [preselectedSto])
 
-  const fetchStos = async () => {
-    try {
-      // Load all Business users (STOs)
-      const q = query(collection(db, 'users'), where('accountType', '==', 'sto'))
-      const snap = await getDocs(q)
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      setStos(list)
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  const fetchMyBookings = async () => {
-    if (!auth.currentUser) return
-    try {
-      const q = query(collection(db, 'bookings'), where('userId', '==', auth.currentUser.uid))
-      const snap = await getDocs(q)
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      list.sort((a, b) => b.createdAt - a.createdAt)
-      setMyBookings(list)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleBookingSuccess = () => {
     setSelectedSto(null)
     setActiveTab('my')
-    fetchMyBookings()
   }
 
   const filteredStos = stos.filter(s => 

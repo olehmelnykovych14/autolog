@@ -46,7 +46,7 @@ export function Sidebar({ col, isAdmin, userProfile, showMobileMenu, setShowMobi
               boxShadow: '0 4px 12px rgba(92,62,254,0.25)'
             }}
           >
-            <img src="/logo.png" alt="AutoLog" className="w-full h-full object-contain" />
+            <img src="/logo.svg" alt="AutoLog" className="w-full h-full object-contain" />
           </div>
           {!col && (
             <span

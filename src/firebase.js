@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
-import { initializeFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { initializeFirestore, enableIndexedDbPersistence, enableNetwork, disableNetwork } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -23,12 +23,41 @@ try {
   });
   if (typeof window !== "undefined") {
     analytics = getAnalytics(app);
-    enableIndexedDbPersistence(db).catch(err => {
-      console.warn("Offline persistence not enabled:", err.code);
-    });
+    const isTestOrLocal = window.navigator.webdriver || 
+                          window.location.hostname === 'localhost' || 
+                          window.location.hostname === '127.0.0.1';
+    if (!isTestOrLocal) {
+      enableIndexedDbPersistence(db).catch(err => {
+        console.warn("Offline persistence not enabled:", err.code);
+      });
+    }
   }
 } catch (error) {
   console.error("Firebase initialization error:", error);
 }
 
-export { app, auth, analytics, db };
+let isNetworkEnabled = true;
+
+async function safeEnableNetwork() {
+  if (isNetworkEnabled) return;
+  try {
+    isNetworkEnabled = true;
+    await enableNetwork(db);
+    console.log("Firestore network enabled safely.");
+  } catch (e) {
+    console.error("safeEnableNetwork error:", e);
+  }
+}
+
+async function safeDisableNetwork() {
+  if (!isNetworkEnabled) return;
+  try {
+    isNetworkEnabled = false;
+    await disableNetwork(db);
+    console.log("Firestore network disabled safely.");
+  } catch (e) {
+    console.error("safeDisableNetwork error:", e);
+  }
+}
+
+export { app, auth, analytics, db, safeEnableNetwork, safeDisableNetwork };

@@ -105,7 +105,7 @@ export default function ArticleView() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 no-underline text-white font-bold text-xl">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#5C3EFE] to-[#7C5CFF] flex items-center justify-center shadow-lg shadow-[#5c3efe]/30">
-              <img src="/logo.png" alt="Logo" className="w-5.5 h-5.5 object-contain" />
+              <img src="/logo.svg" alt="Logo" className="w-5.5 h-5.5 object-contain" />
             </div>
             <span>AutoLog</span>
           </Link>

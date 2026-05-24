@@ -36,7 +36,7 @@ test.describe('Booking — Cancel flow', () => {
     await expect(page.locator('body')).toContainText(desc, { timeout: 8000 })
 
     // Card row scoped by desc — find SCASUVATI button INSIDE it
-    const row = page.locator('div').filter({ hasText: desc }).first()
+    const row = page.locator('.rounded-3xl').filter({ hasText: desc }).first()
     await row.getByRole('button', { name: /^Скасувати$/i }).click()
 
     // ConfirmModal: title "Скасувати запис?" + danger button "Скасувати запис"
@@ -46,7 +46,7 @@ test.describe('Booking — Cancel flow', () => {
     await page.waitForTimeout(2500)
 
     // Booking still in list but with "Скасовано" badge
-    const updatedRow = page.locator('div').filter({ hasText: desc }).first()
+    const updatedRow = page.locator('.rounded-3xl').filter({ hasText: desc }).first()
     await expect(updatedRow).toContainText(/Скасовано/i, { timeout: 5000 })
 
     // After cancellation, "ВИДАЛИТИ" button appears (canDelete=true)

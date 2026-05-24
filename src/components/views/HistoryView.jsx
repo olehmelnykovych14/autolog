@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Filter, Search, Plus, Calendar, Activity, MapPin, Layers, FileText, Check, Clock, ShieldCheck, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Filter, Search, Plus, Calendar, Activity, MapPin, Layers, FileText, Check, Clock, ShieldCheck, AlertCircle, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { PrimaryBtn } from '../common/Common'
 import { fmtCost, fmt } from '../../utils'
 import { C, CAT, CAT_CLR } from '../../constants'
@@ -10,6 +10,13 @@ export function HistoryView({ historyList, carList, onAddService, onUpdateServic
   const [editingRecord, setEditingRecord] = useState(null)
   const [filterCar, setFilterCar] = useState('all')
   const [filterCat, setFilterCat] = useState('all')
+  const [openMenuId, setOpenMenuId] = useState(null)
+
+  useEffect(() => {
+    const handleOutsideClick = () => setOpenMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
   const [filterDate, setFilterDate] = useState('all')
   const [sortOrder, setSortOrder] = useState('desc')
   const [search, setSearch] = useState('')
@@ -132,8 +139,44 @@ export function HistoryView({ historyList, carList, onAddService, onUpdateServic
             <div 
               key={rec.id} 
               onClick={() => handleEdit(rec)}
-              className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-3xl border border-gray-100 dark:border-gray-700/60 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-100 dark:hover:border-indigo-500/30 transition-all cursor-pointer group flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6"
+              className="relative bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-3xl border border-gray-100 dark:border-gray-700/60 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 hover:border-indigo-100 dark:hover:border-indigo-500/30 transition-all cursor-pointer group flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6"
             >
+              {/* Kebab action menu */}
+              <div className="absolute top-4 right-4 z-30" onClick={e => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => setOpenMenuId(openMenuId === rec.id ? null : rec.id)}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center transition-all bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-850 text-gray-500 dark:text-gray-400 hover:scale-105 active:scale-95 shadow-sm"
+                >
+                  <MoreVertical size={16} />
+                </button>
+
+                {openMenuId === rec.id && (
+                  <div className="absolute right-0 top-10 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-1.5 shadow-xl flex flex-col gap-1 z-50 min-w-[140px] animate-in fade-in slide-in-from-top-1 duration-150">
+                    <button
+                      type="button"
+                      onClick={() => { handleEdit(rec); setOpenMenuId(null); }}
+                      className="h-9 w-full px-3 rounded-lg flex items-center gap-2 transition-all hover:bg-gray-50 dark:hover:bg-white/5 text-xs text-gray-700 dark:text-gray-300 font-semibold border-0 text-left cursor-pointer"
+                    >
+                      <Pencil size={14} className="text-gray-400 shrink-0" />
+                      <span>Редагувати</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.confirm('Ви впевнені, що хочете видалити цей сервісний запис?')) {
+                          await onDeleteService(rec.id);
+                        }
+                        setOpenMenuId(null);
+                      }}
+                      className="h-9 w-full px-3 rounded-lg flex items-center gap-2 transition-all hover:bg-red-50 dark:hover:bg-red-500/20 text-xs text-red-600 dark:text-red-400 font-semibold border-0 text-left cursor-pointer"
+                    >
+                      <Trash2 size={14} className="text-red-500 dark:text-red-400 shrink-0" />
+                      <span>Видалити</span>
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="flex sm:flex-col items-center justify-center w-full sm:w-24 px-4 py-3 sm:py-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-50 dark:border-gray-800 gap-2 shrink-0">
                 <span className="text-xs font-black text-gray-400 uppercase tracking-widest">{new Date(rec.date).toLocaleDateString('uk-UA', { month: 'short' })}</span>
                 <span className="text-2xl font-black text-gray-900 dark:text-white">{new Date(rec.date).getDate()}</span>

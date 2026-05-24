@@ -199,7 +199,7 @@ export function STODashboardView({ userProfile }) {
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-indigo-50/30 dark:from-[#1a0e3a] dark:via-[#0d0d1e] dark:to-[#0a0a18]"/>
         <div className="absolute inset-0 opacity-20 dark:opacity-30" style={{ backgroundImage: 'radial-gradient(ellipse at 70% 50%, rgba(92, 62, 254, 0.4) 0%, transparent 60%)' }}/>
         {/* Subtle car silhouette effect */}
-        <div className="absolute right-0 bottom-0 w-80 h-48 opacity-5" style={{ backgroundImage: 'url(/logo.png)', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'right bottom' }} />
+        <div className="absolute right-0 bottom-0 w-80 h-48 opacity-5" style={{ backgroundImage: 'url(/logo.svg)', backgroundSize: 'contain', backgroundRepeat: 'no-repeat', backgroundPosition: 'right bottom' }} />
 
         <div className="relative z-10 p-8 sm:p-10">
           <div className="text-center mb-8">

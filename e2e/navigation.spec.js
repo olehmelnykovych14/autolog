@@ -45,12 +45,19 @@ test.describe('Authenticated navigation', () => {
   })
 
   test('sidebar navigation works for all routes', async ({ page }) => {
+    const expected = {
+      'Мій гараж': /\/garage/,
+      'Запис на СТО': /\/bookings/,
+      'Сервіс': /\/service/,
+      'AI Механік': /\/ai/,
+      'Команда': /\/team/,
+      'Налаштування': /\/settings/,
+      'Дашборд': /\/dashboard/,
+    }
     await page.goto('/dashboard')
-    for (const linkName of ['Мій гараж', 'Запис на СТО', 'Сервіс', 'AI Механік', 'Команда', 'Налаштування', 'Дашборд']) {
+    for (const [linkName, urlPattern] of Object.entries(expected)) {
       await page.getByRole('link', { name: linkName }).click()
-      await page.waitForLoadState('networkidle', { timeout: 8000 })
-      // Verify URL changed away from `/`
-      expect(page.url()).not.toEqual(new URL('/', page.url()).toString())
+      await expect(page).toHaveURL(urlPattern, { timeout: 8_000 })
     }
   })
 })

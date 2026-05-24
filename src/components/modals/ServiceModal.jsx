@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Car, Layers, FileText, Calendar, Activity, MapPin, Trash2 } from 'lucide-react'
 import { Modal, Field, inp_cls } from '../common/Common'
 import { C, CAT } from '../../constants'
@@ -30,6 +30,17 @@ export function ServiceModal({ onClose, onSave, carList, historyList, initialDat
       mileage: initialData?.mileage || (initCarId ? getMinMileage(initCarId) : ''),
     }
   })
+
+  useEffect(() => {
+    if (!isEdit && !f.carId && carList.length > 0) {
+      const firstCarId = carList[0]?.id || ''
+      setF(p => ({
+        ...p,
+        carId: firstCarId,
+        mileage: getMinMileage(firstCarId) || '',
+      }))
+    }
+  }, [carList, isEdit])
 
   const set = k => v => {
     setF(p => {

@@ -5,10 +5,14 @@ test.describe('Landing — unauthenticated', () => {
   test('homepage loads with correct title and key CTAs', async ({ page }) => {
     await page.goto('/')
     await expect(page).toHaveTitle(/AutoLog/)
-    await expect(page.getByRole('button', { name: 'Функції' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Як це працює' }).first()).toBeVisible()
+    // Header now uses React Router <Link> for nav items (also duplicated in footer, hence .first())
+    await expect(page.getByRole('link', { name: 'Для водіїв' }).first()).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Для СТО' }).first()).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Тарифи' }).first()).toBeVisible()
+    // Action buttons remain <button>
     await expect(page.getByRole('button', { name: 'Увійти', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Почати безкоштовно' }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /Почати безкоштовно/ }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /Як це працює/ }).first()).toBeVisible()
   })
 
   test('no JS console errors on landing', async ({ page }) => {

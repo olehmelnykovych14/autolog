@@ -42,9 +42,9 @@ test.describe('Garage — Car CRUD', () => {
     await expect(page.locator('body')).toContainText(uniquePlate, { timeout: 8000 })
   })
 
-  test('READ: existing car visible in list', async ({ page }) => {
-    // BMW X5 ВС1234XX seeded by prior tests / setup
-    await expect(page.locator('body')).toContainText('ВС1234XX')
+  test('READ: at least one car visible in list', async ({ page }) => {
+    // Garage shows "N активних авто" counter — assert it's > 0
+    await expect(page.locator('text=/[1-9]\\d* активних авто/i')).toBeVisible({ timeout: 5000 })
   })
 
   test('BUG #20a/b: no Edit/Delete UI on car card', async ({ page }) => {

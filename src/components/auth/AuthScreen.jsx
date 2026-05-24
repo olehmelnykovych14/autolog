@@ -1,12 +1,16 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Car, Mail, Lock, User, MapPin, ClipboardList, ShieldCheck, Sun, Moon, Send, LayoutDashboard, ArrowRight, Eye, EyeOff, Zap } from 'lucide-react'
 import { auth, db } from '../../firebase'
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { C } from '../../constants'
 
-export function AuthScreen({ isDark, setDark, onBack }) {
-  const [isLogin, setIsLogin] = useState(true)
+export function AuthScreen({ isDark, setDark, onBack, defaultMode = 'login' }) {
+  const navigate = useNavigate()
+  const isLogin = defaultMode === 'login'
+  const isReset = defaultMode === 'forgot'
+  
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -16,7 +20,6 @@ export function AuthScreen({ isDark, setDark, onBack }) {
   const [stoEdrpou, setStoEdrpou] = useState('')
   const [err, setErr] = useState('')
   const [loading, setLoading] = useState(false)
-  const [isReset, setIsReset] = useState(false)
   const [resetSent, setResetSent] = useState(false)
   const [showPass, setShowPass] = useState(false)
 
@@ -101,7 +104,7 @@ export function AuthScreen({ isDark, setDark, onBack }) {
           {/* Logo */}
           <div className="flex items-center gap-3 mb-10">
             <div className="w-10 h-10 rounded-2xl bg-[#5C3EFE] flex items-center justify-center shadow-lg shadow-indigo-500/30 p-1.5 shrink-0">
-              <img src="/logo.png" alt="AutoLog" className="w-full h-full object-contain" />
+              <img src="/logo.svg" alt="AutoLog" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="text-xl font-black text-gray-900 dark:text-white tracking-tight">AutoLog</span>
@@ -143,7 +146,7 @@ export function AuthScreen({ isDark, setDark, onBack }) {
               <button disabled={loading} type="submit" className="w-full py-3.5 mt-1 text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 shadow-lg shadow-indigo-500/20" style={{ background: C }}>
                 {loading ? 'Надсилаємо...' : 'Скинути пароль'}
               </button>
-              <button type="button" onClick={() => { setIsReset(false); setErr(''); setResetSent(false); }} className="text-sm font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-1 text-center">
+              <button type="button" onClick={() => { navigate('/login'); setErr(''); setResetSent(false); }} className="text-sm font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-1 text-center">
                 ← Повернутися до входу
               </button>
             </form>
@@ -196,7 +199,7 @@ export function AuthScreen({ isDark, setDark, onBack }) {
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">Пароль</label>
                   {isLogin && (
-                    <button type="button" onClick={() => { setIsReset(true); setErr(''); }} className="text-xs font-bold text-[#5C3EFE] hover:underline">
+                    <button type="button" onClick={() => { navigate('/forgot'); setErr(''); }} className="text-xs font-bold text-[#5C3EFE] hover:underline">
                       Забули пароль?
                     </button>
                   )}
@@ -243,7 +246,7 @@ export function AuthScreen({ isDark, setDark, onBack }) {
                 {isLogin ? 'Немає акаунту? ' : 'Вже є акаунт? '}
                 <button
                   type="button"
-                  onClick={() => { setIsLogin(!isLogin); setErr(''); }}
+                  onClick={() => { navigate(isLogin ? '/register' : '/login'); setErr(''); }}
                   className="font-black text-[#5C3EFE] hover:underline"
                 >
                   {isLogin ? 'Зареєструватися' : 'Увійти'}

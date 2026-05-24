@@ -349,6 +349,27 @@ export function LandingView({ onLogin }) {
   const location = useLocation()
   const meta = PAGE_METADATA[location.pathname] || PAGE_METADATA['/']
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'AutoLog — сервісна книжка для авто',
+          text: 'Перевір свою сервісну історію онлайн',
+          url: 'https://www.autolog.com.ua/'
+        })
+      } catch (err) {
+        console.log('Error sharing:', err)
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText('https://www.autolog.com.ua/')
+        alert('Посилання скопійовано в буфер обміну!')
+      } catch (err) {
+        console.error('Clipboard copy failed:', err)
+      }
+    }
+  }
+
   useEffect(() => {
     if (meta) {
       document.title = meta.title
@@ -482,9 +503,9 @@ export function LandingView({ onLogin }) {
       {/* NAV */}
       <nav className={`al-nav${scrolled ? ' scrolled' : ''}`}>
         <div className="al-nav-inner">
-          <div className="al-nav-logo" onClick={onLogin}>
+          <div className="al-nav-logo" role="button" tabIndex="0" onClick={() => onLogin('login')} onKeyDown={e => e.key === 'Enter' && onLogin('login')}>
             <div className="mark">
-              <img src="/logo.png" alt="AutoLog" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+              <img src="/logo.svg" alt="AutoLog" style={{ width: 22, height: 22, objectFit: 'contain' }} />
             </div>
             AutoLog
           </div>
@@ -498,8 +519,8 @@ export function LandingView({ onLogin }) {
           </div>
 
           <div className="al-nav-right">
-            <button className="al-btn-ghost" onClick={onLogin}>Увійти</button>
-            <button className="al-btn-primary" onClick={onLogin}>
+            <button className="al-btn-ghost" onClick={() => onLogin('login')}>Увійти</button>
+            <button className="al-btn-primary" onClick={() => onLogin('register')}>
               Почати безкоштовно <IcoChevron />
             </button>
           </div>
@@ -545,10 +566,10 @@ export function LandingView({ onLogin }) {
             Додайте авто, фіксуйте кожне ТО і ремонт, відстежуйте <strong>витрати та пробіг</strong> — і завжди знайдіть, що відбувається з вашим автомобілем.
           </p>
           <div className="al-hero-cta">
-            <button className="al-btn-lg primary" onClick={onLogin}>
+            <button className="al-btn-lg primary" onClick={() => onLogin('register')}>
               Почати безкоштовно <IcoChevron />
             </button>
-            <button className="al-btn-lg secondary" onClick={onLogin}>
+            <button className="al-btn-lg secondary" onClick={() => { const el = document.getElementById('features'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}>
               Як це працює <IcoChevron />
             </button>
           </div>
@@ -576,13 +597,11 @@ export function LandingView({ onLogin }) {
       <div className="al-trust" style={{ position: 'relative', zIndex: 1 }}>
         <div className="al-con">
           <div className="al-trust-inner">
-            <div style={{ textAlign: 'center' }}><span className="al-trust-num">12 000+</span>Активних користувачів</div>
+            <div style={{ textAlign: 'center' }}><span className="al-trust-num">Beta</span>Приймаємо перших 500 водіїв</div>
             <div className="div" />
-            <div style={{ textAlign: 'center' }}><span className="al-trust-num">86 000+</span>Верифікованих записів</div>
+            <div style={{ textAlign: 'center' }}><span className="al-trust-num">10+</span>Записів від бета-партнерів</div>
             <div className="div" />
-            <div style={{ textAlign: 'center' }}><span className="al-trust-num">1 200+</span>Партнерських СТО</div>
-            <div className="div" />
-            <div style={{ textAlign: 'center' }}><span className="al-trust-num">4.9★</span>Рейтинг</div>
+            <div style={{ textAlign: 'center' }}><span className="al-trust-num">СТО</span>Активні бета-партнери СТО</div>
           </div>
         </div>
       </div>
@@ -725,7 +744,7 @@ export function LandingView({ onLogin }) {
                 </div>
                 <div className="al-report-footer">
                   <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Opendatabot API · 28 кві 2026</span>
-                  <button className="al-btn-share">
+                  <button className="al-btn-share" onClick={handleShare}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg>
                     Поділитись
                   </button>
@@ -919,10 +938,10 @@ export function LandingView({ onLogin }) {
             <h2>Почніть вести авто<br />розумно — сьогодні</h2>
             <p>Безкоштовно. Без кредитної картки. Перший запис за 2 хвилини.</p>
             <div className="al-cta-btns">
-              <button className="al-btn-lg primary" onClick={onLogin}>
-                Зареєструватись безкоштовно <IcoChevron />
+              <button className="al-btn-lg primary" onClick={() => onLogin('register')}>
+                Почати безкоштовно <IcoChevron />
               </button>
-              <button className="al-btn-lg secondary" onClick={onLogin}>Я — СТО</button>
+              <button className="al-btn-lg secondary" onClick={() => onLogin('register')}>Я — СТО</button>
             </div>
           </div>
         </div>

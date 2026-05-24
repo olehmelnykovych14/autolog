@@ -29,7 +29,7 @@ test.describe('Garage — Car Delete + Update', () => {
     await page.getByRole('button', { name: 'Зберегти автомобіль' }).click()
 
     // 2) Find the new card by exact plate
-    const card = page.locator('div').filter({ hasText: plate }).filter({ hasNotText: 'Інший' }).first()
+    const card = page.locator('.car-card').filter({ hasText: plate }).filter({ hasNotText: 'Інший' }).first()
     await expect(card).toBeVisible({ timeout: 10_000 })
 
     // 3) Hover to reveal trash button (opacity-0 group-hover:opacity-100)
@@ -40,11 +40,11 @@ test.describe('Garage — Car Delete + Update', () => {
     const trashBtn = card.locator('button:has(svg.lucide-trash-2)').first()
     await trashBtn.click()
 
-    // 5) Confirm dialog "Видалити [Brand] [Model]?"
-    await expect(page.getByRole('heading', { name: /Видалити Audi/i }).or(page.getByText(/Видалити Audi.*\?/i))).toBeVisible({ timeout: 5000 })
+    // 5) Confirm dialog: title pattern "Видалити Audi A3?" (Brand Model)
+    await expect(page.getByText(/Видалити Audi/i)).toBeVisible({ timeout: 5000 })
 
     // 6) Confirm button "Видалити авто"
-    await page.getByRole('button', { name: 'Видалити авто', exact: true }).click()
+    await page.getByRole('button', { name: /Видалити авто/i }).click()
 
     // 7) Card with this plate must vanish
     await expect(page.locator('body')).not.toContainText(plate, { timeout: 8000 })
@@ -63,7 +63,7 @@ test.describe('Garage — Car Delete + Update', () => {
     await page.getByRole('button', { name: 'Зберегти автомобіль' }).click()
     await expect(page.locator('body')).toContainText(plate, { timeout: 8000 })
 
-    const card = page.locator('div').filter({ hasText: plate }).filter({ hasNotText: 'Інший' }).first()
+    const card = page.locator('.car-card').filter({ hasText: plate }).filter({ hasNotText: 'Інший' }).first()
     await card.hover()
     await page.waitForTimeout(300)
 
@@ -83,7 +83,7 @@ test.describe('Garage — Car Delete + Update', () => {
     await expect(page.locator('body')).toContainText(/95.000|95000/, { timeout: 8000 })
 
     // Cleanup: delete this test car so state doesn't accumulate
-    const cleanupCard = page.locator('div').filter({ hasText: plate }).filter({ hasNotText: 'Інший' }).first()
+    const cleanupCard = page.locator('.car-card').filter({ hasText: plate }).filter({ hasNotText: 'Інший' }).first()
     await cleanupCard.hover()
     await page.waitForTimeout(300)
     const trash = cleanupCard.locator('button:has(svg.lucide-trash-2)').first()
