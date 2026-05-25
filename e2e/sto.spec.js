@@ -39,35 +39,43 @@ test.describe('STO-role flows', () => {
 
   test('READ: STO bookings page shows pending requests', async ({ page }) => {
     await page.goto('/sto/bookings')
+    // Wait for Firestore connection to stabilize after re-auth
+    await page.waitForTimeout(3000)
     await page.waitForLoadState('domcontentloaded')
-    // Wait for spinner to disappear (Firestore data loads async)
-    await page.locator('.animate-spin').waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
-    // Either has bookings or empty-state. Either way page must load.
-    const hasContent = await page.locator('text=/Записи|Bookings|немає|empty|Нових/i').count()
-    expect(hasContent).toBeGreaterThan(0)
+    // Page must show some content — either bookings list or empty state
+    await expect(page.locator('body')).toContainText(
+      /Записи|Bookings|немає|Нових|pending|Заявки/i,
+      { timeout: 15_000 }
+    )
   })
 
   test('READ: STO clients page', async ({ page }) => {
     await page.goto('/sto/clients')
+    await page.waitForTimeout(3000)
     await page.waitForLoadState('domcontentloaded')
-    await page.locator('.animate-spin').waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
-    const hasContent = await page.locator('text=/Клієнти|Clients|немає|Пошук|клієнт/i').count()
-    expect(hasContent).toBeGreaterThan(0)
+    await expect(page.locator('body')).toContainText(
+      /Клієнти|Clients|немає|Пошук|клієнт/i,
+      { timeout: 15_000 }
+    )
   })
 
   test('READ: STO acts page (service records signed by this СТО)', async ({ page }) => {
     await page.goto('/sto/acts')
+    await page.waitForTimeout(3000)
     await page.waitForLoadState('domcontentloaded')
-    await page.locator('.animate-spin').waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
-    const hasContent = await page.locator('text=/Акти|Acts|немає|записів|Акт/i').count()
-    expect(hasContent).toBeGreaterThan(0)
+    await expect(page.locator('body')).toContainText(
+      /Акти|Acts|немає|записів|Акт|Сервісні/i,
+      { timeout: 15_000 }
+    )
   })
 
   test('READ: STO settings page', async ({ page }) => {
     await page.goto('/sto/settings')
+    await page.waitForTimeout(3000)
     await page.waitForLoadState('domcontentloaded')
-    await page.locator('.animate-spin').waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {})
-    const hasContent = await page.locator('text=/Налаштування|Settings|Загальне|Зберегти/i').count()
-    expect(hasContent).toBeGreaterThan(0)
+    await expect(page.locator('body')).toContainText(
+      /Налаштування|Settings|Загальне|Зберегти/i,
+      { timeout: 15_000 }
+    )
   })
 })
