@@ -8,51 +8,73 @@ export const STO_EMAIL = process.env.STO_EMAIL || 'qa.sto.20260521@autolog.test'
 export const STO_PASSWORD = process.env.STO_PASSWORD || 'QaSto20260521!'
 
 /**
- * Check if a user is currently authenticated by navigating to /dashboard.
- * Returns true if /dashboard loads without redirect to login.
+ * Read the app's localStorage auth hint.
+ * The app sets 'al_authed'='1' when logged in and 'al_profile_type'='sto'|'owner'.
+ * Returns { authed: boolean, profileType: 'sto'|'owner'|null }
  * @param {import('@playwright/test').Page} page
- * @returns {Promise<boolean>}
  */
-async function isAuthenticated(page) {
-  await page.goto('/dashboard')
-  // Give Firebase IndexedDB auth state time to restore (up to 5s)
+async function getLocalAuthHint(page) {
   try {
-    await page.waitForURL(/\/(dashboard)/, { timeout: 5000 })
-    return true
+    const result = await page.evaluate(() => ({
+      authed: localStorage.getItem('al_authed') === '1',
+      profileType: localStorage.getItem('al_profile_type'), // 'sto' | 'owner' | null
+    }))
+    return result
   } catch {
-    // Redirected away from /dashboard — not authenticated
-    return false
+    return { authed: false, profileType: null }
   }
 }
 
 /**
- * Logout any currently-authenticated user. Safe to call even if not logged in.
+ * Logout by clicking the sidebar Вийти button.
+ * Assumes we're already on an authenticated app page.
  * @param {import('@playwright/test').Page} page
  */
-async function ensureLoggedOut(page) {
-  const loggedIn = await isAuthenticated(page)
-  if (!loggedIn) return // already unauthenticated
-
+async function clickLogout(page) {
   const logoutBtn = page.getByRole('button', { name: /Вийти/i })
-  if (await logoutBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+  if (await logoutBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
     await logoutBtn.click()
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(1500)
   }
-  await page.goto('/')
-  await page.waitForTimeout(1000)
 }
 
 /**
  * Login as STO partner account.
- * Always logs out any existing user first, then logs in as STO.
+ *
+ * Uses localStorage 'al_authed' + 'al_profile_type' to detect current auth state
+ * without any extra navigation. This avoids disrupting the page state.
  * @param {import('@playwright/test').Page} page
  */
 export async function loginSto(page) {
-  await ensureLoggedOut(page)
+  const { authed, profileType } = await getLocalAuthHint(page)
 
-  // Navigate to landing to access login modal
-  await page.goto('/')
-  await page.waitForTimeout(1000)
+  if (authed && profileType === 'sto') {
+    // STO already logged in — navigate to /sto and done
+    await page.goto('/sto')
+    await page.waitForLoadState('domcontentloaded')
+    return
+  }
+
+  if (authed && profileType === 'owner') {
+    // Owner is logged in — logout first, then re-login as STO
+    await clickLogout(page)
+    await page.goto('/')
+    await page.waitForTimeout(1000)
+  } else if (!authed) {
+    // Nobody logged in — ensure on landing page
+    const url = page.url()
+    if (!url.includes('localhost')) {
+      await page.goto('/')
+      await page.waitForTimeout(500)
+    }
+    // If already on landing, the login button should be visible
+    const isOnApp = url.includes('/dashboard') || url.includes('/sto') || url.includes('/garage')
+    if (!isOnApp) {
+      // We might be mid-navigation — go to landing to be safe
+      await page.goto('/')
+      await page.waitForTimeout(500)
+    }
+  }
 
   // Login as STO
   const loginBtn = page.getByRole('button', { name: 'Увійти', exact: true })
@@ -67,35 +89,32 @@ export async function loginSto(page) {
 
 /**
  * Programmatic Firebase login as test owner account.
- * Idempotent: probes /dashboard to detect auth state.
- * If already authenticated as owner, returns immediately.
- * If STO user is logged in, logs them out and re-authenticates as owner.
+ *
+ * Uses localStorage 'al_authed' + 'al_profile_type' to detect current auth state
+ * without any extra navigation. Idempotent.
  * @param {import('@playwright/test').Page} page
  */
 export async function login(page) {
-  const loggedIn = await isAuthenticated(page)
+  const { authed, profileType } = await getLocalAuthHint(page)
 
-  if (loggedIn) {
-    // Check if it might be STO (their email shows in body text on /dashboard)
-    const bodyText = await page.locator('body').textContent().catch(() => '')
-    if (!bodyText.includes(STO_EMAIL)) {
-      // Owner is already authenticated — done
-      return
-    }
-    // STO user — log them out
-    await ensureLoggedOut(page)
-    await page.goto('/')
-    await page.waitForTimeout(1000)
+  if (authed && profileType === 'owner') {
+    // Already authenticated as owner — navigate to dashboard and done
+    await page.goto('/dashboard')
+    return
   }
 
-  // Not authenticated — perform full login flow
-  // /dashboard redirect brings us to landing or /login
-  const currentUrl = page.url()
-  if (!currentUrl.includes('/') || currentUrl.includes('/login')) {
+  if (authed && profileType === 'sto') {
+    // STO is logged in — we need to logout and re-login as owner
+    await clickLogout(page)
+    await page.goto('/')
+    await page.waitForTimeout(1000)
+  } else {
+    // Not authenticated — go to landing
     await page.goto('/')
     await page.waitForTimeout(500)
   }
 
+  // Perform owner login
   const loginBtn = page.getByRole('button', { name: 'Увійти', exact: true })
   await expect(loginBtn).toBeVisible({ timeout: 8_000 })
   await loginBtn.click()
