@@ -511,7 +511,6 @@ export function LandingView({ onLogin }) {
           </div>
           <div className="al-nav-links">
             <Link to="/drivers" className="al-nav-link">Для водіїв</Link>
-            <Link to="/sto" className="al-nav-link">Для СТО</Link>
             <Link to="/telegram-bot" className="al-nav-link">Telegram-бот</Link>
             <Link to="/pricing" className="al-nav-link">Тарифи</Link>
             <Link to="/sto-map" className="al-nav-link">Знайти СТО</Link>
@@ -958,7 +957,7 @@ export function LandingView({ onLogin }) {
                 </div>
                 <div className="al-footer-logo-text">AutoLog</div>
               </div>
-              <p className="al-footer-desc">Розумний автожурнал для власників та СТО. Зберігайте, верифікуйте, діліться.</p>
+              <p className="al-footer-desc">Розумний автожурнал для власників авто. Зберігайте, верифікуйте, діліться.</p>
             </div>
              <div className="al-footer-col">
               <h5>Продукт</h5>
@@ -970,7 +969,6 @@ export function LandingView({ onLogin }) {
             <div className="al-footer-col">
               <h5>Компанія</h5>
               <Link to="/blog">Блог</Link>
-              <Link to="/sto">Для СТО</Link>
               <a onClick={onLogin} style={{ cursor: 'pointer' }}>Увійти</a>
             </div>
             <div className="al-footer-col">

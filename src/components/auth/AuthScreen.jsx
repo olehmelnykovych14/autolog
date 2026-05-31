@@ -154,38 +154,10 @@ export function AuthScreen({ isDark, setDark, onBack, defaultMode = 'login' }) {
             <form onSubmit={submit} className="flex flex-col gap-4">
               {/* Account type toggle for registration */}
               {!isLogin && (
-                <>
-                  <div className="flex bg-gray-100 dark:bg-white/5 p-1 rounded-xl mb-1 border border-gray-200 dark:border-gray-700/40">
-                    <button type="button" onClick={() => setAccountType('owner')} className={`flex-1 py-2.5 text-xs font-black rounded-lg transition-all uppercase tracking-widest ${accountType === 'owner' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}>
-                      Власник авто
-                    </button>
-                    <button type="button" onClick={() => setAccountType('sto')} className={`flex-1 py-2.5 text-xs font-black rounded-lg transition-all uppercase tracking-widest ${accountType === 'sto' ? 'bg-white dark:bg-gray-800 text-[#5C3EFE] shadow-sm' : 'text-gray-400 hover:text-[#5C3EFE]'}`}>
-                      СТО / Партнер
-                    </button>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold mb-2 text-gray-600 dark:text-gray-400 uppercase tracking-widest">Прізвище та Ім'я</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Іван Іванов" className={inp_cls} />
-                  </div>
-                  {accountType === 'sto' && (
-                    <div className="space-y-3 p-4 bg-indigo-50 dark:bg-indigo-900/15 rounded-2xl border border-indigo-100 dark:border-indigo-800/30">
-                      <div>
-                        <label className="block text-[10px] font-black mb-1.5 text-indigo-700 dark:text-indigo-300 uppercase tracking-widest">Назва СТО *</label>
-                        <input type="text" value={stoName} onChange={e => setStoName(e.target.value)} placeholder="AutoService Group" className={inp_cls + ' !text-sm !py-2.5'} required />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[10px] font-black mb-1.5 text-indigo-700 dark:text-indigo-300 uppercase tracking-widest">Адреса *</label>
-                          <input type="text" value={stoAddress} onChange={e => setStoAddress(e.target.value)} placeholder="Київ, вул. Світла, 1" className={inp_cls + ' !text-sm !py-2.5'} required />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-black mb-1.5 text-indigo-700 dark:text-indigo-300 uppercase tracking-widest">ЄДРПОУ / ІПН *</label>
-                          <input type="text" value={stoEdrpou} onChange={e => setStoEdrpou(e.target.value)} placeholder="12345678" className={inp_cls + ' !text-sm !py-2.5'} required />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
+                <div>
+                  <label className="block text-xs font-bold mb-2 text-gray-600 dark:text-gray-400 uppercase tracking-widest">Прізвище та Ім'я</label>
+                  <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Іван Іванов" className={inp_cls} />
+                </div>
               )}
 
               {/* Email */}
