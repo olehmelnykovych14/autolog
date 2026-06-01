@@ -39,14 +39,18 @@ app.get('/', (req, res) => res.send('AutoLog Bot is active! 🤖'));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 let serviceAccount;
+let credSource = 'none';
 const keyPath = path.join(__dirname, 'serviceAccountKey.json');
 
 try {
-  if (fs.existsSync(keyPath)) {
-    const rawData = fs.readFileSync(keyPath, 'utf8');
-    serviceAccount = JSON.parse(rawData);
-  } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // ENV має пріоритет (прод на Render), файл serviceAccountKey.json — лише фолбек
+  // для локальної розробки. Інакше залишковий файл на сервері перебиває прод-креденшіали.
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    credSource = 'env (FIREBASE_SERVICE_ACCOUNT)';
+  } else if (fs.existsSync(keyPath)) {
+    serviceAccount = JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+    credSource = 'file (serviceAccountKey.json)';
   }
 
   if (serviceAccount && serviceAccount.private_key) {
@@ -56,7 +60,7 @@ try {
 
   if (serviceAccount && !admin.apps.length) {
     admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-    console.log("🚀 Firebase initialized with project:", serviceAccount.project_id);
+    console.log(`🚀 Firebase initialized with project: ${serviceAccount.project_id} (source: ${credSource})`);
   }
 } catch (err) {
   console.error('❌ Firebase Init Error:', err.message);
