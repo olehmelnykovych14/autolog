@@ -305,11 +305,11 @@ export default function App() {
         setHistoryList([])
         setRelevantUids([])
         
-        // Auto-redirect from private paths to / upon logout to avoid 404 page
+        // Після виходу з приватної сторінки ведемо на екран входу (а не на лендінг)
         const path = window.location.pathname
-        const isPrivate = ['/dashboard', '/garage', '/bookings', '/service', '/team', '/settings', '/admin', '/sto'].some(p => path === p || path.startsWith(p + '/'))
+        const isPrivate = ['/dashboard', '/garage', '/bookings', '/service', '/fuel', '/team', '/settings', '/admin', '/sto'].some(p => path === p || path.startsWith(p + '/'))
         if (isPrivate) {
-          navigate('/', { replace: true })
+          navigate('/login', { replace: true })
         }
         return
       }
