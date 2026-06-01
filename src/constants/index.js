@@ -45,7 +45,7 @@ export const CAT_CLR = {
 export const NAV_OWNER = [
   { id: 'dashboard', label: 'Дашборд', icon: LayoutDashboard },
   { id: 'garage', label: 'Мій гараж', icon: Car },
-  { id: 'bookings', label: 'Запис на СТО', icon: Calendar },
+  // { id: 'bookings', label: 'Запис на СТО', icon: Calendar },
   { id: 'service', label: 'Сервіс', icon: ClipboardList },
   { id: 'fuel', label: 'Паливо', icon: Fuel },
   { id: 'ai', label: 'AI Механік', icon: Bot },
