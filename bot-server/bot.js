@@ -994,6 +994,38 @@ bot.command('cleandb', async (ctx) => {
   }
 });
 
+// Видаляє всі авто та їх history крім авто з вказаним держ. номером
+bot.command('keepcar', async (ctx) => {
+  try {
+    const plate = (ctx.message.text.split(' ')[1] || '').trim().toUpperCase();
+    if (!plate) return ctx.reply('Використання: `/keepcar ДЕРЖНОМЕР`\nНаприклад: `/keepcar BC7388XA`', { parse_mode: 'Markdown' });
+    if (!ctx.userId) return ctx.reply('❌ Акаунт не визначено.');
+
+    const carsSnap = await db.collection('cars').where('userId', '==', ctx.userId).get();
+    let deleted = 0, kept = 0;
+
+    for (const d of carsSnap.docs) {
+      const carPlate = (d.data().plate || '').toUpperCase().trim();
+      if (carPlate === plate) { kept++; continue; }
+
+      // Видалити history цього авто
+      const histSnap = await db.collection('history').where('carId', '==', d.id).get();
+      for (const h of histSnap.docs) await h.ref.delete();
+
+      await d.ref.delete();
+      deleted++;
+    }
+
+    await ctx.reply(
+      `✅ Готово!\n\n🗑 Видалено авто: *${deleted}*\n✅ Збережено: *${kept}* (${plate})\n\nНадішли 🚗 *Мої авто* для перевірки.`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (e) {
+    console.error('keepcar error:', e);
+    await ctx.reply('❌ Помилка: ' + e.message);
+  }
+});
+
 // --- REMINDERS SCHEDULER ---
 const checkReminders = async () => {
   console.log('🔔 Checking reminders...');
