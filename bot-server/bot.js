@@ -624,8 +624,9 @@ bot.on('voice', async (ctx) => {
   }
 });
 
-bot.on('text', async (ctx) => {
-  if (ctx.message.text.startsWith('/')) return;
+bot.on('text', async (ctx, next) => {
+  // Пропускаємо слеш-команди далі по ланцюжку, щоб працювали bot.command(...) нижче
+  if (ctx.message.text.startsWith('/')) return next();
 
   // Майстер заправки має пріоритет над AI-чатом
   if (ctx.session?.fuelStep) return handleFuelStep(ctx);
