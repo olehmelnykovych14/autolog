@@ -867,6 +867,35 @@ bot.command('linkemail', async (ctx) => {
   }
 });
 
+// Прив'язує Telegram напряму за Firebase Auth UID (обходить дубль-профілі за email)
+bot.command('linkuid', async (ctx) => {
+  try {
+    const uid = (ctx.message.text.split(' ')[1] || '').trim();
+    if (!uid) return ctx.reply('Використання: `/linkuid ВАШ_FIREBASE_UID`', { parse_mode: 'Markdown' });
+    const tid = ctx.from.id.toString();
+
+    const target = await db.collection('users').doc(uid).get();
+    if (!target.exists) return ctx.reply(`❌ Документ users/${uid} не знайдено.`);
+
+    // Зняти telegramId з усіх інших профілів
+    const dup = await db.collection('users').where('telegramId', '==', tid).get();
+    for (const d of dup.docs) {
+      if (d.id !== uid) await d.ref.update({ telegramId: admin.firestore.FieldValue.delete() });
+    }
+    await target.ref.update({ telegramId: tid });
+
+    const cars = await db.collection('cars').where('userId', '==', uid).get();
+    const u = target.data();
+    await ctx.reply(
+      `✅ Прив'язано до профілю \`${uid}\`\nEmail: ${u.email || '—'}\nІм'я: ${u.displayName || u.name || '—'}\nАвто знайдено: *${cars.size}*\n\nНадішли 🚗 *Мої авто* для перевірки.`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (e) {
+    console.error('linkuid error:', e);
+    await ctx.reply('❌ Помилка: ' + e.message);
+  }
+});
+
 // --- REMINDERS SCHEDULER ---
 const checkReminders = async () => {
   console.log('🔔 Checking reminders...');
