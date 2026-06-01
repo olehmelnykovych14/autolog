@@ -513,7 +513,7 @@ export function LandingView({ onLogin }) {
             <Link to="/drivers" className="al-nav-link">Для водіїв</Link>
             <Link to="/telegram-bot" className="al-nav-link">Telegram-бот</Link>
             <Link to="/pricing" className="al-nav-link">Тарифи</Link>
-            <Link to="/sto-map" className="al-nav-link">Знайти СТО</Link>
+            {/* <Link to="/sto-map" className="al-nav-link">Знайти СТО</Link> */}
             <Link to="/blog" className="al-nav-link">Блог</Link>
           </div>
 
@@ -769,7 +769,7 @@ export function LandingView({ onLogin }) {
 
       <div className="al-grad-line" style={{ position: 'relative', zIndex: 1 }} />
 
-      {/* STO */}
+      {/* STO hidden for now
       <section className="al-sto" id="sto" style={{ position: 'relative', zIndex: 1 }}>
         <div className="al-con">
           <div style={{ textAlign: 'center' }} className="al-reveal">
@@ -817,6 +817,7 @@ export function LandingView({ onLogin }) {
       </section>
 
       <div className="al-grad-line" style={{ position: 'relative', zIndex: 1 }} />
+      */}
 
       {/* TELEGRAM BOT */}
       <section className="al-telegram-bot" id="telegram-bot" style={{ position: 'relative', zIndex: 1, padding: '120px 0' }}>
@@ -963,7 +964,7 @@ export function LandingView({ onLogin }) {
               <h5>Продукт</h5>
               <Link to="/drivers">Для водіїв</Link>
               <Link to="/pricing">Тарифи</Link>
-              <Link to="/sto-map">Знайти СТО</Link>
+              {/* <Link to="/sto-map">Знайти СТО</Link> */}
               <Link to="/telegram-bot">Telegram-бот</Link>
             </div>
             <div className="al-footer-col">

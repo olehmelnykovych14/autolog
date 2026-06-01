@@ -610,10 +610,7 @@ bot.on('voice', async (ctx) => {
     const aiResponse = await askGemini(prompt, true, base64, "audio/mp3");
     if (!aiResponse.startsWith("Помилка AI")) await incrementAIUsage(ctx);
     
-    const keyboard = Markup.inlineKeyboard([
-      [Markup.button.callback('📅 Записатись на СТО', 'book_sto_start')]
-    ]);
-    await ctx.reply(`👨‍🔧 *ШІ Механік почув вас:*\n\n${aiResponse}`, { parse_mode: 'Markdown', ...keyboard });
+    await ctx.reply(`👨‍🔧 *ШІ Механік почув вас:*\n\n${aiResponse}`, { parse_mode: 'Markdown' });
   } catch (e) {
     console.error('Voice processing error:', e);
     ctx.reply('❌ Не вдалося обробити голосове повідомлення.');
@@ -651,11 +648,7 @@ bot.on('text', async (ctx, next) => {
     
     await ctx.telegram.deleteMessage(ctx.chat.id, wait.message_id).catch(() => {});
     
-    const keyboard = Markup.inlineKeyboard([
-      [Markup.button.callback('📅 Записатись на СТО', 'book_sto_start')]
-    ]);
-    
-    await ctx.reply(response, { parse_mode: 'Markdown', ...keyboard });
+    await ctx.reply(response, { parse_mode: 'Markdown' });
   } catch (e) {
     console.error('🤖 AI Interaction Error:', e.message);
     await ctx.telegram.deleteMessage(ctx.chat.id, wait.message_id).catch(() => {});
