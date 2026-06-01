@@ -941,6 +941,59 @@ bot.command('migrate', async (ctx) => {
   }
 });
 
+// Видаляє всі дані НЕ пов'язані з вказаним UID (чистить тестові залишки)
+bot.command('cleandb', async (ctx) => {
+  try {
+    const keepUid = (ctx.message.text.split(' ')[1] || '').trim();
+    if (!keepUid) return ctx.reply('Використання: `/cleandb UID_ЩО_ЗБЕРЕГТИ`', { parse_mode: 'Markdown' });
+
+    await ctx.reply('🧹 Починаю очистку бази... Це може зайняти хвилину.');
+
+    let deletedCars = 0, deletedHistory = 0, deletedUsers = 0;
+
+    // Видалити авто де userId != keepUid
+    const carsSnap = await db.collection('cars').get();
+    for (const d of carsSnap.docs) {
+      if (d.data().userId !== keepUid) {
+        await d.ref.delete();
+        deletedCars++;
+      }
+    }
+
+    // Видалити history де userId != keepUid
+    const histSnap = await db.collection('history').get();
+    for (const d of histSnap.docs) {
+      if (d.data().userId !== keepUid) {
+        await d.ref.delete();
+        deletedHistory++;
+      }
+    }
+
+    // Видалити профілі users де doc.id != keepUid (лишити тільки реальний)
+    const usersSnap = await db.collection('users').get();
+    for (const d of usersSnap.docs) {
+      if (d.id !== keepUid) {
+        // Видалити підколекції reminders та ai_chats
+        const subs = ['reminders', 'ai_chats'];
+        for (const sub of subs) {
+          const subSnap = await d.ref.collection(sub).get();
+          for (const s of subSnap.docs) await s.ref.delete();
+        }
+        await d.ref.delete();
+        deletedUsers++;
+      }
+    }
+
+    await ctx.reply(
+      `✅ *Очистку завершено!*\n\n🚗 Авто видалено: *${deletedCars}*\n📋 Записів history видалено: *${deletedHistory}*\n👤 Профілів видалено: *${deletedUsers}*\n\nЗбережено профіль: \`${keepUid}\``,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (e) {
+    console.error('cleandb error:', e);
+    await ctx.reply('❌ Помилка очистки: ' + e.message);
+  }
+});
+
 // --- REMINDERS SCHEDULER ---
 const checkReminders = async () => {
   console.log('🔔 Checking reminders...');
