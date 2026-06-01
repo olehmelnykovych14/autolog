@@ -835,6 +835,38 @@ bot.command('unlink', async (ctx) => {
   }
 });
 
+// Прив'язує Telegram напряму до профілю за email (надійніше за токен/контакт).
+// Знімає telegramId з усіх інших профілів, щоб не було дублів.
+bot.command('linkemail', async (ctx) => {
+  try {
+    const email = (ctx.message.text.split(' ')[1] || '').trim();
+    if (!email) return ctx.reply('Використання: `/linkemail ваш@email.com`', { parse_mode: 'Markdown' });
+    const tid = ctx.from.id.toString();
+
+    let snap = await db.collection('users').where('email', '==', email).get();
+    if (snap.empty) snap = await db.collection('users').where('email', '==', email.toLowerCase()).get();
+    if (snap.empty) return ctx.reply(`❌ Профіль з email *${email}* не знайдено в базі.`, { parse_mode: 'Markdown' });
+
+    const target = snap.docs[0];
+    // Зняти telegramId з усіх інших профілів
+    const dup = await db.collection('users').where('telegramId', '==', tid).get();
+    for (const d of dup.docs) {
+      if (d.id !== target.id) await d.ref.update({ telegramId: admin.firestore.FieldValue.delete() });
+    }
+    await target.ref.update({ telegramId: tid });
+
+    const uid = target.data().uid || target.id;
+    const cars = await db.collection('cars').where('userId', '==', uid).get();
+    await ctx.reply(
+      `✅ Прив'язано до *${email}*\nuserId: \`${uid}\`\nАвто знайдено: *${cars.size}*\n\nНадішли 🚗 *Мої авто* для перевірки.`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (e) {
+    console.error('linkemail error:', e);
+    await ctx.reply('❌ Помилка: ' + e.message);
+  }
+});
+
 // --- REMINDERS SCHEDULER ---
 const checkReminders = async () => {
   console.log('🔔 Checking reminders...');
