@@ -811,6 +811,30 @@ bot.command('whoami', async (ctx) => {
   }
 });
 
+// Знімає прив'язку telegramId з усіх профілів (скидання, коли бот сидить на чужому акаунті)
+bot.command('unlink', async (ctx) => {
+  try {
+    const tid = ctx.from.id.toString();
+    const snap = await db.collection('users').where('telegramId', '==', tid).get();
+    if (snap.empty) return ctx.reply("ℹ️ Цей Telegram ні до кого не прив'язаний.");
+    let n = 0;
+    for (const d of snap.docs) {
+      await d.ref.update({
+        telegramId: admin.firestore.FieldValue.delete(),
+        tgLinkingToken: admin.firestore.FieldValue.delete(),
+      });
+      n++;
+    }
+    await ctx.reply(
+      `✅ Відв'язано від *${n}* профіл(ю/ів).\n\nТепер у веб-додатку увійди *правильним* акаунтом → Налаштування → *Підключити Telegram* → і надішли мені \`/start КОД\`.`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (e) {
+    console.error('unlink error:', e);
+    await ctx.reply('❌ Помилка відв\'язки: ' + e.message);
+  }
+});
+
 // --- REMINDERS SCHEDULER ---
 const checkReminders = async () => {
   console.log('🔔 Checking reminders...');
