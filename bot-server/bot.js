@@ -537,6 +537,64 @@ bot.action(/save_rec_(.+)/, async (ctx) => {
 
 bot.action('cancel_rec', (ctx) => ctx.editMessageText('❌ Скасовано.'));
 
+// Збереження голосової заправки для обраного авто
+bot.action(/save_voice_fuel_(.+)/, async (ctx) => {
+  if (!ctx.session?.pendingVoiceFuel) return ctx.answerCbQuery('Дані застаріли, спробуйте знову');
+  const carId = ctx.match[1];
+  const f = ctx.session.pendingVoiceFuel;
+
+  try {
+    const carDoc = await db.collection('cars').doc(carId).get();
+    if (!carDoc.exists) return ctx.answerCbQuery('Автомобіль не знайдено');
+    const carData = carDoc.data();
+
+    const pricePerLiter = f.liters ? Math.round((f.cost / f.liters) * 100) / 100 : 0;
+    const date = new Date().toISOString().split('T')[0];
+
+    await db.collection('history').add({
+      category: 'fuel',
+      title: 'Заправка (голос)',
+      date,
+      carId,
+      plate: carData.plate || '',
+      mileage: f.mileage || 0,
+      liters: f.liters || 0,
+      cost: f.cost || 0,
+      pricePerLiter,
+      fullTank: !!f.fullTank,
+      userId: ctx.userId,
+      status: 'self_reported',
+      createdAt: Date.now(),
+    });
+
+    if (f.mileage > (carData.mileage || 0)) {
+      await db.collection('cars').doc(carId).update({ mileage: f.mileage }).catch(() => {});
+    }
+
+    await ctx.answerCbQuery();
+    await ctx.editMessageText(
+      `✅ *Заправку збережено!*\n\n` +
+      `🚗 ${carData.brand} ${carData.model || ''} (\`${carData.plate}\`)\n` +
+      `📍 Пробіг: *${f.mileage || '—'}* км\n` +
+      `⛽ Об'єм: *${f.liters || '—'}* л${f.fullTank ? ' (повний бак)' : ''}\n` +
+      `💰 Сума: *${fmtCost(f.cost)}* ₴${pricePerLiter ? ` · ${pricePerLiter} ₴/л` : ''}\n\n` +
+      `_Витрату на 100 км дивіться в додатку → Паливо._`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (e) {
+    console.error('Error saving voice fuel:', e);
+    ctx.reply('❌ Помилка збереження заправки.');
+  } finally {
+    ctx.session.pendingVoiceFuel = null;
+  }
+});
+
+bot.action('cancel_voice_fuel', (ctx) => {
+  if (ctx.session) ctx.session.pendingVoiceFuel = null;
+  ctx.answerCbQuery().catch(() => {});
+  ctx.editMessageText('❌ Скасовано.').catch(() => {});
+});
+
 // AI Mechanic Chat (Catch-all for text)
 const askGemini = async (prompt, hasMedia = false, base64 = null, mimeType = "image/jpeg") => {
     if (!API_KEY) return "Помилка: Ключ AI не знайдено.";
@@ -604,12 +662,116 @@ bot.on('voice', async (ctx) => {
     const base64 = buffer.toString('base64');
 
     const garageContext = await getUserGarageContext(ctx.userId);
-    const prompt = `Ти — AI Механік AutoLog. Користувач надіслав ГОЛОСОВЕ ПОВІДОМЛЕННЯ. Проаналізуй його та дай корисну пораду українською мовою.${garageContext} 
-ПІДБІР ЗАПЧАСТИН: Якщо ти ідентифікуєш несправну деталь (колодки, амортизатори, тощо), додай в кінці відповіді посилання на покупку. В URL-адресі заміни всі пробіли на "+". Приклад: [🔎 На Exist.ua](https://www.google.com/search?q=site:exist.ua+[Назва+Деталі]) та [🛒 На Avto.pro](https://www.google.com/search?q=site:avto.pro+[Назва+Деталі]).`;
+    const prompt = `Ти — AI Механік та розумний асистент автожурналу AutoLog. Користувач надіслав ГОЛОСОВЕ ПОВІДОМЛЕННЯ.${garageContext}
+Аналізуй повідомлення та виконуй такі правила:
+
+1. Визначи, чи повідомляє користувач про заправку автомобіля пальним (бензин, дизель, газ тощо).
+   Ознаки заправки: вказано кількість літрів (наприклад, 40 літрів), вартість заправки (наприклад, 2000 гривень) або пробіг.
+   Якщо це ЗАПРАВКА, розпізнай параметри та обов'язково поверни ТІЛЬКИ JSON-об'єкт:
+   {
+     "type": "fuel",
+     "liters": 40,      // число (літри), або null якщо не вказано
+     "cost": 2000,      // число (сума в грн), або null якщо не вказано
+     "mileage": 185000, // число (пробіг у км), або null якщо не вказано
+     "fullTank": false  // boolean (якщо користувач сказав "до повного", "повний бак" - true, інакше false)
+   }
+
+2. Якщо це НЕ заправка (а наприклад, запитання про ремонт, поломку чи пораду):
+   Дай корисну та розгорнуту пораду українською мовою. Додай посилання на Exist.ua та Avto.pro за потреби.
+   Обов'язково поверни ТІЛЬКИ такий JSON-об'єкт:
+   {
+     "type": "advice",
+     "text": "Твій текст поради українською мовою..."
+   }
+
+Важливо: твій результат має бути тільки цим JSON-об'єктом. Жодного іншого тексту навколо JSON.`;
     
     const aiResponse = await askGemini(prompt, true, base64, "audio/mp3");
     if (!aiResponse.startsWith("Помилка AI")) await incrementAIUsage(ctx);
     
+    // Спробуємо розпарсити JSON
+    const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const data = JSON.parse(jsonMatch[0]);
+        
+        if (data.type === 'fuel') {
+          const liters = Number(data.liters) || 0;
+          const cost = Number(data.cost) || 0;
+          const mileage = Number(data.mileage) || 0;
+          const fullTank = !!data.fullTank;
+
+          if (!ctx.userId) return ctx.reply('❌ Будь ласка, спочатку зареєструйтесь!');
+
+          const carsSnap = await db.collection('cars').where('userId', '==', ctx.userId).get();
+          if (carsSnap.empty) {
+            return ctx.reply('⚠️ У вас немає доданих автомобілів. Будь ласка, додайте автомобіль у веб-додатку, щоб вести журнал пального.');
+          }
+
+          if (carsSnap.size === 1) {
+            // Лише 1 автомобіль — записуємо відразу!
+            const car = carsSnap.docs[0];
+            const carId = car.id;
+            const carData = car.data();
+            const pricePerLiter = liters ? Math.round((cost / liters) * 100) / 100 : 0;
+            const date = new Date().toISOString().split('T')[0];
+
+            await db.collection('history').add({
+              category: 'fuel',
+              title: 'Заправка (голос)',
+              date,
+              carId,
+              plate: carData.plate || '',
+              mileage: mileage || 0,
+              liters: liters || 0,
+              cost: cost || 0,
+              pricePerLiter,
+              fullTank,
+              userId: ctx.userId,
+              status: 'self_reported',
+              createdAt: Date.now(),
+            });
+
+            if (mileage > (carData.mileage || 0)) {
+              await db.collection('cars').doc(carId).update({ mileage }).catch(() => {});
+            }
+
+            return ctx.reply(
+              `✅ *Заправку збережено!*\n\n` +
+              `🚗 ${carData.brand} ${carData.model || ''} (\`${carData.plate}\`)\n` +
+              `📍 Пробіг: *${mileage || '—'}* км\n` +
+              `⛽ Об'єм: *${liters || '—'}* л\n` +
+              `💰 Сума: *${fmtCost(cost)}* ₴${pricePerLiter ? ` · ${pricePerLiter} ₴/л` : ''}\n\n` +
+              `_Витрату на 100 км дивіться в додатку → Паливо._`,
+              { parse_mode: 'Markdown' }
+            );
+          } else {
+            // Кілька автомобілів — зберігаємо у сесію та запитуємо вибір
+            ctx.session.pendingVoiceFuel = { liters, cost, mileage, fullTank };
+            
+            const buttons = carsSnap.docs.map(d => [
+              Markup.button.callback(`🚗 ${d.data().brand} (${d.data().plate})`, `save_voice_fuel_${d.id}`)
+            ]);
+            buttons.push([Markup.button.callback('❌ Скасувати', 'cancel_voice_fuel')]);
+
+            return ctx.reply(
+              `⛽ *Розпізнано заправку!*\n\n` +
+              `📍 Пробіг: *${mileage || '—'}* км\n` +
+              `⛽ Об'єм: *${liters || '—'}* л${fullTank ? ' (повний бак)' : ''}\n` +
+              `💰 Сума: *${fmtCost(cost)}* ₴\n\n` +
+              `🚘 *Оберіть автомобіль для збереження:*`,
+              { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) }
+            );
+          }
+        } else if (data.type === 'advice') {
+          return ctx.reply(`👨‍🔧 *ШІ Механік почув вас:*\n\n${data.text}`, { parse_mode: 'Markdown' });
+        }
+      } catch (parseErr) {
+        console.error('JSON parsing error for voice response:', parseErr);
+      }
+    }
+
+    // Fallback якщо ШІ відповів не за правилами або не повернув JSON
     await ctx.reply(`👨‍🔧 *ШІ Механік почув вас:*\n\n${aiResponse}`, { parse_mode: 'Markdown' });
   } catch (e) {
     console.error('Voice processing error:', e);
