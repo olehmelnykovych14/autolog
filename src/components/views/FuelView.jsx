@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Fuel, Plus, Check, Loader2, Trash2, Gauge, Droplets, TrendingUp } from 'lucide-react'
+import { Fuel, Plus, Check, Loader2, Trash2, Gauge, Droplets, TrendingUp, Info } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { fmt, fmtNum } from '../../utils'
@@ -153,7 +153,19 @@ export function FuelView({ carList = [], historyList = [], onAddService, onDelet
               >
                 {form.fullTank ? 'Так — повний бак' : 'Ні — частково'}
               </button>
+              <p className="mt-1.5 text-xs leading-snug" style={{ color: 'var(--text-3)' }}>
+                Вмикайте, якщо залили бак <b>до повного</b> — тоді витрата на 100 км рахується точно. Часткові доливки позначайте «Ні».
+              </p>
             </Field>
+          </div>
+
+          <div className="mt-4 flex items-start gap-2.5 p-3.5 rounded-2xl" style={{ background: 'var(--bg-hover)' }}>
+            <Info size={16} className="flex-none mt-0.5" style={{ color: 'var(--brand)' }} />
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-2)' }}>
+              <b>Як рахується витрата:</b> на кожній заправці вкажіть поточний <b>пробіг</b> і <b>скільки літрів залили</b>.
+              Витрата за період = залиті літри ÷ пройдені кілометри × 100. Для коректних цифр заправляйтесь
+              «до повного» й вносьте заправку щоразу — графік оживе після <b>другої</b> заправки.
+            </p>
           </div>
           <div className="flex gap-3 mt-5">
             <PrimaryBtn onClick={submit} disabled={saving || !form.liters || !form.mileage} className="flex-1 py-3 justify-center">
@@ -183,7 +195,12 @@ export function FuelView({ carList = [], historyList = [], onAddService, onDelet
 
       {/* Consumption chart */}
       <div className="al-card" style={{ padding: 24 }}>
-        <h2 className="text-base font-bold mb-5" style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}>Витрата пального (л/100 км)</h2>
+        <div className="mb-5">
+          <h2 className="text-base font-bold" style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}>Витрата пального (л/100 км)</h2>
+          <p className="text-xs mt-1 flex items-center gap-1.5" style={{ color: 'var(--text-3)' }}>
+            <Info size={12} style={{ color: 'var(--brand)' }} /> Рахується між заправками: літри ÷ пройдені км × 100. Точно — коли заправляєтесь «до повного».
+          </p>
+        </div>
         {consumption.length === 0 ? (
           <div className="py-12 text-center text-sm font-medium" style={{ color: 'var(--text-3)' }}>
             Додайте принаймні дві заправки з пробігом, щоб побачити динаміку витрати.
