@@ -896,6 +896,51 @@ bot.command('linkuid', async (ctx) => {
   }
 });
 
+// Переносить telegramId та авто зі старого дубль-профілю на справжній Auth UID
+bot.command('migrate', async (ctx) => {
+  try {
+    const args = ctx.message.text.split(' ');
+    const fromId = (args[1] || '').trim();
+    const toId   = (args[2] || '').trim();
+    if (!fromId || !toId) return ctx.reply('Використання: `/migrate FROM_UID TO_UID`\n\nFROM = старий doc ID (де авто)\nTO = реальний Firebase Auth UID', { parse_mode: 'Markdown' });
+    const tid = ctx.from.id.toString();
+
+    const fromDoc = await db.collection('users').doc(fromId).get();
+    if (!fromDoc.exists) return ctx.reply(`❌ Документ users/${fromId} не знайдено.`);
+
+    // Копіюємо або оновлюємо профіль у TO
+    const fromData = fromDoc.data();
+    await db.collection('users').doc(toId).set({
+      ...fromData,
+      telegramId: tid,
+      uid: toId,
+    }, { merge: true });
+
+    // Переносимо всі авто з fromId на toId
+    const carsSnap = await db.collection('cars').where('userId', '==', fromId).get();
+    let carsMoved = 0;
+    for (const d of carsSnap.docs) {
+      await d.ref.update({ userId: toId });
+      carsMoved++;
+    }
+
+    // Переносимо history
+    const histSnap = await db.collection('history').where('userId', '==', fromId).get();
+    for (const d of histSnap.docs) await d.ref.update({ userId: toId });
+
+    // Знімаємо telegramId зі старого
+    await fromDoc.ref.update({ telegramId: admin.firestore.FieldValue.delete() });
+
+    await ctx.reply(
+      `✅ Міграція завершена!\n\nАвто перенесено: *${carsMoved}*\nНовий профіль: \`${toId}\`\n\nНадішли 🚗 *Мої авто* для перевірки.`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (e) {
+    console.error('migrate error:', e);
+    await ctx.reply('❌ Помилка міграції: ' + e.message);
+  }
+});
+
 // --- REMINDERS SCHEDULER ---
 const checkReminders = async () => {
   console.log('🔔 Checking reminders...');
