@@ -779,6 +779,37 @@ try {
 
 bot.command('ping', (ctx) => ctx.reply('Pong! 🏓'))
 
+// Діагностика прив'язки: до якого профілю причеплений бот і скільки авто він бачить
+bot.command('whoami', async (ctx) => {
+  try {
+    const tid = ctx.from.id.toString();
+    const dupSnap = await db.collection('users').where('telegramId', '==', tid).get();
+    const carsCount = ctx.userId
+      ? (await db.collection('cars').where('userId', '==', ctx.userId).get()).size
+      : 0;
+
+    let text = `🪪 *Діагностика прив'язки*\n\n`;
+    text += `telegramId: \`${tid}\`\n`;
+    text += `Профілів із цим telegramId: *${dupSnap.size}*\n`;
+    text += `Активний userId: \`${ctx.userId || '—'}\`\n`;
+    text += `Ім'я: ${ctx.userData?.displayName || ctx.userData?.name || '—'}\n`;
+    text += `Email: ${ctx.userData?.email || '—'}\n`;
+    text += `Знайдено авто: *${carsCount}*`;
+
+    if (dupSnap.size > 1) {
+      text += `\n\n⚠️ Цей telegramId прив'язаний до *кількох* профілів — саме тому не ті авто:`;
+      dupSnap.docs.forEach((d, i) => {
+        const u = d.data();
+        text += `\n${i + 1}) \`${d.id}\` — ${u.displayName || u.email || u.phone || '?'}`;
+      });
+    }
+    await ctx.reply(text, { parse_mode: 'Markdown' });
+  } catch (e) {
+    console.error('whoami error:', e);
+    await ctx.reply('❌ Помилка діагностики: ' + e.message);
+  }
+});
+
 // --- REMINDERS SCHEDULER ---
 const checkReminders = async () => {
   console.log('🔔 Checking reminders...');
