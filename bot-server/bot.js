@@ -77,6 +77,13 @@ bot.use(async (ctx, next) => {
 
 bot.use(session());
 
+// Гарантуємо, що ctx.session завжди об'єкт (Telegraf 4 за замовчуванням повертає undefined),
+// інакше присвоєння ctx.session.* у майстрах (заправка, запис на СТО) падає з TypeError.
+bot.use((ctx, next) => {
+  if (ctx.session == null) ctx.session = {};
+  return next();
+});
+
 // middleware to find User in DB
 bot.use(async (ctx, next) => {
   if (!ctx.from) return next();
