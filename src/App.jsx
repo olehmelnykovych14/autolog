@@ -21,6 +21,7 @@ import { doc, getDoc, getDocs, collection, query, where, addDoc, updateDoc, dele
 
 // Context & Constants
 import { ThemeCtx } from './context/ThemeContext'
+import { monthKey } from './utils'
 
 // Layout
 import { Sidebar } from './components/layout/Sidebar'
@@ -53,6 +54,7 @@ const STOActsView = lazy(() => import('./components/views/STOActsView').then(m =
 const STOSettingsView = lazy(() => import('./components/views/STOSettingsView').then(m => ({ default: m.STOSettingsView })))
 const PlansView = lazy(() => import('./components/views/PlansView').then(m => ({ default: m.PlansView })))
 const FindSTOView = lazy(() => import('./components/views/FindSTOView').then(m => ({ default: m.FindSTOView })))
+const FuelView = lazy(() => import('./components/views/FuelView').then(m => ({ default: m.FuelView })))
 const BlogView = lazy(() => import('./components/views/BlogView'))
 const ArticleView = lazy(() => import('./components/views/ArticleView'))
 
@@ -476,9 +478,18 @@ export default function App() {
     localStorage.setItem('theme', isDark ? 'dark' : 'light')
   }, [isDark])
 
-  // SUBSCRIPTION: AI usage tracking disabled for free launch
+  // AI usage tracking — increments monthly counter on the user profile.
+  // The counter auto-resets when the calendar month changes.
   const onUpdateAIUsage = async () => {
-    // no-op during free launch
+    if (!currentUser) return
+    const mk = monthKey()
+    const prev = userProfile?.aiUsage
+    const count = (prev && prev.month === mk ? (prev.count || 0) : 0) + 1
+    const aiUsage = { month: mk, count }
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), { aiUsage })
+      setUserProfile(p => ({ ...p, aiUsage }))
+    } catch (e) { console.error('AI usage update failed:', e) }
   }
 
   const isAdmin = currentUser?.email === 'olehmelnykovych@gmail.com' || userProfile?.role === 'Admin'
@@ -750,7 +761,7 @@ export default function App() {
         <Route path="/dashboard" element={
           isSto ? <Navigate to="/sto" replace /> :
           <AppShell {...shellProps}>
-            {scrollWrapper('max-w-7xl', <DashboardView carList={carList} historyList={historyList} />)}
+            {scrollWrapper('max-w-7xl', <DashboardView carList={carList} historyList={historyList} userProfile={userProfile} />)}
           </AppShell>
         } />
         <Route path="/garage" element={
@@ -769,6 +780,12 @@ export default function App() {
           isSto ? <Navigate to="/sto" replace /> :
           <AppShell {...shellProps}>
             {scrollWrapper('max-w-7xl', <HistoryView historyList={historyList} carList={carList} onAddService={addService} onUpdateService={updateService} onDeleteService={deleteService} />)}
+          </AppShell>
+        } />
+        <Route path="/fuel" element={
+          isSto ? <Navigate to="/sto" replace /> :
+          <AppShell {...shellProps}>
+            {scrollWrapper('max-w-7xl', <FuelView carList={carList} historyList={historyList} onAddService={addService} onDeleteService={deleteService} />)}
           </AppShell>
         } />
         <Route path="/team" element={

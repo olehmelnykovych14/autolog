@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Check, Info, LayoutDashboard, Send, Wrench, ShieldCheck, Zap } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
 import { C, PLANS } from '../../constants'
+import { aiUsageThisMonth } from '../../utils'
 import { ThemeCtx } from '../../context/ThemeContext'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
@@ -81,6 +82,8 @@ export function PlansView({ carList = [], userProfile, onUpdatePlan, currentUser
   }
 
   const activePlanData = PLANS.find(p => p.id === currentPlan) || PLANS[0]
+  const aiUsed = aiUsageThisMonth(userProfile)
+  const aiUnlimited = activePlanData.aiLimit >= 9999
   const meta = PAGE_METADATA['/pricing']
 
   useEffect(() => {
@@ -128,10 +131,10 @@ export function PlansView({ carList = [], userProfile, onUpdatePlan, currentUser
           <div className="mb-0">
             <div className="flex justify-between text-sm mb-1.5">
               <span className="text-gray-500 dark:text-gray-400">AI запити (місяць)</span>
-              <span className="font-medium text-gray-900 dark:text-white">0 / {activePlanData.aiLimit}</span>
+              <span className="font-medium text-gray-900 dark:text-white">{aiUsed} / {aiUnlimited ? '∞' : activePlanData.aiLimit}</span>
             </div>
             <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all" style={{ width: `0%`, background: C }} />
+              <div className="h-full rounded-full transition-all" style={{ width: `${aiUnlimited ? 0 : Math.min((aiUsed / (activePlanData.aiLimit || 1)) * 100, 100)}%`, background: C }} />
             </div>
           </div>
         </div>

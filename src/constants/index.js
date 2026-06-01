@@ -1,4 +1,4 @@
-import { LayoutDashboard, Car, ClipboardList, Bot, Users, Settings, Wrench, Calendar, FileText } from 'lucide-react'
+import { LayoutDashboard, Car, ClipboardList, Bot, Users, Settings, Wrench, Calendar, FileText, Fuel } from 'lucide-react'
 
 export const C = '#5C3EFE'
 
@@ -15,7 +15,21 @@ export const CAT = {
   other: 'Інше' 
 }
 
-export const CAT_CLR = { 
+// Hex-кольори категорій для діаграм (recharts)
+export const CAT_HEX = {
+  maintenance: '#3B82F6',
+  repair:      '#F97316',
+  diagnostic:  '#8B5CF6',
+  tires:       '#64748B',
+  washing:     '#06B6D4',
+  tuning:      '#EAB308',
+  insurance:   '#22C55E',
+  fuel:        '#EF4444',
+  parts:       '#6366F1',
+  other:       '#94A3B8',
+}
+
+export const CAT_CLR = {
   maintenance: 'bg-blue-100 text-blue-700', 
   repair: 'bg-orange-100 text-orange-700', 
   diagnostic: 'bg-purple-100 text-purple-700', 
@@ -33,6 +47,7 @@ export const NAV_OWNER = [
   { id: 'garage', label: 'Мій гараж', icon: Car },
   { id: 'bookings', label: 'Запис на СТО', icon: Calendar },
   { id: 'service', label: 'Сервіс', icon: ClipboardList },
+  { id: 'fuel', label: 'Паливо', icon: Fuel },
   { id: 'ai', label: 'AI Механік', icon: Bot },
   { id: 'team', label: 'Команда', icon: Users },
   // SUBSCRIPTION: { id: 'plans', label: 'Тарифи', icon: CreditCard },

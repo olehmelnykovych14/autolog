@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Bot, Send, Camera, Mic, X, Trash2, StopCircle, Info, ChevronRight, Plus, MessageSquare, Clock, ArrowLeft, Pencil, Check } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { askGemini } from '../../lib/ai'
-import { C } from '../../constants'
+import { C, PLANS } from '../../constants'
+import { aiUsageThisMonth } from '../../utils'
 import { db, auth } from '../../firebase'
 import { collection, addDoc, getDocs, query, orderBy, doc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 
@@ -32,6 +33,13 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
   const [showSidebar, setShowSidebar] = useState(false)
   const [editingChatId, setEditingChatId] = useState(null)
   const [editingTitle, setEditingTitle] = useState('')
+
+  // AI usage limits (per current plan)
+  const plan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
+  const aiLimit = plan.aiLimit
+  const unlimited = aiLimit >= 9999
+  const aiUsed = aiUsageThisMonth(userProfile)
+  const limitReached = !unlimited && aiUsed >= aiLimit
 
   const ref = useRef(null)
   const mediaRecorder = useRef(null)
@@ -165,6 +173,14 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
   const send = async (textOverride) => {
     const txt = (textOverride || input).trim()
     if ((!txt && !media) || typing) return
+
+    if (limitReached) {
+      setMsgs(p => [...p, {
+        role: 'bot',
+        text: `Ви вичерпали ліміт AI-запитів на тарифі **${plan.name}** (${aiLimit} на місяць).\n\nОновіть тариф, щоб продовжити спілкування з AI-механіком.`,
+      }])
+      return
+    }
 
     const currentMedia = media
     setInput('')
@@ -305,12 +321,20 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
             </div>
           </div>
 
-          <button
-            onClick={startNewChat}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-[#5C3EFE] hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all"
-          >
-            <Plus size={14} /> Новий
-          </button>
+          <div className="flex items-center gap-2">
+            <span
+              title="Використано AI-запитів цього місяця"
+              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest border ${limitReached ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800/50' : 'bg-indigo-50 dark:bg-indigo-900/20 text-[#5C3EFE] border-indigo-100 dark:border-indigo-800/50'}`}
+            >
+              {unlimited ? '∞ AI' : `${aiUsed}/${aiLimit} AI`}
+            </span>
+            <button
+              onClick={startNewChat}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-[#5C3EFE] hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all"
+            >
+              <Plus size={14} /> Новий
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -451,6 +475,21 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
           </div>
         )}
 
+        {/* Limit reached banner */}
+        {limitReached && (
+          <div className="px-4 sm:px-6 py-3 bg-red-50 dark:bg-red-900/15 border-t border-red-100 dark:border-red-800/40 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-xs font-bold text-red-600 dark:text-red-400">
+              Ліміт AI-запитів вичерпано ({aiLimit}/міс на тарифі {plan.name}).
+            </p>
+            <button
+              onClick={onGoPlans}
+              className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-white bg-[#5C3EFE] hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-indigo-500/25"
+            >
+              Оновити тариф
+            </button>
+          </div>
+        )}
+
         {/* Input Area */}
         <div className="p-4 sm:p-5 bg-white dark:bg-[#0A0F1E] border-t border-gray-100 dark:border-gray-800/80">
           <div className="flex items-center gap-2 mb-3">
@@ -482,13 +521,14 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-              placeholder={media ? 'Додати коментар...' : 'Опишіть проблему з автомобілем...'}
+              disabled={limitReached}
+              placeholder={limitReached ? 'Ліміт AI-запитів вичерпано' : media ? 'Додати коментар...' : 'Опишіть проблему з автомобілем...'}
               className="w-full pl-5 pr-14 py-4 rounded-2xl text-sm focus:outline-none transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/60 focus:border-[#5C3EFE] focus:ring-4 focus:ring-[#5C3EFE]/10"
             />
             <button
               data-testid="ai-send-btn"
               onClick={() => send()}
-              disabled={(!input.trim() && !media) || typing}
+              disabled={(!input.trim() && !media) || typing || limitReached}
               className="absolute right-2 w-10 h-10 rounded-xl flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all disabled:opacity-30 shadow-lg"
               style={{ background: C }}
             >

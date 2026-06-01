@@ -2,6 +2,31 @@ export const fmt = n => new Intl.NumberFormat('uk-UA').format(n)
 
 export const fmtCost = n => n === 0 ? 'Безкоштовно' : `${fmt(n)} грн`
 
+export const fmtNum = (n, d = 1) => new Intl.NumberFormat('uk-UA', { minimumFractionDigits: 0, maximumFractionDigits: d }).format(n)
+
+export const MONTH_NAMES = ['Січ', 'Лют', 'Бер', 'Кві', 'Тра', 'Чер', 'Лип', 'Сер', 'Вер', 'Жов', 'Лис', 'Гру']
+
+// Ключ поточного місяця для лічильників (напр. "2026-06")
+export const monthKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+
+// Кількість AI-запитів користувача за поточний місяць (з автоскиданням при зміні місяця)
+export function aiUsageThisMonth(profile) {
+  const u = profile?.aiUsage
+  if (!u) return 0
+  return u.month === monthKey() ? (u.count || 0) : 0
+}
+
+// Статус нагадування за датою: { days, label, hex, urgent }
+export function reminderStatus(dateStr) {
+  const days = Math.ceil((new Date(dateStr) - new Date()) / 86400000)
+  if (isNaN(days)) return { days: null, label: '—', hex: '#94A3B8', urgent: false }
+  if (days < 0) return { days, label: 'Прострочено', hex: '#EF4444', urgent: true }
+  if (days === 0) return { days, label: 'Сьогодні', hex: '#F97316', urgent: true }
+  if (days <= 7) return { days, label: `${days} дн.`, hex: '#F59E0B', urgent: true }
+  if (days <= 30) return { days, label: `${days} дн.`, hex: '#3B82F6', urgent: false }
+  return { days, label: `${days} дн.`, hex: '#22C55E', urgent: false }
+}
+
 const BRAND_LOGOS = {
   'acura': 'https://cdn.simpleicons.org/acura/004A99',
   'alfa romeo': 'https://cdn.simpleicons.org/alfaromeo/900000',
