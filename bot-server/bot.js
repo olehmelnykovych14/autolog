@@ -93,8 +93,8 @@ bot.use(async (ctx, next) => {
 
 const mainMenu = Markup.keyboard([
   ['🚗 Мої авто', '📅 Мої записи'],
-  ['💰 Витрати', '🧾 Додати запис (AI)'],
-  ['❓ Допомога']
+  ['⛽ Заправка', '💰 Витрати'],
+  ['🧾 Додати запис (AI)', '❓ Допомога']
 ]).resize();
 
 const { fmtCost, parseDateSafe, normPlate } = require('./utils');
@@ -289,10 +289,123 @@ bot.action('exp_back', (ctx) => {
 });
 
 bot.hears('❓ Допомога', (ctx) => {
-  ctx.reply('❓ *Як користуватися:*\n\n1. Просто напишіть мені будь-яке питання про авто.\n2. Надішліть **фото чека з СТО**, і я автоматично додам його у вашу історію.', { parse_mode: 'Markdown' });
+  ctx.reply('❓ *Як користуватися:*\n\n1. Просто напишіть мені будь-яке питання про авто.\n2. Надішліть **фото чека з СТО**, і я автоматично додам його у вашу історію.\n3. Натисніть **⛽ Заправка**, щоб додати заправку — вкажіть пробіг, літри й суму. Витрату на 100 км побачите в додатку → *Паливо*.', { parse_mode: 'Markdown' });
 });
 
 bot.hears('🧾 Додати запис (AI)', (ctx) => ctx.reply('📸 Надішліть фото чека СТО. Я проаналізую його автоматично.'));
+
+// --- FUEL LOG FLOW ---
+// Зберігає заправку в ту саму колекцію history (category: 'fuel'), що й веб-додаток.
+const saveFuelRecord = async (ctx) => {
+  const f = ctx.session?.fuelData;
+  if (!f || !ctx.userId) return;
+  const pricePerLiter = f.liters ? Math.round((f.cost / f.liters) * 100) / 100 : 0;
+  const date = new Date().toISOString().split('T')[0];
+  try {
+    await db.collection('history').add({
+      category: 'fuel',
+      title: 'Заправка',
+      date,
+      carId: f.carId,
+      plate: f.carPlate || '',
+      mileage: f.mileage,
+      liters: f.liters,
+      cost: f.cost || 0,
+      pricePerLiter,
+      fullTank: !!f.fullTank,
+      userId: ctx.userId,
+      status: 'self_reported',
+      createdAt: Date.now(),
+    });
+    // Підтягуємо пробіг авто, якщо новий більший
+    if (f.mileage > (f.currentMileage || 0)) {
+      await db.collection('cars').doc(f.carId).update({ mileage: f.mileage }).catch(() => {});
+    }
+    const msg = `✅ *Заправку збережено!*\n\n🚗 ${f.carBrand} (${f.carPlate})\n📍 Пробіг: *${f.mileage}* км\n⛽ *${f.liters}* л${f.fullTank ? ' (повний бак)' : ' (частково)'}\n💰 *${fmtCost(f.cost)}* ₴${pricePerLiter ? ` · ${pricePerLiter} ₴/л` : ''}\n\nВитрату на 100 км дивіться в додатку → *Паливо*.`;
+    if (ctx.callbackQuery) await ctx.editMessageText(msg, { parse_mode: 'Markdown' });
+    else await ctx.reply(msg, { parse_mode: 'Markdown' });
+  } catch (e) {
+    console.error('Fuel save error:', e);
+    await ctx.reply('❌ Помилка збереження заправки. Спробуйте ще раз.');
+  } finally {
+    ctx.session.fuelData = null;
+    ctx.session.fuelStep = null;
+  }
+};
+
+// Обробляє покрокове введення чисел майстра заправки (викликається з bot.on('text'))
+const handleFuelStep = async (ctx) => {
+  const step = ctx.session.fuelStep;
+  const txt = (ctx.message.text || '').trim();
+
+  if (/^(скасувати|відміна|cancel)$/i.test(txt)) {
+    ctx.session.fuelData = null;
+    ctx.session.fuelStep = null;
+    return ctx.reply('❌ Скасовано.', mainMenu);
+  }
+
+  if (step === 'mileage') {
+    const m = parseInt(txt.replace(/[^\d]/g, ''), 10);
+    if (!m || m <= 0) return ctx.reply('❌ Введіть пробіг числом, напр. `195511`', { parse_mode: 'Markdown' });
+    ctx.session.fuelData.mileage = m;
+    ctx.session.fuelStep = 'liters';
+    return ctx.reply('2️⃣ Скільки *літрів* залили? (напр. `42.5`)', { parse_mode: 'Markdown' });
+  }
+
+  if (step === 'liters') {
+    const num = parseFloat(txt.replace(',', '.').replace(/[^\d.]/g, ''));
+    if (!num || num <= 0) return ctx.reply('❌ Введіть кількість літрів числом, напр. `42.5`', { parse_mode: 'Markdown' });
+    ctx.session.fuelData.liters = num;
+    ctx.session.fuelStep = 'cost';
+    return ctx.reply('3️⃣ Яка *сума* заправки в ₴? (введіть `0`, якщо не вказувати)', { parse_mode: 'Markdown' });
+  }
+
+  if (step === 'cost') {
+    const num = parseFloat(txt.replace(',', '.').replace(/[^\d.]/g, ''));
+    if (isNaN(num) || num < 0) return ctx.reply('❌ Введіть суму числом, напр. `2200`', { parse_mode: 'Markdown' });
+    ctx.session.fuelData.cost = num;
+    ctx.session.fuelStep = null; // числа введено — чекаємо вибір «повний бак»
+    return ctx.reply('4️⃣ Це був *повний бак*?\n_Точна витрата рахується між повними баками._', {
+      parse_mode: 'Markdown',
+      ...Markup.inlineKeyboard([
+        [Markup.button.callback('✅ Так, повний', 'fuel_full_yes')],
+        [Markup.button.callback('🔸 Ні, частково', 'fuel_full_no')],
+      ]),
+    });
+  }
+};
+
+bot.hears(/^⛽ Заправка$|^Заправка$/i, async (ctx) => {
+  if (!ctx.userId) return ctx.reply('Спершу зареєструйтесь!');
+  const carsSnap = await db.collection('cars').where('userId', '==', ctx.userId).get();
+  if (carsSnap.empty) return ctx.reply('⚠️ У вас немає доданих авто. Додайте авто в додатку, щоб вести журнал пального.');
+  const buttons = carsSnap.docs.map(d => [Markup.button.callback(`🚗 ${d.data().brand} (${d.data().plate})`, `fuel_car_${d.id}`)]);
+  buttons.push([Markup.button.callback('❌ Скасувати', 'fuel_cancel')]);
+  ctx.reply('⛽ *Нова заправка*\nОберіть авто:', { parse_mode: 'Markdown', ...Markup.inlineKeyboard(buttons) });
+});
+
+bot.action(/fuel_car_(.+)/, async (ctx) => {
+  const carId = ctx.match[1];
+  const carDoc = await db.collection('cars').doc(carId).get();
+  if (!carDoc.exists) return ctx.answerCbQuery('Авто не знайдено');
+  const c = carDoc.data();
+  ctx.session.fuelData = { carId, carBrand: c.brand, carPlate: c.plate, currentMileage: c.mileage || 0 };
+  ctx.session.fuelStep = 'mileage';
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(`⛽ Заправка для *${c.brand} ${c.model || ''}*\n\n1️⃣ Введіть поточний *пробіг* (км):\n_Напишіть «скасувати» щоб вийти._`, { parse_mode: 'Markdown' });
+});
+
+bot.action(/fuel_full_(yes|no)/, async (ctx) => {
+  if (!ctx.session?.fuelData) return ctx.answerCbQuery('Дані застаріли, почніть заново');
+  ctx.session.fuelData.fullTank = ctx.match[1] === 'yes';
+  await ctx.answerCbQuery();
+  await saveFuelRecord(ctx);
+});
+
+bot.action('fuel_cancel', (ctx) => {
+  if (ctx.session) { ctx.session.fuelData = null; ctx.session.fuelStep = null; }
+  ctx.editMessageText('❌ Скасовано.').catch(() => {});
+});
 
 const PLANS_LIMITS = { 'Free': 5, 'Premium': 100, 'Business': 9999 };
 const getCurrentMonthStr = () => new Date().toISOString().substring(0, 7);
@@ -502,8 +615,11 @@ bot.on('voice', async (ctx) => {
 
 bot.on('text', async (ctx) => {
   if (ctx.message.text.startsWith('/')) return;
-  
-  const menuButtons = ['🚗 Мої авто', '📅 Мої записи', '💰 Витрати', '❓ Допомога', '🧾 Додати запис (AI)'];
+
+  // Майстер заправки має пріоритет над AI-чатом
+  if (ctx.session?.fuelStep) return handleFuelStep(ctx);
+
+  const menuButtons = ['🚗 Мої авто', '📅 Мої записи', '⛽ Заправка', '💰 Витрати', '❓ Допомога', '🧾 Додати запис (AI)'];
   if (menuButtons.some(btn => ctx.message.text.includes(btn))) return;
 
   if (!(await handleAILimit(ctx))) return;
