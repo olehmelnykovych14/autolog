@@ -780,6 +780,42 @@ try {
 
 bot.command('ping', (ctx) => ctx.reply('Pong! 🏓'))
 
+// Діагностика: який Firebase-проект реально використовується
+bot.command('dbcheck', async (ctx) => {
+  try {
+    const tid = ctx.from.id.toString();
+    // Отримуємо project ID напряму з ініціалізованого Firebase app
+    const projectId = admin.apps[0]?.options?.credential?.projectId
+      || admin.apps[0]?.options?.projectId
+      || serviceAccount?.project_id
+      || '—';
+
+    // Шукаємо юзера БЕЗ кешу middleware (свіжий запит)
+    const freshSnap = await db.collection('users').where('telegramId', '==', tid).get();
+    let freshUserId = '—';
+    let freshCars = 0;
+    if (!freshSnap.empty) {
+      const doc = freshSnap.docs[0];
+      freshUserId = doc.data().uid || doc.id;
+      const carsSnap = await db.collection('cars').where('userId', '==', freshUserId).get();
+      freshCars = carsSnap.size;
+    }
+
+    await ctx.reply(
+      `🔍 *DB Діагностика*\n\n` +
+      `Firebase project: \`${projectId}\`\n` +
+      `credSource: \`${credSource}\`\n` +
+      `telegramId: \`${tid}\`\n` +
+      `Знайдено профілів: *${freshSnap.size}*\n` +
+      `userId (свіжий): \`${freshUserId}\`\n` +
+      `Авто (свіжий запит): *${freshCars}*`,
+      { parse_mode: 'Markdown' }
+    );
+  } catch (e) {
+    ctx.reply('❌ dbcheck error: ' + e.message);
+  }
+})
+
 // Діагностика прив'язки: до якого профілю причеплений бот і скільки авто він бачить
 bot.command('whoami', async (ctx) => {
   try {
