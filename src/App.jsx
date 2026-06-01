@@ -1,9 +1,34 @@
 import { useState, useEffect, lazy, Suspense, Component } from 'react'
 
+// Detects the "stale chunk" error that occurs after a new deploy replaces
+// hashed assets while the client still references the previous build.
+function isChunkLoadError(e) {
+  const msg = (e?.message || '') + ''
+  return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError/i.test(msg)
+}
+
 class ErrorBoundary extends Component {
   state = { error: null }
   static getDerivedStateFromError(e) { return { error: e } }
+  componentDidCatch(e) {
+    // On a stale-chunk error, reload once to pick up the new build.
+    // sessionStorage guard prevents an infinite reload loop.
+    if (isChunkLoadError(e) && !sessionStorage.getItem('al_chunk_reloaded')) {
+      sessionStorage.setItem('al_chunk_reloaded', '1')
+      window.location.reload()
+    }
+  }
   render() {
+    if (this.state.error && isChunkLoadError(this.state.error)) return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 16, padding: 32, textAlign: 'center' }}>
+        <div style={{ width: 36, height: 36, border: '3px solid var(--line-2)', borderTopColor: 'var(--brand)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+        <p style={{ color: 'var(--text-3)', fontSize: 14, fontWeight: 600 }}>Доступна нова версія. Оновлюємо…</p>
+        <button onClick={() => { sessionStorage.removeItem('al_chunk_reloaded'); window.location.reload() }} style={{ padding: '10px 18px', background: '#5C3EFE', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 700 }}>Оновити вручну</button>
+      </div>
+    )
+    return this.renderError()
+  }
+  renderError() {
     if (this.state.error) return (
       <div style={{ padding: 32, color: '#ef4444', fontFamily: 'monospace', fontSize: 13 }}>
         <b>Помилка рендеру:</b><br/>{this.state.error?.message}<br/><pre style={{fontSize:11,marginTop:8,whiteSpace:'pre-wrap'}}>{this.state.error?.stack?.slice(0,500)}</pre>
