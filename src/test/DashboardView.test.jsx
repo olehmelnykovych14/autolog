@@ -3,47 +3,21 @@ import { describe, it, expect, vi } from 'vitest';
 import { DashboardView } from '../components/views/DashboardView';
 import React from 'react';
 
-// Mock Lucide icons statically to avoid any Proxy/Hoisting issues
-vi.mock('lucide-react', () => ({
-  TrendingUp: () => null,
-  Activity: () => null,
-  Wrench: () => null,
-  ShieldCheck: () => null,
-  Clock: () => null,
-  LayoutDashboard: () => null,
-  Car: () => null,
-  Calendar: () => null,
-  Settings: () => null,
-  User: () => null,
-  ChevronRight: () => null,
-  ClipboardList: () => null,
-  Bot: () => null,
-  Users: () => null,
-  CreditCard: () => null,
-  BarChart: () => null,
-  MapPin: () => null,
-  PlusCircle: () => null,
-  LogOut: () => null,
-  Menu: () => null,
-  X: () => null,
-  Bell: () => null,
-  Sun: () => null,
-  Moon: () => null,
-  ChevronDown: () => null,
-  Check: () => null,
-  AlertCircle: () => null,
-}));
+// Stub every Lucide icon as a no-op. Deriving the keys from the real module
+// means new icons (e.g. Fuel) never break this mock like a hand-maintained list.
+vi.mock('lucide-react', async (importOriginal) => {
+  const actual = await importOriginal();
+  return Object.fromEntries(Object.keys(actual).map((k) => [k, () => null]));
+});
 
 // Mock Recharts to avoid SVG rendering issues in jsdom
-vi.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }) => <div>{children}</div>,
-  LineChart: () => <div />,
-  Line: () => <div />,
-  XAxis: () => <div />,
-  YAxis: () => <div />,
-  CartesianGrid: () => <div />,
-  Tooltip: () => <div />,
-}));
+vi.mock('recharts', async (importOriginal) => {
+  const actual = await importOriginal();
+  const stubbed = Object.fromEntries(Object.keys(actual).map((k) => [k, () => null]));
+  // Keep ResponsiveContainer rendering children so wrapped content still mounts.
+  stubbed.ResponsiveContainer = ({ children }) => <div>{children}</div>;
+  return stubbed;
+});
 
 describe('DashboardView', () => {
   const mockCars = [
