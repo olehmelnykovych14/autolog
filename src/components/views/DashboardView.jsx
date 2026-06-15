@@ -10,7 +10,7 @@ export function DashboardView({ carList, historyList }) {
   // ── Reminders (real-time) ──
   const [reminders, setReminders] = useState([])
   useEffect(() => {
-    const uid = auth.currentUser?.uid
+    const uid = auth?.currentUser?.uid
     if (!uid) return
     const unsub = onSnapshot(
       collection(db, 'users', uid, 'reminders'),

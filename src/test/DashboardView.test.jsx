@@ -10,6 +10,11 @@ vi.mock('lucide-react', async (importOriginal) => {
   return Object.fromEntries(Object.keys(actual).map((k) => [k, () => null]));
 });
 
+// Isolate from real Firebase init (which is env-dependent and leaves `auth`
+// undefined when VITE_FIREBASE_* vars are absent, e.g. in CI). With no signed-in
+// user the reminders effect bails out early.
+vi.mock('../firebase', () => ({ auth: { currentUser: null }, db: {} }));
+
 // Mock Recharts to avoid SVG rendering issues in jsdom
 vi.mock('recharts', async (importOriginal) => {
   const actual = await importOriginal();
