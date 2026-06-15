@@ -26,7 +26,7 @@ const DEFAULT_SETTINGS = {
 
 const WEEK_DAYS = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 
-function Section({ icon: Icon, title, children }) {
+function Section({ title, children }) {
   return (
     <div className="al-card" style={{ padding: '20px 24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 14, borderBottom: '1px solid var(--line)' }}>
@@ -64,7 +64,7 @@ function Toggle({ value, onChange, label }) {
 
 function inp() { return 'w-full px-3 py-2.5 rounded-xl text-sm font-medium outline-none transition-colors' }
 
-export function STOSettingsView({ userProfile, setUserProfile }) {
+export function STOSettingsView({ userProfile }) {
   const [s, setS] = useState(DEFAULT_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

@@ -249,7 +249,7 @@ function CreateActModal({ onClose, historyItems, histLoading, userProfile, onCre
   )
 }
 
-function ActPreviewModal({ act, stoProfile, onClose }) {
+function ActPreviewModal({ act, onClose }) {
   const print = () => {
     const html = `<!DOCTYPE html>
 <html lang="uk">

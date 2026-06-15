@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Mock Dependencies
@@ -49,11 +49,10 @@ describe('Bot Logic Verification', () => {
       const base64 = "base64dataString";
 
       // Logic from bot.js
-      let result;
       if (hasMedia && typeof base64 === 'string' && base64.length > 0) {
-        result = await mockModel.generateContent([prompt, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
+        await mockModel.generateContent([prompt, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
       } else {
-        result = await mockModel.generateContent(prompt);
+        await mockModel.generateContent(prompt);
       }
 
       expect(mockGenerateContent).toHaveBeenCalledWith([
@@ -71,11 +70,10 @@ describe('Bot Logic Verification', () => {
         const base64 = [];    // truthy array (THE BUG)
   
         // Logic from bot.js after fix
-        let result;
         if (hasMedia && typeof base64 === 'string' && base64.length > 0) {
-          result = await mockModel.generateContent([prompt, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
+          await mockModel.generateContent([prompt, { inlineData: { data: base64, mimeType: "image/jpeg" } }]);
         } else {
-          result = await mockModel.generateContent(prompt);
+          await mockModel.generateContent(prompt);
         }
   
         // Verification: It should NOT attempt to use inlineData if base64 is an array
@@ -85,7 +83,7 @@ describe('Bot Logic Verification', () => {
 
   describe('Expense Statistics Logic', () => {
       // Mocking getExpenseStats logic from bot.js
-      const getExpenseStats = (snap, carId = null, carPlate = null) => {
+      const getExpenseStats = (snap) => {
         let total = 0;
         snap.forEach(d => {
             const data = d.data();

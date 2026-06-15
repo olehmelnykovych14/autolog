@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Car, ShieldCheck, Info, Loader2, TrendingUp, ClipboardCheck, ChevronRight, CheckCircle, Clock, XCircle } from 'lucide-react'
-import { Field, inp_cls, PrimaryBtn } from '../common/Common'
-import { collection, query, where, getDocs, orderBy, limit, disableNetwork } from 'firebase/firestore'
+import { Field, PrimaryBtn } from '../common/Common'
+import { collection, query, where, getDocs, disableNetwork } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { C } from '../../constants'
 import { AddVerifiedServiceModal } from '../modals/Modals'
@@ -128,12 +128,6 @@ export function STODashboardView({ userProfile }) {
       iconBg: 'bg-red-500/10',
     },
   ]
-
-  const statusIcon = (status) => {
-    if (status === 'verified') return <CheckCircle size={14} className="text-emerald-400" />
-    if (status === 'pending') return <Clock size={14} className="text-amber-400" />
-    return <XCircle size={14} className="text-gray-500" />
-  }
 
   const statusLabel = (status) => {
     if (status === 'verified') return <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md uppercase tracking-widest">Верифіковано</span>

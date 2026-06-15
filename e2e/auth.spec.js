@@ -34,7 +34,7 @@ test.describe('Auth flows', () => {
     await expect(page.locator('text=/невірн|неправильн|invalid|wrong/i')).toBeVisible({ timeout: 8000 })
   })
 
-  test('BUG #14: register accepts non-existent email domain without verification', async ({ page, request }) => {
+  test('BUG #14: register accepts non-existent email domain without verification', async ({ page }) => {
     test.skip(!process.env.RUN_DESTRUCTIVE_TESTS, 'Set RUN_DESTRUCTIVE_TESTS=1 to enable (creates Firestore user)')
 
     const uniqueEmail = `qa.bot.${Date.now()}@autolog.test`

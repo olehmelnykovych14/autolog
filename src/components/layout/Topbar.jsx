@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Sun, Moon, Bell, Check, X, AlertCircle, Menu, ChevronRight } from 'lucide-react'
 import { ThemeCtx } from '../../context/ThemeContext'
@@ -6,7 +6,7 @@ import { C } from '../../constants'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
 
-export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, onLogout, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], incomingInvites=[], onAcceptInvite, onRejectInvite, onAcceptService, onRejectService, showMobileMenu, setShowMobileMenu, onMarkRead, onMarkAllRead }) {
+export function Topbar({ isDark, setDark, incomingTransfer, onAcceptTransfer, onRejectTransfer, currentUser, userProfile, col, setCol, pendingApprovals, bookingNotifications=[], incomingInvites=[], onAcceptInvite, onRejectInvite, onAcceptService, onRejectService, setShowMobileMenu, onMarkRead, onMarkAllRead }) {
   const [showInbox, setShowInbox] = useState(false)
   const [processingInvites, setProcessingInvites] = useState({})
 

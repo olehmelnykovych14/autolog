@@ -1,10 +1,9 @@
-import React, { useState, useContext, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Info, LayoutDashboard, Send, Wrench, ShieldCheck, Zap } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
 import { C, PLANS } from '../../constants'
 import { aiUsageThisMonth } from '../../utils'
-import { ThemeCtx } from '../../context/ThemeContext'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { PAGE_METADATA } from '../../constants/seo'
@@ -177,9 +176,8 @@ export function PlansView({ carList = [], userProfile, onUpdatePlan, currentUser
   )
 }
 
-export function STOPricingView({ currentUser, userProfile, setUserProfile, setTab }) {
+export function STOPricingView({ currentUser, setUserProfile, setTab }) {
   const navigate = useNavigate()
-  const isDark = useContext(ThemeCtx)
   const [loading, setLoading] = useState(null)
 
   const handlePurchase = async (planType) => {

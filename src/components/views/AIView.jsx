@@ -19,7 +19,7 @@ const WELCOME_MSG = {
   text: `Привіт! Я ваш **AutoLog AI Mechanic** 🤖\n\nАналізую телеметрію вашого авто в реальному часі. Можу допомогти з діагностикою, розрахунком вартості ремонту або записом на СТО.\n\nЧим можу допомогти?`,
 }
 
-export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onGoPlans, onGoBookings, onMenu, onBack }) {
+export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onGoPlans, onGoBookings, onMenu }) {
   const [input, setInput] = useState('')
   const [msgs, setMsgs] = useState([WELCOME_MSG])
   const [typing, setTyping] = useState(false)
@@ -380,7 +380,7 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
                       <div className="markdown-content text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
                         <ReactMarkdown
                           components={{
-                            a: ({ node, ...props }) => {
+                            a: ({ ...props }) => {
                               const isMarket = props.href?.includes('exist.ua') || props.href?.includes('avto.pro')
                               if (isMarket) return (
                                 <a {...props} target="_blank" rel="noopener noreferrer"
@@ -390,21 +390,21 @@ export function AIView({ carList, historyList, userProfile, onUpdateAIUsage, onG
                               )
                               return <a {...props} className="text-[#5C3EFE] underline hover:opacity-80" target="_blank" rel="noopener noreferrer" />
                             },
-                            table: ({ node, ...props }) => (
+                            table: ({ ...props }) => (
                               <div className="mt-3 overflow-x-auto rounded-xl border border-gray-100 dark:border-gray-700">
                                 <table {...props} className="w-full text-xs" />
                               </div>
                             ),
-                            thead: ({ node, ...props }) => (
+                            thead: ({ ...props }) => (
                               <thead {...props} className="bg-indigo-50 dark:bg-indigo-900/30 text-[#5C3EFE] text-[10px] uppercase tracking-widest font-black" />
                             ),
-                            tr: ({ node, ...props }) => (
+                            tr: ({ ...props }) => (
                               <tr {...props} className="border-b border-gray-50 dark:border-gray-800" />
                             ),
-                            td: ({ node, ...props }) => (
+                            td: ({ ...props }) => (
                               <td {...props} className="px-3 py-2 text-gray-700 dark:text-gray-300" />
                             ),
-                            th: ({ node, ...props }) => (
+                            th: ({ ...props }) => (
                               <th {...props} className="px-3 py-2 text-left" />
                             ),
                           }}

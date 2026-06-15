@@ -66,7 +66,6 @@ export function DashboardView({ carList, historyList }) {
     .sort((a, b) => b.value - a.value)
   const catTotalSum = catData.reduce((s, d) => s + d.value, 0)
 
-  const isDark = document.documentElement.classList.contains('dark')
 
   return (
     <div className="flex flex-col gap-5 page-in">

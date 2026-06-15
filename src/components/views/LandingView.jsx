@@ -388,7 +388,7 @@ export function LandingView({ onLogin }) {
   const blob2Ref = useRef(null)
   const [scrolled, setScrolled] = useState(false)
   const [tickOffset, setTickOffset] = useState(0)
-  const [vinLit, setVinLit] = useState(0)
+  const [, setVinLit] = useState(0)
 
   // Scroll to active section based on URL path
   useEffect(() => {

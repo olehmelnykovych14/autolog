@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Search, Loader2, Shield, Eye, Trash2, CheckCircle2, ChevronRight, Mail, Phone, Calendar, Edit, X, Save, AlertTriangle, User, CreditCard, Wrench } from 'lucide-react'
-import { ThemeCtx } from '../../context/ThemeContext'
 import { Modal, Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
@@ -218,7 +217,6 @@ function DeleteUserModal({ user, onClose, onConfirm }) {
 export function AdminView() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  const isDark = useContext(ThemeCtx)
   const [search, setSearch] = useState('')
   const [editUser, setEditUser] = useState(null)
   const [deleteUser, setDeleteUser] = useState(null)

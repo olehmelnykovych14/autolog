@@ -621,7 +621,7 @@ async function lookupVin(vin) {
   return { brand: make, model, year: parseInt(year) || null }
 }
 
-function CreateBookingBySTOModal({ userProfile, stoSettings, onClose, onSuccess, initialParams }) {
+function CreateBookingBySTOModal({ stoSettings, onClose, onSuccess, initialParams }) {
   const [mode, setMode] = useState('online')
   const [step, setStep] = useState(1)
   const [search, setSearch] = useState('')

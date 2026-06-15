@@ -58,7 +58,7 @@ const compressImage = (file) => {
   })
 }
 
-export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSelectCar, userProfile, onGoPlans }) {
+export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSelectCar, onGoPlans }) {
   const [showAdd, setShowAdd] = useState(false)
   const [editCar, setEditCar] = useState(null)
   const [confirmDlg, setConfirmDlg] = useState(null)
@@ -106,7 +106,6 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 stagger">
           {carList.map(car => {
-            const logo = getBrandLogo(car.brand)
             return (
               <div key={car.id} data-car-id={car.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div className="car-card group" data-car-id={car.id} onClick={() => onSelectCar(car)}>
@@ -318,7 +317,7 @@ function EditCarModal({ car, onClose, onSave }) {
   )
 }
 
-function AddCarModal({ onClose, onAdd, isLimited, onGoPlans }) {
+function AddCarModal({ onClose, onAdd, isLimited }) {
   const [f, setF] = useState({ brand: 'Acura', model: 'ILX', year: new Date().getFullYear(), plate: '', vin: '', mileage: '', image: '', engineL: '', engineCyl: '', fuelType: '', driveType: '', transmission: '', bodyClass: '' })
   const [vinStatus, setVinStatus] = useState(null)
   const fileRef = useRef(null)

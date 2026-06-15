@@ -310,11 +310,7 @@ bot.action('exp_all', async (ctx) => {
 
 bot.action('exp_back', (ctx) => {
   ctx.deleteMessage().catch(() => {});
-  // Re-trigger the main expenses list
-  const hearsCtx = { ...ctx, message: { text: '💰 Витрати' } }; // Simplified mock
-  // Instead of re-triggering, just repeat the logic:
-  return ctx.replyWithMarkdown('Оберіть автомобіль для перегляду статистики витрат:'); 
-  // Wait, I'll just re-call the hears logic properly or simplify.
+  return ctx.replyWithMarkdown('Оберіть автомобіль для перегляду статистики витрат:');
 });
 
 bot.hears('❓ Допомога', (ctx) => {
@@ -815,9 +811,6 @@ bot.on('text', async (ctx, next) => {
 
   const wait = await ctx.reply('🤔 Думаю...');
   try {
-    const carList = []; // Could be populated via a helper if needed
-    const historyList = [];
-    
     const promptText = `Ти — AI Механік AutoLog. Дай професійну пораду українською мовою на запит користувача: "${ctx.message.text}".
 ПІДБІР ЗАПЧАСТИН: Якщо мова йде про ремонт або заміну конкретної деталі (гальмівні колодки, фільтри, свічки тощо), обов'язково додай в кінці відповіді посилання на покупку у форматі Markdown. У самому URL посиланні замінюй пробіли на символ "+".
 - [🔎 Знайти "[Назва]" на Exist.ua](https://www.google.com/search?q=site:exist.ua+[Форматована+Назва+Без+Пробілів])
@@ -944,7 +937,7 @@ try {
         if (change.type === 'added' && bData.status === 'pending' && !bData.notifiedSTO) {
            // Logic for STO notifications (if needed)
         }
-      } catch (e) {}
+      } catch { /* ignore individual snapshot change errors */ }
     }
   }, (err) => {
     console.error('❌ Firestore Snapshot Error:', err.message);
