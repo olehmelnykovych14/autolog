@@ -69,6 +69,24 @@ try {
 const db = admin.firestore();
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+// --- ADMIN GUARD ---
+// Деструктивні команди (cleandb, migrate, keepcar) доступні лише адмінам.
+// ADMIN_TELEGRAM_IDS — список Telegram user id через кому в .env, напр. "12345,67890".
+const ADMIN_IDS = (process.env.ADMIN_TELEGRAM_IDS || process.env.ADMIN_TELEGRAM_ID || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const isAdmin = (ctx) => ADMIN_IDS.includes(String(ctx.from?.id));
+
+// Повертає true і відповідає користувачу, якщо доступ заборонено.
+const denyNonAdmin = async (ctx) => {
+  if (isAdmin(ctx)) return false;
+  console.warn(`⛔ [DENIED] non-admin ${ctx.from?.id} tried: ${ctx.message?.text}`);
+  await ctx.reply('⛔ Команда доступна лише адміністратору.');
+  return true;
+};
+
 // --- GLOBAL LOGGER ---
 bot.use(async (ctx, next) => {
   if (ctx.message || ctx.callbackQuery) {
@@ -1090,6 +1108,7 @@ bot.command('linkuid', async (ctx) => {
 // Переносить telegramId та авто зі старого дубль-профілю на справжній Auth UID
 bot.command('migrate', async (ctx) => {
   try {
+    if (await denyNonAdmin(ctx)) return;
     const args = ctx.message.text.split(' ');
     const fromId = (args[1] || '').trim();
     const toId   = (args[2] || '').trim();
@@ -1135,6 +1154,7 @@ bot.command('migrate', async (ctx) => {
 // Видаляє всі дані НЕ пов'язані з вказаним UID (чистить тестові залишки)
 bot.command('cleandb', async (ctx) => {
   try {
+    if (await denyNonAdmin(ctx)) return;
     const keepUid = (ctx.message.text.split(' ')[1] || '').trim();
     if (!keepUid) return ctx.reply('Використання: `/cleandb UID_ЩО_ЗБЕРЕГТИ`', { parse_mode: 'Markdown' });
 
@@ -1188,6 +1208,7 @@ bot.command('cleandb', async (ctx) => {
 // Видаляє всі авто та їх history крім авто з вказаним держ. номером
 bot.command('keepcar', async (ctx) => {
   try {
+    if (await denyNonAdmin(ctx)) return;
     const plate = (ctx.message.text.split(' ')[1] || '').trim().toUpperCase();
     if (!plate) return ctx.reply('Використання: `/keepcar ДЕРЖНОМЕР`\nНаприклад: `/keepcar BC7388XA`', { parse_mode: 'Markdown' });
     if (!ctx.userId) return ctx.reply('❌ Акаунт не визначено.');

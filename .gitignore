@@ -65,3 +65,8 @@ playwright-report/
 # Agent internals & scratch files
 .claude/
 scratch/
+
+# bot-server/.env.example is a committed template (placeholders only, no
+# secrets); the .env.* rule above would otherwise exclude it. Kept narrow on
+# purpose so other .env.example files (e.g. e2e/) stay ignored.
+!bot-server/.env.example
