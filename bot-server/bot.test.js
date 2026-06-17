@@ -102,4 +102,28 @@ describe('Bot Logic Verification', () => {
           expect(stats.total).toBe(300);
       });
   });
+
+  describe('Document Reminder Logic', () => {
+      // Mirrors the milestone + same-day dedup decision from checkReminders in bot.js
+      const DOC_NOTIFY_DAYS = [14, 7, 3, 1, 0];
+      const shouldNotifyDoc = (daysLeft, lastNotified, todayStr) =>
+        DOC_NOTIFY_DAYS.includes(daysLeft) && lastNotified !== todayStr;
+
+      it('notifies on milestone days', () => {
+          expect(shouldNotifyDoc(14, null, '2026-06-17')).toBe(true);
+          expect(shouldNotifyDoc(7, null, '2026-06-17')).toBe(true);
+          expect(shouldNotifyDoc(0, null, '2026-06-17')).toBe(true);
+      });
+
+      it('skips non-milestone days and already-expired docs', () => {
+          expect(shouldNotifyDoc(13, null, '2026-06-17')).toBe(false);
+          expect(shouldNotifyDoc(30, null, '2026-06-17')).toBe(false);
+          expect(shouldNotifyDoc(-1, null, '2026-06-17')).toBe(false);
+      });
+
+      it('does not re-notify the same day (dedup)', () => {
+          expect(shouldNotifyDoc(7, '2026-06-17', '2026-06-17')).toBe(false);
+          expect(shouldNotifyDoc(7, '2026-06-16', '2026-06-17')).toBe(true);
+      });
+  });
 });

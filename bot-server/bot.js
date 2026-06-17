@@ -1232,6 +1232,18 @@ bot.command('keepcar', async (ctx) => {
 });
 
 // --- REMINDERS SCHEDULER ---
+// Короткі підписи типів документів для Telegram (відповідають DOC_TYPES у вебі).
+const DOC_LABELS = {
+  osago: 'ОСАГО / Автоцивілка',
+  inspection: 'Техогляд',
+  greencard: 'Зелена карта',
+  gbo: 'Свідоцтво ГБО',
+  vignette: 'Віньєтка / Дозвіл ЄС',
+  other: 'Документ',
+};
+// Дні до закінчення, коли шлемо нагадування (одне на кожен рубіж).
+const DOC_NOTIFY_DAYS = [14, 7, 3, 1, 0];
+
 const checkReminders = async () => {
   console.log('🔔 Checking reminders...');
   const today = new Date();
@@ -1281,6 +1293,51 @@ const checkReminders = async () => {
         } catch (e) {
           console.error(`❌ Failed to send reminder to ${user.telegramId}:`, e.message);
         }
+      }
+
+      // --- Document expiry reminders (ОСАГО, техогляд, Зелена карта, ГБО) ---
+      try {
+        const carsSnap = await db.collection('cars').where('userId', '==', userDoc.id).get();
+        const todayStr = today.toISOString().split('T')[0];
+
+        for (const carDoc of carsSnap.docs) {
+          const car = carDoc.data();
+          const docs = Array.isArray(car.documents) ? car.documents : [];
+          if (docs.length === 0) continue;
+
+          const notified = car.docNotified || {};
+          let changed = false;
+
+          for (const d of docs) {
+            if (!d.expires || !d.id) continue;
+            const exp = new Date(d.expires);
+            exp.setHours(0, 0, 0, 0);
+            const daysLeft = Math.ceil((exp - today) / 86400000);
+            if (!DOC_NOTIFY_DAYS.includes(daysLeft)) continue;
+            if (notified[d.id] === todayStr) continue; // вже надіслали сьогодні
+
+            const label = DOC_LABELS[d.type] || 'Документ';
+            const carLabel = `${car.brand || ''} ${car.model || ''}`.trim();
+            const dateStr = exp.toLocaleDateString('uk-UA');
+            let msg;
+            if (daysLeft === 0) msg = `⚠️ *${label}* закінчується *сьогодні*!\n${carLabel ? `🚗 ${carLabel}\n` : ''}Дійсний до: ${dateStr}`;
+            else if (daysLeft === 1) msg = `⏰ *${label}* закінчується *завтра*!\n${carLabel ? `🚗 ${carLabel}\n` : ''}Дійсний до: ${dateStr}`;
+            else msg = `🔔 *${label}* закінчується через *${daysLeft} дн.*\n${carLabel ? `🚗 ${carLabel}\n` : ''}Дійсний до: ${dateStr}`;
+
+            try {
+              await bot.telegram.sendMessage(user.telegramId, msg, { parse_mode: 'Markdown' });
+              notified[d.id] = todayStr;
+              changed = true;
+              console.log(`✅ Doc reminder sent to ${user.telegramId}: ${label} (${daysLeft}d)`);
+            } catch (e) {
+              console.error(`❌ Failed doc reminder to ${user.telegramId}:`, e.message);
+            }
+          }
+
+          if (changed) await carDoc.ref.update({ docNotified: notified });
+        }
+      } catch (e) {
+        console.error('❌ Document reminders error:', e.message);
       }
     }
   } catch (e) {
