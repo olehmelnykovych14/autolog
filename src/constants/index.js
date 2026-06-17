@@ -2,7 +2,19 @@ import { LayoutDashboard, Car, ClipboardList, Bot, Users, Settings, Wrench, Cale
 
 export const C = '#5C3EFE'
 
-export const CAT = { 
+// Типи документів авто для «Сейфу документів». Порядок = порядок у списку.
+export const DOC_TYPES = {
+  osago:      'ОСАГО / Автоцивілка',
+  inspection: 'Техогляд',
+  greencard:  'Зелена карта',
+  gbo:        'Свідоцтво ГБО',
+  vignette:   'Віньєтка / Дозвіл ЄС',
+  other:      'Інше',
+}
+
+export const DOC_TYPE_ORDER = ['osago', 'inspection', 'greencard', 'gbo', 'vignette', 'other']
+
+export const CAT = {
   maintenance: 'ТО', 
   repair: 'Ремонт', 
   diagnostic: 'Діагностика', 

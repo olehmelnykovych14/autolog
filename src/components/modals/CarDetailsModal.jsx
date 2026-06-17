@@ -1,15 +1,18 @@
 import React from 'react'
-import { Share2, ClipboardList, TrendingUp } from 'lucide-react'
+import { Share2, ClipboardList, TrendingUp, ShieldCheck } from 'lucide-react'
 import { Modal, PrimaryBtn } from '../common/Common'
-import { fmt, getBrandLogo } from '../../utils'
+import { fmt, getBrandLogo, docStatus } from '../../utils'
 import { C } from '../../constants'
 import { db } from '../../firebase'
 import { doc, updateDoc } from 'firebase/firestore'
+import { DocumentsModal } from './DocumentsModal'
 
 export function CarDetailsModal({ car, onClose, onGoService, onGoReport, onGoTransfer }) {
   const [isCopied, setIsCopied] = React.useState(false)
   const [isSharing, setIsSharing] = React.useState(false)
+  const [showDocs, setShowDocs] = React.useState(false)
   const logo = getBrandLogo(car.brand)
+  const docsExpiring = (Array.isArray(car.documents) ? car.documents : []).filter(d => docStatus(d.expires).urgent).length
 
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/share/${car.id}`
@@ -47,6 +50,7 @@ export function CarDetailsModal({ car, onClose, onGoService, onGoReport, onGoTra
   }
 
   return (
+    <>
     <Modal title="Деталі автомобіля" onClose={onClose}>
       <div className="flex flex-col gap-6">
         <div className="h-56 sm:h-64 rounded-[2.5rem] overflow-hidden border border-gray-100 dark:border-gray-700/60 shadow-inner group relative">
@@ -127,6 +131,12 @@ export function CarDetailsModal({ car, onClose, onGoService, onGoReport, onGoTra
           <button onClick={() => { onGoService(); onClose(); }} className="w-full py-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl font-black text-sm hover:bg-indigo-100 transition-all flex items-center justify-center gap-3 border border-indigo-100 dark:border-indigo-800/50 shadow-sm active:scale-95">
             <ClipboardList size={18} /> ПЕРЕГЛЯНУТИ СЕРВІСНУ ІСТОРІЮ
           </button>
+          <button onClick={() => setShowDocs(true)} className="w-full py-4 bg-gray-50 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 rounded-2xl font-black text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-3 border border-gray-100 dark:border-gray-700/60 active:scale-95 relative">
+            <ShieldCheck size={18} /> ДОКУМЕНТИ
+            {docsExpiring > 0 && (
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-black flex items-center justify-center">{docsExpiring}</span>
+            )}
+          </button>
           <button onClick={onGoReport} className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-sm hover:bg-gray-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-gray-400/20 active:scale-95 mt-2">
             <TrendingUp size={18} /> ГЕНЕРУВАТИ ЗВІТ
           </button>
@@ -141,5 +151,7 @@ export function CarDetailsModal({ car, onClose, onGoService, onGoReport, onGoTra
         </div>
       </div>
     </Modal>
+    {showDocs && <DocumentsModal car={car} onClose={() => setShowDocs(false)} />}
+    </>
   )
 }

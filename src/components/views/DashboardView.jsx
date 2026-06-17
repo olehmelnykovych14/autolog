@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { TrendingUp, Activity, Wrench, ShieldCheck, Clock, Bell, PieChart as PieIcon } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { collection, onSnapshot } from 'firebase/firestore'
-import { fmt, fmtCost, reminderStatus } from '../../utils'
-import { C, CAT, CAT_CLR, CAT_HEX } from '../../constants'
+import { fmt, fmtCost, fmtDate, reminderStatus, docStatus } from '../../utils'
+import { C, CAT, CAT_CLR, CAT_HEX, DOC_TYPES } from '../../constants'
 import { auth, db } from '../../firebase'
 
 export function DashboardView({ carList, historyList }) {
@@ -25,6 +25,13 @@ export function DashboardView({ carList, historyList }) {
     .map(r => ({ ...r, _s: reminderStatus(r.date) }))
     .sort((a, b) => (a._s.days ?? 1e9) - (b._s.days ?? 1e9))
     .slice(0, 4)
+  // ── Документи, що закінчуються (по всіх авто) ──
+  const expiringDocs = carList
+    .flatMap(c => (Array.isArray(c.documents) ? c.documents : []).map(d => ({ ...d, _car: c, _s: docStatus(d.expires) })))
+    .filter(d => d._s.urgent)
+    .sort((a, b) => (a._s.days ?? 1e9) - (b._s.days ?? 1e9))
+    .slice(0, 5)
+
   const now = new Date()
   const thisMonth = now.getMonth()
   const thisYear = now.getFullYear()
@@ -91,6 +98,30 @@ export function DashboardView({ carList, historyList }) {
           </div>
         ))}
       </div>
+
+      {/* Документи, що закінчуються */}
+      {expiringDocs.length > 0 && (
+        <div className="al-card" style={{ padding: 24, borderColor: 'rgba(239,68,68,0.2)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <ShieldCheck size={18} style={{ color: '#EF4444' }} />
+            <h2 className="text-base font-bold" style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}>Документи потребують уваги</h2>
+          </div>
+          <div className="flex flex-col gap-2.5">
+            {expiringDocs.map(d => (
+              <div key={`${d._car.id}-${d.id}`} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'var(--bg-hover)' }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${d._s.hex}1a`, color: d._s.hex }}>
+                  <ShieldCheck size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate" style={{ color: 'var(--text)' }}>{DOC_TYPES[d.type] || 'Документ'}</p>
+                  <p className="text-xs font-medium truncate" style={{ color: 'var(--text-3)' }}>{d._car.brand} {d._car.model} · до {fmtDate(d.expires)}</p>
+                </div>
+                <span className="text-[11px] font-black px-2.5 py-1 rounded-lg shrink-0" style={{ background: `${d._s.hex}1a`, color: d._s.hex }}>{d._s.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Reminders */}
       {upcomingReminders.length > 0 && (

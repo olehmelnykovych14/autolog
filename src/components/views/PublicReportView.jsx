@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { ShieldCheck, Activity } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { ShieldCheck, Activity, Download, Loader2 } from 'lucide-react'
 import { db } from '../../firebase'
 import { doc, getDoc, collection, query, where, getDocs, disableNetwork } from 'firebase/firestore'
-import { fmt, fmtCost, getBrandLogo } from '../../utils'
-import { CAT } from '../../constants'
+import { fmt, fmtCost, fmtDate, getBrandLogo, docStatus } from '../../utils'
+import { CAT, DOC_TYPES } from '../../constants'
 
 export function PublicReportView({ carId }) {
   const [car, setCar] = useState(null)
@@ -11,6 +11,28 @@ export function PublicReportView({ carId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [notFound, setNotFound] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const reportRef = useRef(null)
+
+  const downloadPdf = async () => {
+    if (!reportRef.current) return
+    setPdfLoading(true)
+    try {
+      const html2pdf = (await import('html2pdf.js')).default
+      await html2pdf().set({
+        margin: 8,
+        filename: `AutoLog-${car?.brand || 'auto'}-${car?.plate || car?.id || ''}.pdf`.replace(/\s+/g, '-'),
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      }).from(reportRef.current).save()
+    } catch (e) {
+      console.error('PDF export error:', e)
+      alert('Не вдалося згенерувати PDF. Спробуйте ще раз.')
+    } finally {
+      setPdfLoading(false)
+    }
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -111,6 +133,23 @@ export function PublicReportView({ carId }) {
   const logo = getBrandLogo(car.brand)
   const totalSpend = historyList.reduce((s, h) => s + (h.cost || 0), 0)
 
+  const specs = [
+    { l: 'VIN', v: car.vin },
+    { l: 'Рік', v: car.year },
+    { l: 'Пробіг', v: car.mileage ? `${fmt(car.mileage)} км` : '' },
+    { l: 'Тип палива', v: car.fuelType },
+    { l: 'Двигун', v: car.engineL ? `${Number(car.engineL).toFixed(1)}L${car.engineCyl ? ` · ${car.engineCyl} цил.` : ''}` : '' },
+    { l: 'Привід', v: car.driveType },
+    { l: 'КПП', v: car.transmission },
+    { l: 'Кузов', v: car.bodyClass },
+  ].filter(s => s.v)
+
+  // Документи: тільки тип + дійсність (без номерів), дійсні першими.
+  const passportDocs = (Array.isArray(car.documents) ? car.documents : [])
+    .filter(d => d.expires)
+    .map(d => ({ type: d.type, expires: d.expires, _s: docStatus(d.expires) }))
+    .sort((a, b) => (b._s.days ?? -1e9) - (a._s.days ?? -1e9))
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-950 text-gray-900 dark:text-white pb-20">
       <div className="w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-4 sticky top-0 z-10">
@@ -119,13 +158,24 @@ export function PublicReportView({ carId }) {
              <img src="/logo.svg" alt="AutoLog" className="w-8 h-8 rounded-xl object-contain drop-shadow-md" />
              <span className="font-black text-lg tracking-tight uppercase">AutoLog Report</span>
           </div>
-          <a href="/" className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-black uppercase hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-             Створити свій гараж
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={downloadPdf}
+              disabled={pdfLoading}
+              className="px-4 py-2 bg-[#5C3EFE] text-white rounded-xl text-xs font-black uppercase hover:opacity-90 transition flex items-center gap-2 disabled:opacity-60"
+            >
+              {pdfLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              <span className="hidden sm:inline">{pdfLoading ? 'Готуємо…' : 'Завантажити PDF'}</span>
+            </button>
+            <a href="/" className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-black uppercase hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+               <span className="hidden sm:inline">Створити свій гараж</span>
+               <span className="sm:hidden">Гараж</span>
+            </a>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto mt-8 px-4 sm:px-6">
+      <div ref={reportRef} className="max-w-3xl mx-auto mt-8 px-4 sm:px-6">
         <div className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col sm:flex-row items-center gap-6">
           <div className="w-24 h-24 rounded-[2rem] bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-[#5C3EFE] shrink-0 border-2 border-indigo-100 dark:border-indigo-800/50 overflow-hidden relative">
             {logo && (
@@ -160,6 +210,40 @@ export function PublicReportView({ carId }) {
             <p className="text-2xl font-black text-green-500">PUBLIC</p>
           </div>
         </div>
+
+        {specs.length > 0 && (
+          <div className="mt-6">
+            <h4 className="font-bold text-gray-900 dark:text-white uppercase tracking-widest text-xs px-2 mb-4">Характеристики</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+              {specs.map((s, i) => (
+                <div key={i}>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{s.l}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white break-words">{s.v}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {passportDocs.length > 0 && (
+          <div className="mt-6">
+            <h4 className="font-bold text-gray-900 dark:text-white uppercase tracking-widest text-xs px-2 mb-4">Документи</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {passportDocs.map((d, i) => (
+                <div key={i} className="flex items-center gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${d._s.hex}1a`, color: d._s.hex }}>
+                    <ShieldCheck size={16} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{DOC_TYPES[d.type] || 'Документ'}</p>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">до {fmtDate(d.expires)}</p>
+                  </div>
+                  <span className="text-[11px] font-black px-2.5 py-1 rounded-lg shrink-0" style={{ background: `${d._s.hex}1a`, color: d._s.hex }}>{d._s.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-8">
           <h4 className="font-bold text-gray-900 dark:text-white uppercase tracking-widest text-xs px-2 mb-4">Історія обслуговування</h4>

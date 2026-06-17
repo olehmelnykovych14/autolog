@@ -27,6 +27,21 @@ export function reminderStatus(dateStr) {
   return { days, label: `${days} дн.`, hex: '#22C55E', urgent: false }
 }
 
+// Дата YYYY-MM-DD -> DD.MM.YYYY (для відображення)
+export const fmtDate = s => s ? String(s).split('-').reverse().join('.') : '—'
+
+// Статус документа за датою закінчення: { days, label, hex, urgent, expired }
+// 30 днів = «скоро», бо страховку/техогляд продовжують заздалегідь.
+export function docStatus(expires) {
+  if (!expires) return { days: null, label: 'Без терміну', hex: '#94A3B8', urgent: false, expired: false }
+  const days = Math.ceil((new Date(expires) - new Date()) / 86400000)
+  if (isNaN(days)) return { days: null, label: '—', hex: '#94A3B8', urgent: false, expired: false }
+  if (days < 0) return { days, label: 'Прострочено', hex: '#EF4444', urgent: true, expired: true }
+  if (days === 0) return { days, label: 'Сьогодні', hex: '#F97316', urgent: true, expired: false }
+  if (days <= 30) return { days, label: `${days} дн.`, hex: '#F59E0B', urgent: true, expired: false }
+  return { days, label: 'Дійсний', hex: '#22C55E', urgent: false, expired: false }
+}
+
 const BRAND_LOGOS = {
   'acura': 'https://cdn.simpleicons.org/acura/004A99',
   'alfa romeo': 'https://cdn.simpleicons.org/alfaromeo/900000',
