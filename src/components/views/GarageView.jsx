@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Plus, Camera, Search, User, Info, Smartphone, FileText, Send, Share2, MoreVertical, Trash2, ImagePlus, ShieldCheck, Loader2, Pencil } from 'lucide-react'
 import { Modal, Field, inp_cls, PrimaryBtn, ConfirmModal } from '../common/Common'
-import { fmt, getBrandLogo } from '../../utils'
+import { fmt, getBrandLogo, docStatus } from '../../utils'
 import { BRANDS_MODELS } from '../../data/cars'
+import { DocumentsModal } from '../modals/DocumentsModal'
 
 const CV_REF = 'YOUR_REF_CODE'
 const cvLink = vin => `https://www.carvertical.com/uk/get-report?referralCode=${CV_REF}${vin ? `&vin=${vin}` : ''}`
@@ -62,6 +63,7 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
   const [showAdd, setShowAdd] = useState(false)
   const [editCar, setEditCar] = useState(null)
   const [confirmDlg, setConfirmDlg] = useState(null)
+  const [docsCar, setDocsCar] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
   // SUBSCRIPTION: car limit disabled for free launch
   const isLimited = false
@@ -106,6 +108,7 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 stagger">
           {carList.map(car => {
+            const docsExpiring = (Array.isArray(car.documents) ? car.documents : []).filter(d => docStatus(d.expires).urgent).length
             return (
               <div key={car.id} data-car-id={car.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div className="car-card group" data-car-id={car.id} onClick={() => onSelectCar(car)}>
@@ -223,7 +226,20 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
                         <div className="km-label">Пробіг</div>
                         <div className="km-val">{fmt(car.mileage)}<span className="km-unit">км</span></div>
                       </div>
-                      <div className="share-btn"><Share2 size={18}/></div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          title="Документи"
+                          onClick={(e) => { e.stopPropagation(); setDocsCar(car) }}
+                          className="share-btn relative"
+                        >
+                          <ShieldCheck size={18} />
+                          {docsExpiring > 0 && (
+                            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center leading-none">{docsExpiring}</span>
+                          )}
+                        </button>
+                        <div className="share-btn"><Share2 size={18}/></div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -270,6 +286,10 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
           onConfirm={() => { onDeleteCar?.(confirmDlg.id); setConfirmDlg(null) }}
           onCancel={() => setConfirmDlg(null)}
         />
+      )}
+
+      {docsCar && (
+        <DocumentsModal car={docsCar} onClose={() => setDocsCar(null)} />
       )}
     </div>
   )

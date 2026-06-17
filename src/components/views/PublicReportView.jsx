@@ -151,7 +151,7 @@ export function PublicReportView({ carId }) {
     .sort((a, b) => (b._s.days ?? -1e9) - (a._s.days ?? -1e9))
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-950 text-gray-900 dark:text-white pb-20">
+    <div className="h-screen overflow-y-auto bg-[#F8FAFC] dark:bg-gray-950 text-gray-900 dark:text-white pb-20">
       <div className="w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-4 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
