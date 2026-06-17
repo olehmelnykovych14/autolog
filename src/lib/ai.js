@@ -3,6 +3,23 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim();
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
 
+const isQuotaError = (msg = '') => /quota|RESOURCE_EXHAUSTED|rate.?limit|\b429\b|exceeded/i.test(String(msg));
+
+// Перетворює технічну помилку Gemini на зрозуміле повідомлення українською —
+// користувач ніколи не має бачити сирий текст з URL та англійською.
+const friendlyAiError = (msg = '') => {
+  const m = String(msg);
+  if (isQuotaError(m)) {
+    const retry = m.match(/retry in ([\d.]+)\s*s/i) || m.match(/retryDelay["'\s:]+([\d.]+)s/i);
+    const secs = retry ? Math.ceil(parseFloat(retry[1])) : null;
+    return `🚦 **AI тимчасово перевантажений** — вичерпано ліміт запитів.\n\nСпробуйте ${secs ? `за ~${secs} с` : 'за хвилину'}.`;
+  }
+  if (/blocked|not.?activated|PERMISSION_DENIED|API.?KEY|API_KEY_INVALID/i.test(m)) {
+    return "🚫 **Сервіс AI тимчасово недоступний.** Спробуйте пізніше або зверніться до підтримки.";
+  }
+  return "⚠️ **AI тимчасово недоступний.** Спробуйте трохи пізніше.";
+};
+
 // Функція-детектор: перевіряє, що взагалі бачить цей ключ
 const checkModels = async () => {
   if (!API_KEY) return;
@@ -60,6 +77,8 @@ export const askGemini = async (userInput, carList, historyList, mediaData = nul
     const result = await model.generateContent(content);
     return result.response.text();
   } catch (e) {
+    // Квота/ліміт: фолбек-моделі б'ють у той самий ключ і теж впадуть → одразу зрозуміле повідомлення.
+    if (isQuotaError(e?.message)) return friendlyAiError(e.message);
     try {
       const model = genAI.getGenerativeModel({ model: fallbackModel }, { apiVersion: 'v1beta' });
       const result = await model.generateContent(content);
@@ -83,14 +102,13 @@ export const askGemini = async (userInput, carList, historyList, mediaData = nul
 
         const data = await response.json();
         if (response.ok) return data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (data.error?.message?.includes('blocked')) {
-          return "🚫 **API не активовано.** \n\nВам потрібно активувати 'Generative Language API' у Google Cloud Console.";
-        }
-        
-        return `❌ AI Error: ${data.error?.message || 'Unknown error'}`;
+
+        // Лог із сирим текстом — лише в консоль для діагностики, не користувачу.
+        console.error('🤖 AI API Error:', data.error?.message || 'Unknown error');
+        return friendlyAiError(data.error?.message);
       } catch (error) {
-        return "Помилка мережі AI.";
+        console.error('🤖 AI network error:', error?.message);
+        return "⚠️ **Немає звʼязку з AI.** Перевірте інтернет і спробуйте ще раз.";
       }
     }
   }
