@@ -42,7 +42,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-r
 
 import { auth, db, safeEnableNetwork } from './firebase'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { doc, getDoc, getDocs, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, onSnapshot } from 'firebase/firestore'
+import { doc, getDoc, getDocs, collection, query, where, addDoc, setDoc, updateDoc, deleteDoc, writeBatch, onSnapshot } from 'firebase/firestore'
 
 // Context & Constants
 import { ThemeCtx } from './context/ThemeContext'
@@ -366,6 +366,9 @@ export default function App() {
       const ownerIds = snap.docs.map(d => d.data().ownerId).filter(id => typeof id === 'string' && id)
       const uids = Array.from(new Set([currentUser.uid, ...ownerIds])).filter(Boolean)
       setRelevantUids(uids)
+      // Тримаємо teamOwners на user-документі, щоб Firestore-правила могли
+      // авторизувати читання авто/історії власників, у чию команду нас додали.
+      setDoc(doc(db, 'users', currentUser.uid), { teamOwners: ownerIds }, { merge: true }).catch(() => {})
     }).catch(err => {
       console.error(err)
       if (currentUser?.uid) setRelevantUids([currentUser.uid])

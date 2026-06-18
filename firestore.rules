@@ -1,0 +1,103 @@
+rules_version = '2';
+
+// AutoLog Firestore Security Rules
+// Принцип: дані бачить і змінює лише власник. Публічний звіт (isPublic) читається
+// без авторизації. Командний доступ — через teamOwners на user-документі читача.
+// Бот працює через Firebase Admin SDK і ці правила його НЕ обмежують.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+
+    // Жорстко зашитий адмін (збігається з isAdmin у застосунку).
+    function isAdmin() {
+      return signedIn() && request.auth.token.email == 'olehmelnykovych@gmail.com';
+    }
+
+    function emailMatches(email) {
+      return email != null
+        && request.auth.token.email != null
+        && email.lower() == request.auth.token.email.lower();
+    }
+
+    // Читач є членом команди власника ownerId, якщо ownerId є в його teamOwners.
+    function isTeamMember(ownerId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(uid()))
+        && get(/databases/$(database)/documents/users/$(uid())).data.get('teamOwners', []).hasAny([ownerId]);
+    }
+
+    // Чи авто публічне (для читання історії публічного звіту без авторизації).
+    function carIsPublic(carId) {
+      return carId != null
+        && exists(/databases/$(database)/documents/cars/$(carId))
+        && get(/databases/$(database)/documents/cars/$(carId)).data.get('isPublic', false) == true;
+    }
+
+    // --- АВТО ---
+    match /cars/{carId} {
+      // Публічний звіт — будь-хто; інакше власник, команда або адмін.
+      allow read: if resource.data.get('isPublic', false) == true
+                  || (signedIn() && resource.data.userId == uid())
+                  || isTeamMember(resource.data.userId)
+                  || isAdmin();
+      // Створювати можна лише авто на себе.
+      allow create: if signedIn() && request.resource.data.userId == uid();
+      // Змінювати/видаляти — лише власник (зокрема трансфер: зміна userId на іншого).
+      allow update, delete: if signedIn() && resource.data.userId == uid();
+    }
+
+    // --- ІСТОРІЯ / СЕРВІС / ПАЛИВО ---
+    match /history/{histId} {
+      allow read: if (signedIn() && resource.data.userId == uid())
+                  || isTeamMember(resource.data.userId)
+                  || carIsPublic(resource.data.carId)
+                  || isAdmin();
+      allow create: if signedIn() && request.resource.data.userId == uid();
+      allow update, delete: if signedIn() && resource.data.userId == uid();
+    }
+
+    // --- КОРИСТУВАЧІ + підколекції (reminders, ai_chats) ---
+    // Профіль приватний: лише власник (і адмін на читання). Тут лежить
+    // tgLinkingToken/telegramId — крос-юзер читання свідомо заборонене.
+    match /users/{userId} {
+      allow read: if (signedIn() && userId == uid()) || isAdmin();
+      allow create, update: if signedIn() && userId == uid();
+      allow delete: if false;
+
+      match /{document=**} {
+        allow read, write: if signedIn() && userId == uid();
+      }
+    }
+
+    // --- ЗАПРОШЕННЯ В КОМАНДУ ---
+    match /team_invitations/{invId} {
+      allow read: if signedIn()
+                  && (resource.data.ownerId == uid() || emailMatches(resource.data.email) || isAdmin());
+      // Створює лише власник гаража, на себе.
+      allow create: if signedIn() && request.resource.data.ownerId == uid();
+      // Приймає/відхиляє запрошений (за email) або власник.
+      allow update, delete: if signedIn()
+                  && (resource.data.ownerId == uid() || emailMatches(resource.data.email));
+    }
+
+    // --- ЗАПИСИ НА СТО ---
+    match /bookings/{bookingId} {
+      allow read: if signedIn()
+                  && (resource.data.userId == uid() || resource.data.stoId == uid() || isAdmin());
+      allow create: if signedIn()
+                  && (request.resource.data.userId == uid() || request.resource.data.stoId == uid());
+      allow update: if signedIn()
+                  && (resource.data.userId == uid() || resource.data.stoId == uid());
+      allow delete: if signedIn()
+                  && (resource.data.userId == uid() || resource.data.stoId == uid());
+    }
+
+    // Усе інше — заборонено за замовчуванням.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
