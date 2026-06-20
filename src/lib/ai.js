@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { auth } from "../firebase";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim();
 const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
@@ -20,6 +21,21 @@ const friendlyAiError = (msg = '') => {
   return "⚠️ **AI тимчасово недоступний.** Спробуйте трохи пізніше.";
 };
 
+// Викликає бекенд-проксі /api/ai з Firebase ID-токеном (ключ Gemini лишається на сервері).
+const callAiProxy = async (payload) => {
+  const user = auth?.currentUser;
+  const idToken = user ? await user.getIdToken() : null;
+  if (!idToken) throw new Error('no-auth');
+  const res = await fetch('/api/ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`proxy-${res.status}`);
+  const data = await res.json();
+  return data.text;
+};
+
 // Функція-детектор: перевіряє, що взагалі бачить цей ключ
 const checkModels = async () => {
   if (!API_KEY) return;
@@ -34,9 +50,19 @@ const checkModels = async () => {
 checkModels();
 
 export const askGemini = async (userInput, carList, historyList, mediaData = null) => {
-  if (!API_KEY) return "Помилка: API Ключ не знайдено!";
+  // 1) Бекенд-проксі: ключ не у браузері.
+  try {
+    const text = await callAiProxy({ userInput, carList, historyList, mediaData });
+    if (text) return text;
+  } catch (proxyErr) {
+    console.warn('AI proxy unavailable, fallback to direct:', proxyErr.message);
+  }
 
-  const promptText = `Ти — Професійний AI Механік AutoLog. 
+  // 2) Легасі прямий виклик — лише поки VITE_GEMINI_API_KEY ще в білді (перехідний період).
+  // Прибери цю змінну з Vercel → лишиться тільки проксі, ключ зникне з бандла.
+  if (!API_KEY) return friendlyAiError('');
+
+  const promptText = `Ти — Професійний AI Механік AutoLog.
 Відповідай українською мовою, лаконічно, використовуючи Markdown.
 
 КОНТЕКСТ КОРИСТУВАЧА:

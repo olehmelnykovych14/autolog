@@ -9,6 +9,14 @@
   ],
   "rewrites": [
     {
+      "source": "/api/ai",
+      "destination": "https://autolog-q9hd.onrender.com/api/ai"
+    },
+    {
+      "source": "/api/transfer",
+      "destination": "https://autolog-q9hd.onrender.com/api/transfer"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "https://autolog-api-prod.onrender.com/api/$1"
     },

@@ -637,16 +637,16 @@ export default function App() {
   const handleTransfer = async (email) => {
     if (!selectedCar || !currentUser) return
     try {
-      const q = query(collection(db, 'users'), where('email', '==', email))
-      const snap = await getDocs(q)
-      if (snap.empty) { alert('Користувача не знайдено!'); return }
-      const recipientUid = snap.docs[0].id
-      const batch = writeBatch(db)
-      batch.update(doc(db, 'cars', selectedCar.id), { userId: recipientUid })
-      historyList.filter(h => h.carId === selectedCar.id).forEach(h => {
-        batch.update(doc(db, 'history', h.id), { userId: recipientUid })
+      // Пошук email->uid і перенос робить бекенд (Admin SDK), бо клієнтські
+      // правила забороняють читати чужі профілі.
+      const idToken = await currentUser.getIdToken()
+      const res = await fetch('/api/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ email, carId: selectedCar.id }),
       })
-      await batch.commit()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) { alert(data.error || 'Не вдалося передати авто.'); return }
       setShowTransfer(false)
       setSelectedCar(null)
       navigate('/dashboard')

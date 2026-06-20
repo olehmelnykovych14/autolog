@@ -34,7 +34,7 @@ const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN || 'https://autolog-q9hd.onren
 const WEBHOOK_PATH = '/tg-webhook';
 const USE_WEBHOOK = process.env.USE_WEBHOOK !== 'false';
 
-app.use(express.json());
+app.use(express.json({ limit: '12mb' })); // 12mb: AI-проксі приймає base64-фото
 app.get('/', (req, res) => res.send('AutoLog Bot is active! 🤖'));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
@@ -1362,6 +1362,103 @@ const scheduleReminders = () => {
 };;
 
 scheduleReminders();
+
+// --- AI PROXY (/api/ai) ---
+// Тримає ключ Gemini на сервері. Лише для залогінених (інакше відкритий проксі
+// палив би квоту/гроші). Помилки повертаємо зрозумілим текстом українською.
+const aiFriendlyError = (msg = '') => {
+  const m = String(msg);
+  if (/quota|RESOURCE_EXHAUSTED|rate.?limit|\b429\b|exceeded/i.test(m)) {
+    const r = m.match(/retry in ([\d.]+)\s*s/i);
+    const s = r ? Math.ceil(parseFloat(r[1])) : null;
+    return `🚦 *AI тимчасово перевантажений* — вичерпано ліміт запитів. Спробуйте ${s ? `за ~${s} с` : 'за хвилину'}.`;
+  }
+  return '⚠️ *AI тимчасово недоступний.* Спробуйте трохи пізніше.';
+};
+
+app.post('/api/ai', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!idToken) return res.status(401).json({ error: 'Unauthorized' });
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { return res.status(401).json({ error: 'Invalid token' }); }
+
+    if (!genAI) return res.json({ text: aiFriendlyError('') });
+
+    const { userInput, carList = [], historyList = [], mediaData = null } = req.body || {};
+    const promptText = `Ти — Професійний AI Механік AutoLog.
+Відповідай українською мовою, лаконічно, використовуючи Markdown.
+
+КОНТЕКСТ КОРИСТУВАЧА:
+- Автомобілі: ${JSON.stringify(carList)}
+- Історія сервісу: ${JSON.stringify(historyList)}
+
+ТВОЄ ЗАВДАННЯ:
+1. Якщо фото — проаналізуй (панель приладів, деталі, чеки); якщо чек, виділи суму та тип робіт.
+2. Якщо текст/голос — відповідай з урахуванням специфікацій авто, давай конкретні поради.
+3. Якщо ідентифікуєш зношену деталь, додай у кінці Markdown-посилання на пошук (пробіли замінюй на "+"):
+   [🔎 Знайти "[Деталь]" на Exist.ua](https://www.google.com/search?q=site:exist.ua+[Деталь])
+   [🛒 Знайти на Avto.pro](https://www.google.com/search?q=site:avto.pro+[Деталь])
+
+Питання: ${userInput || 'Проаналізуй надіслані дані'}`;
+
+    const content = mediaData ? [promptText, { inlineData: mediaData }] : promptText;
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const result = await model.generateContent(content);
+    return res.json({ text: result.response.text() });
+  } catch (e) {
+    console.error('🤖 /api/ai error:', e.message);
+    return res.json({ text: aiFriendlyError(e.message) });
+  }
+});
+
+// --- TRANSFER (/api/transfer) ---
+// Передача авто іншому користувачу за email. Пошук email->uid робить Admin SDK,
+// бо клієнтські Firestore-правила забороняють читати чужі профілі.
+app.post('/api/transfer', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!idToken) return res.status(401).json({ ok: false, error: 'Необхідна авторизація.' });
+    let requesterUid;
+    try { requesterUid = (await admin.auth().verifyIdToken(idToken)).uid; }
+    catch { return res.status(401).json({ ok: false, error: 'Недійсний токен.' }); }
+
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const carId = String(req.body?.carId || '').trim();
+    if (!email || !carId) return res.status(400).json({ ok: false, error: 'Вкажіть email і авто.' });
+
+    // 1) Перевірка володіння
+    const carRef = db.collection('cars').doc(carId);
+    const carSnap = await carRef.get();
+    if (!carSnap.exists) return res.status(404).json({ ok: false, error: 'Авто не знайдено.' });
+    if (carSnap.data().userId !== requesterUid) return res.status(403).json({ ok: false, error: 'Це не ваше авто.' });
+
+    // 2) Отримувач за email (спершу Firebase Auth — найнадійніше)
+    let recipientUid = null;
+    try { recipientUid = (await admin.auth().getUserByEmail(email)).uid; } catch { /* немає в Auth */ }
+    if (!recipientUid) {
+      const usersSnap = await db.collection('users').where('email', '==', email).limit(1).get();
+      if (!usersSnap.empty) recipientUid = usersSnap.docs[0].id;
+    }
+    if (!recipientUid) return res.status(404).json({ ok: false, error: 'Користувача з таким email не знайдено.' });
+    if (recipientUid === requesterUid) return res.status(400).json({ ok: false, error: 'Не можна передати авто самому собі.' });
+
+    // 3) Перенос авто + історії
+    const batch = db.batch();
+    batch.update(carRef, { userId: recipientUid });
+    const histSnap = await db.collection('history').where('carId', '==', carId).get();
+    histSnap.forEach(d => batch.update(d.ref, { userId: recipientUid }));
+    await batch.commit();
+
+    console.log(`🔁 Transfer: car ${carId} ${requesterUid} -> ${recipientUid} (${histSnap.size} records)`);
+    return res.json({ ok: true, moved: histSnap.size });
+  } catch (e) {
+    console.error('🔁 /api/transfer error:', e.message);
+    return res.status(500).json({ ok: false, error: 'Помилка передачі авто.' });
+  }
+});
 
 // Wire webhook handler on Express
 app.use(bot.webhookCallback(WEBHOOK_PATH));
