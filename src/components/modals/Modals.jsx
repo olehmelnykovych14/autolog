@@ -62,9 +62,11 @@ export function InviteMemberModal({ limit, currentCount, onClose, onInvite }) {
   const [name, setName] = useState('')
   const [role, setRole] = useState('viewer')
   const ic = inp_cls()
+  const atLimit = currentCount >= limit
 
   const submit = e => {
     e.preventDefault()
+    if (atLimit) return
     if (!email.trim() || !name.trim()) return
     onInvite({
       name: name.trim(),
@@ -83,8 +85,13 @@ export function InviteMemberModal({ limit, currentCount, onClose, onInvite }) {
               <div className="w-8 h-8 rounded-lg bg-[#5C3EFE] flex items-center justify-center text-white"><UserPlus size={16}/></div>
               <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Доступно місць</p>
             </div>
-            <span className="text-lg font-black text-[#5C3EFE]">{limit - currentCount} <span className="text-[10px] text-gray-400">з {limit}</span></span>
+            <span className="text-lg font-black" style={{ color: atLimit ? '#EF4444' : '#5C3EFE' }}>{Math.max(limit - currentCount, 0)} <span className="text-[10px] text-gray-400">з {limit === Infinity ? '∞' : limit}</span></span>
         </div>
+        {atLimit && (
+          <div className="px-4 py-3 -mt-3 rounded-2xl text-xs font-bold text-center" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>
+            Ліміт учасників вичерпано. Оформіть Premium, щоб додати більше.
+          </div>
+        )}
         <Field label="Ім'я учасника *">
           <input value={name} onChange={e => setName(e.target.value)} placeholder="Іван Іванов" className={ic} required />
         </Field>
@@ -109,7 +116,7 @@ export function InviteMemberModal({ limit, currentCount, onClose, onInvite }) {
             </button>
           </div>
         </Field>
-        <PrimaryBtn type="submit" className="w-full py-4 justify-center text-base mt-2 shadow-indigo-500/20">
+        <PrimaryBtn type="submit" disabled={atLimit} className="w-full py-4 justify-center text-base mt-2 shadow-indigo-500/20">
           Надіслати запрошення
         </PrimaryBtn>
       </form>

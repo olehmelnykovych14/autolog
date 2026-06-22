@@ -46,6 +46,7 @@ import { doc, getDoc, getDocs, collection, query, where, addDoc, setDoc, updateD
 
 // Context & Constants
 import { ThemeCtx } from './context/ThemeContext'
+import { PLANS } from './constants'
 import { monthKey } from './utils'
 
 // Layout
@@ -237,9 +238,8 @@ export default function App() {
   const [preselectedSto, setPreselectedSto] = useState(null)
   const [incomingInvites, setIncomingInvites] = useState([])
 
-  // SUBSCRIPTION: const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
-  // SUBSCRIPTION: const TEAM_LIMIT = activePlan.teamLimit
-  const TEAM_LIMIT = Infinity // Free launch — no limits
+  const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
+  const TEAM_LIMIT = activePlan.teamLimit
   const [teamMembers, setTeamMembers] = useState([
     { id: 1, name: 'Олександр (Ви)', email: 'owner@autolog.ua', role: 'owner', status: 'active' }
   ])
@@ -795,7 +795,7 @@ export default function App() {
         <Route path="/garage" element={
           isSto ? <Navigate to="/sto" replace /> :
           <AppShell {...shellProps}>
-            {scrollWrapper('max-w-7xl', <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onDeleteCar={deleteCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => {}} />)}
+            {scrollWrapper('max-w-7xl', <GarageView carList={carList} onAddCar={addCar} onUpdateCar={updateCar} onDeleteCar={deleteCar} onSelectCar={setSelectedCar} userProfile={userProfile} onGoPlans={() => navigate('/plans')} />)}
           </AppShell>
         } />
         <Route path="/bookings" element={

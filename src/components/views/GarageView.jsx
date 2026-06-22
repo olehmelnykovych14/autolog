@@ -3,6 +3,7 @@ import { Plus, Camera, Search, User, Info, Smartphone, FileText, Send, Share2, M
 import { Modal, Field, inp_cls, PrimaryBtn, ConfirmModal } from '../common/Common'
 import { fmt, getBrandLogo, docStatus } from '../../utils'
 import { BRANDS_MODELS } from '../../data/cars'
+import { PLANS } from '../../constants'
 import { DocumentsModal } from '../modals/DocumentsModal'
 
 const CV_REF = 'YOUR_REF_CODE'
@@ -59,14 +60,18 @@ const compressImage = (file) => {
   })
 }
 
-export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSelectCar, onGoPlans }) {
+export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSelectCar, onGoPlans, userProfile }) {
   const [showAdd, setShowAdd] = useState(false)
   const [editCar, setEditCar] = useState(null)
   const [confirmDlg, setConfirmDlg] = useState(null)
   const [docsCar, setDocsCar] = useState(null)
   const [openMenuId, setOpenMenuId] = useState(null)
-  // SUBSCRIPTION: car limit disabled for free launch
-  const isLimited = false
+  const [showUpgrade, setShowUpgrade] = useState(false)
+
+  const plan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
+  const carLimit = plan.carLimit
+  const atCarLimit = carList.length >= carLimit
+  const openAdd = () => (atCarLimit ? setShowUpgrade(true) : setShowAdd(true))
 
   useEffect(() => {
     const handleOutsideClick = () => setOpenMenuId(null);
@@ -91,7 +96,7 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
           <h1 className="text-[26px] font-black tracking-tight" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>Мій гараж</h1>
           <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--text-3)' }}>{carList.length} активних авто</p>
         </div>
-        <button className="btn-brand sm:self-center" onClick={() => setShowAdd(true)}><Plus size={16}/> Додати автомобіль</button>
+        <button className="btn-brand sm:self-center" onClick={openAdd}><Plus size={16}/> Додати автомобіль</button>
       </div>
 
       {carList.length === 0 ? (
@@ -264,7 +269,7 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
         <AddCarModal
           onClose={() => setShowAdd(false)}
           onAdd={onAddCar}
-          isLimited={isLimited}
+          isLimited={atCarLimit}
           onGoPlans={onGoPlans}
         />
       )}
@@ -290,6 +295,17 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
 
       {docsCar && (
         <DocumentsModal car={docsCar} onClose={() => setDocsCar(null)} />
+      )}
+
+      {showUpgrade && (
+        <ConfirmModal
+          title="Ліміт автомобілів"
+          message={`На тарифі ${plan.name} доступно ${carLimit === Infinity ? '∞' : carLimit} авто. Оформіть Premium для безлімітного гаража.`}
+          confirmLabel="Перейти на Premium"
+          variant="warning"
+          onConfirm={() => { setShowUpgrade(false); onGoPlans?.() }}
+          onCancel={() => setShowUpgrade(false)}
+        />
       )}
     </div>
   )

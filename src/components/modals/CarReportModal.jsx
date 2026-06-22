@@ -12,8 +12,7 @@ export function CarReportModal({ car, historyList, userProfile, onClose }) {
   const totalSpend = records.reduce((s, h) => s + (h.cost || 0), 0)
   
   const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
-  const isPremium = ['Premium', 'Business'].includes(activePlan.id)
-  const isBusiness = activePlan.id === 'Business'
+  const isPremium = activePlan.id === 'Premium'
 
   const print = () => {
     window.print()
@@ -62,21 +61,8 @@ export function CarReportModal({ car, historyList, userProfile, onClose }) {
   }
 
   return (
-    <Modal title={isBusiness ? `Звіт: ${userProfile?.stoName || 'AutoLog Business'}` : (isPremium ? 'Carfax-AutoLog Преміум Звіт' : 'Базовий Звіт AutoLog')} onClose={onClose}>
+    <Modal title={isPremium ? 'Carfax-AutoLog Преміум Звіт' : 'Базовий Звіт AutoLog'} onClose={onClose}>
       <div id="report-pdf-content" className="flex flex-col gap-6 print:p-0 bg-white dark:bg-gray-800">
-        {isBusiness && userProfile?.stoName && (
-          <div className="px-6 py-3 bg-gray-900 text-white rounded-2xl flex items-center justify-between border border-gray-800">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Обслуговується в</p>
-              <p className="text-sm font-black">{userProfile.stoName}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Адреса</p>
-              <p className="text-[10px] font-bold text-gray-400">{userProfile.stoAddress}</p>
-            </div>
-          </div>
-        )}
-
         <div className="bg-gray-50 dark:bg-gray-900/50 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center gap-6">
           <div className="w-24 h-24 rounded-[2rem] bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center text-[#5C3EFE] shrink-0 border-2 border-indigo-100 dark:border-indigo-800/50 shadow-inner overflow-hidden">
             {car.image ? <img src={car.image} alt="" className="w-full h-full object-cover" /> : <ShieldCheck size={40}/>}
