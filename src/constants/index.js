@@ -86,8 +86,18 @@ export const AI_REPLIES = [
   'Найчастіше допомагає промивка форсунок або заміна свічок запалювання.',
 ]
 
+// Преміум продається трьома способами (однакові переваги): місяць / рік / довічно.
+export const PREMIUM_PRICING = { month: 49, year: 399, lifetime: 499 }
+
 export const PLANS = [
-  { id: 'Free', name: 'Free', price: 0, features: ['1 автомобіль', '10 записів/міс', 'AI: 5 запитів', 'Базовий звіт'], carLimit: 1, teamLimit: 1, aiLimit: 5 },
-  { id: 'Premium', name: 'Premium', price: 299, features: ['5 автомобілів', 'Необмежені записи', 'AI: 100 запитів', 'Carfax звіт', 'Push-сповіщення'], carLimit: 5, teamLimit: 3, aiLimit: 100 },
-  { id: 'Business', name: 'Business', price: 799, features: ['Безліміт авто', 'Команда до 10 осіб', 'AI: необмежено', 'Експорт в Excel', 'Брендування звітів'], carLimit: Infinity, teamLimit: 10, aiLimit: 9999 },
+  {
+    id: 'Free', name: 'Free', price: 0,
+    features: ['1 авто', 'Журнал сервісу та пального', 'Сейф документів', 'AI-механік: 5 запитів/міс', 'Публічний звіт'],
+    carLimit: 1, teamLimit: 1, aiLimit: 5,
+  },
+  {
+    id: 'Premium', name: 'Premium', price: PREMIUM_PRICING.year,
+    features: ['Безліміт авто', 'AI-механік: 100 запитів/міс', 'Скан чеків AI', 'Паспорт для продажу + PDF', 'Telegram-нагадування', 'Експорт історії', 'Команда до 3 осіб'],
+    carLimit: Infinity, teamLimit: 3, aiLimit: 100,
+  },
 ]

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Check, Info, LayoutDashboard, Send, Wrench, ShieldCheck, Zap } from 'lucide-react'
 import { Helmet } from 'react-helmet-async'
-import { C, PLANS } from '../../constants'
+import { C, PLANS, PREMIUM_PRICING } from '../../constants'
 import { aiUsageThisMonth } from '../../utils'
 import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
@@ -12,22 +12,25 @@ export function PlansView({ carList = [], userProfile, onUpdatePlan, currentUser
   const navigate = useNavigate()
   const [loading, setLoading] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [billing, setBilling] = useState('year') // 'month' | 'year' | 'lifetime'
   const currentPlan = userProfile?.plan || 'Free'
+  const premiumAmount = PREMIUM_PRICING[billing]
+  const billingLabel = billing === 'month' ? '/міс' : billing === 'year' ? '/рік' : 'разово'
 
 
 
-  const handleUpgrade = async (plan) => {
-    setLoading(plan.id)
+  const handleUpgrade = async ({ id, planName, amount }) => {
+    setLoading(id)
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
     try {
       const resp = await fetch(`${API_URL}/api/payment/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId: currentUser?.uid, 
+        body: JSON.stringify({
+          userId: currentUser?.uid,
           email: currentUser?.email,
-          planName: plan.name,
-          amount: plan.price
+          planName,
+          amount,
         })
       })
       if (!resp.ok) throw new Error('Server error')
@@ -54,30 +57,31 @@ export function PlansView({ carList = [], userProfile, onUpdatePlan, currentUser
     }
   }
 
-  const handleSelect = async (planId) => {
-    if (!currentUser) {
-      alert('Будь ласка, увійдіть або зареєструйтеся, щоб обрати тарифний план.')
-      navigate('/login')
-      return
-    }
-    if (planId === currentPlan) return
-    const plan = PLANS.find(p => p.id === planId)
+  const requireAuth = () => {
+    if (currentUser) return true
+    alert('Будь ласка, увійдіть або зареєструйтеся, щоб обрати тарифний план.')
+    navigate('/login')
+    return false
+  }
 
-    if (plan && plan.price > 0) {
-      return handleUpgrade(plan)
+  const handleSelectPremium = () => {
+    if (!requireAuth()) return
+    handleUpgrade({ id: 'Premium', planName: `Premium ${billing}`, amount: premiumAmount })
+  }
+
+  const handleSelectFree = async () => {
+    if (!requireAuth()) return
+    if (currentPlan === 'Free') return
+    setLoading('Free')
+    try {
+      await onUpdatePlan('Free')
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 3000)
+    } catch (e) {
+      alert('Помилка оновлення плану')
+    } finally {
+      setLoading(null)
     }
-    setLoading(planId)
-    setTimeout(async () => {
-      try {
-        await onUpdatePlan(planId)
-        setLoading(null)
-        setShowSuccess(true)
-        setTimeout(() => setShowSuccess(false), 3000)
-      } catch (e) {
-        setLoading(null)
-        alert('Помилка оновлення плану')
-      }
-    }, 1500)
   }
 
   const activePlanData = PLANS.find(p => p.id === currentPlan) || PLANS[0]
@@ -138,39 +142,64 @@ export function PlansView({ carList = [], userProfile, onUpdatePlan, currentUser
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {PLANS.map(p => {
-          const isCurrent = p.id === currentPlan
-          const isPending = loading === p.id
-          return (
-            <div key={p.id} className={`rounded-2xl p-6 flex flex-col relative overflow-hidden transition-all ${isCurrent ? 'ring-2 ring-[#5C3EFE] transform scale-[1.02] shadow-xl' : 'bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60'}`}>
-              {isCurrent && <div className="absolute top-0 right-0 bg-[#5C3EFE] text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider">Поточний</div>}
-              <div className="mb-1">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{p.name}</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+        {/* Free */}
+        <div className={`rounded-2xl p-6 flex flex-col relative overflow-hidden transition-all ${currentPlan === 'Free' ? 'ring-2 ring-[#5C3EFE] shadow-xl' : 'bg-white dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700/60'}`}>
+          {currentPlan === 'Free' && <div className="absolute top-0 right-0 bg-[#5C3EFE] text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider">Поточний</div>}
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Free</h3>
+          <div className="mb-5 mt-2"><span className="text-3xl font-black text-gray-900 dark:text-white">Безкоштовно</span></div>
+          <div className="flex-1 space-y-2 mb-6">
+            {PLANS[0].features.map(f => (
+              <div key={f} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <Check size={14} className="text-green-500 shrink-0" /><span>{f}</span>
               </div>
-              <div className="mb-5 mt-2">
-                <span className="text-3xl font-black text-gray-900 dark:text-white">{p.price === 0 ? 'Безкоштовно' : p.price + ' ₴'}</span>
-                {p.price > 0 && <span className="text-sm text-gray-400">/міс</span>}
+            ))}
+          </div>
+          <button
+            onClick={handleSelectFree}
+            disabled={currentPlan === 'Free' || !!loading}
+            className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${currentPlan === 'Free' ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-default' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:opacity-90 active:scale-95'}`}
+          >
+            {loading === 'Free' ? <div className="w-5 h-5 border-2 border-gray-400/30 border-t-gray-500 rounded-full animate-spin" /> : (currentPlan === 'Free' ? 'Активовано' : 'Перейти на Free')}
+          </button>
+        </div>
+
+        {/* Premium */}
+        <div className={`rounded-2xl p-6 flex flex-col relative overflow-hidden transition-all ${currentPlan === 'Premium' ? 'ring-2 ring-[#5C3EFE] shadow-xl' : 'border-2 border-[#5C3EFE]/40 bg-white dark:bg-gray-800 shadow-lg'}`}>
+          <div className="absolute top-0 right-0 bg-[#5C3EFE] text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider">{currentPlan === 'Premium' ? 'Поточний' : 'Популярний'}</div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Premium</h3>
+
+          {/* Перемикач періоду */}
+          <div className="flex gap-1 p-1 rounded-xl bg-gray-100 dark:bg-gray-700 mb-4">
+            {[['month', 'Місяць'], ['year', 'Рік'], ['lifetime', 'Назавжди']].map(([key, label]) => (
+              <button key={key} onClick={() => setBilling(key)} className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${billing === key ? 'bg-white dark:bg-gray-900 text-[#5C3EFE] shadow' : 'text-gray-500'}`}>{label}</button>
+            ))}
+          </div>
+
+          <div className="mb-1">
+            <span className="text-3xl font-black text-gray-900 dark:text-white">{premiumAmount} ₴</span>
+            <span className="text-sm text-gray-400"> {billingLabel}</span>
+          </div>
+          <p className="text-xs font-bold mb-4 h-4" style={{ color: billing === 'month' ? 'var(--text-3)' : '#22C55E' }}>
+            {billing === 'year' ? '≈ 33 ₴/міс · 3 місяці у подарунок' : billing === 'lifetime' ? 'Одна оплата — назавжди' : 'Скасувати можна будь-коли'}
+          </p>
+
+          <div className="flex-1 space-y-2 mb-6">
+            {PLANS[1].features.map(f => (
+              <div key={f} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                <Check size={14} className="text-green-500 shrink-0" /><span>{f}</span>
               </div>
-              <div className="flex-1 space-y-2 mb-6">
-                {p.features.map(f => (
-                  <div key={f} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                    <Check size={14} className="text-green-500 shrink-0" />
-                    <span>{f}</span>
-                  </div>
-                ))}
-              </div>
-              <button
-                onClick={() => handleSelect(p.id)}
-                disabled={isCurrent || !!loading}
-                className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${isCurrent ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-default' : 'text-white hover:opacity-90 active:scale-95 shadow-md'}`}
-                style={!isCurrent ? { background: C } : {}}
-              >
-                {isPending ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (isCurrent ? 'Активовано' : 'Обрати план')}
-              </button>
-            </div>
-          )
-        })}
+            ))}
+          </div>
+          <button
+            onClick={handleSelectPremium}
+            disabled={currentPlan === 'Premium' || !!loading}
+            className={`w-full py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${currentPlan === 'Premium' ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-default' : 'text-white hover:opacity-90 active:scale-95 shadow-md'}`}
+            style={currentPlan !== 'Premium' ? { background: C } : {}}
+          >
+            {loading === 'Premium' ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (currentPlan === 'Premium' ? 'Активний' : 'Оформити Premium')}
+          </button>
+        </div>
       </div>
     </div>
   )
