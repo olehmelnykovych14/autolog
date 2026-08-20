@@ -354,7 +354,7 @@ function EditCarModal({ car, onClose, onSave }) {
 }
 
 function AddCarModal({ onClose, onAdd, isLimited }) {
-  const [f, setF] = useState({ brand: 'Acura', model: 'ILX', year: new Date().getFullYear(), plate: '', vin: '', mileage: '', image: '', engineL: '', engineCyl: '', fuelType: '', driveType: '', transmission: '', bodyClass: '' })
+  const [f, setF] = useState({ brand: '', model: '', year: new Date().getFullYear(), plate: '', vin: '', mileage: '', image: '', engineL: '', engineCyl: '', fuelType: '', driveType: '', transmission: '', bodyClass: '' })
   const [vinStatus, setVinStatus] = useState(null)
   const fileRef = useRef(null)
   const ic = inp_cls()
@@ -449,14 +449,16 @@ function AddCarModal({ onClose, onAdd, isLimited }) {
 
         <div className="grid grid-cols-2 gap-4 mt-2">
           <Field label="Марка *">
-            <select value={f.brand} onChange={e => setF({ ...f, brand: e.target.value, model: BRANDS_MODELS[e.target.value][0] })} className={ic} required>
-              {Object.keys(BRANDS_MODELS).map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
+            <input list="al-brand-options" value={f.brand} onChange={e => setF(p => ({ ...p, brand: e.target.value }))} className={ic} placeholder="Ford" autoComplete="off" required />
+            <datalist id="al-brand-options">
+              {Object.keys(BRANDS_MODELS).map(b => <option key={b} value={b} />)}
+            </datalist>
           </Field>
           <Field label="Модель *">
-            <select value={f.model} onChange={e => setF({ ...f, model: e.target.value })} className={ic} required>
-              {BRANDS_MODELS[f.brand].map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <input list="al-model-options" value={f.model} onChange={e => setF(p => ({ ...p, model: e.target.value }))} className={ic} placeholder="Mondeo" autoComplete="off" required />
+            <datalist id="al-model-options">
+              {(BRANDS_MODELS[f.brand] || []).map(m => <option key={m} value={m} />)}
+            </datalist>
           </Field>
         </div>
 
