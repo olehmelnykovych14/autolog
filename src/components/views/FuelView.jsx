@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Fuel, Plus, Check, Loader2, Trash2, Gauge, Droplets, TrendingUp, Info } from 'lucide-react'
+import { Fuel, Plus, Check, Loader2, Trash2, Gauge, Droplets, TrendingUp, TrendingDown, MapPin, Info } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Field, inp_cls, PrimaryBtn } from '../common/Common'
 import { fmt, fmtNum } from '../../utils'
@@ -56,6 +56,41 @@ export function FuelView({ carList = [], historyList = [], onAddService, onDelet
     const last = consumption.length ? consumption[consumption.length - 1].lPer100 : 0
     return { totalLiters, totalCost, avgL, avgCost, last, fills: carFuel.length }
   }, [carFuel, consumption])
+
+  // Журнал цін — по ВСІХ заправках (ціна ₴/л не залежить від авто).
+  const priceHistory = useMemo(() => {
+    return fuelEntries
+      .map(h => ({ ...h, _price: h.pricePerLiter || (h.liters ? (h.cost || 0) / h.liters : 0) }))
+      .filter(h => h._price > 0 && h.date)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+  }, [fuelEntries])
+
+  const priceChart = useMemo(() => priceHistory.map(h => ({
+    name: new Date(h.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' }),
+    price: Math.round(h._price * 100) / 100,
+  })), [priceHistory])
+
+  const priceStats = useMemo(() => {
+    if (priceHistory.length === 0) return null
+    const prices = priceHistory.map(h => h._price)
+    const latest = prices[prices.length - 1]
+    const avg = prices.reduce((s, p) => s + p, 0) / prices.length
+    return { latest, avg, min: Math.min(...prices), trend: latest - avg }
+  }, [priceHistory])
+
+  // Найдешевші АЗС (за середньою ціною), тільки з назвою станції.
+  const byStation = useMemo(() => {
+    const map = {}
+    priceHistory.forEach(h => {
+      const s = (h.station || '').trim()
+      if (!s) return
+      if (!map[s]) map[s] = { station: s, sum: 0, n: 0, last: 0, lastDate: '' }
+      map[s].sum += h._price
+      map[s].n++
+      if (h.date >= map[s].lastDate) { map[s].last = h._price; map[s].lastDate = h.date }
+    })
+    return Object.values(map).map(v => ({ ...v, avg: v.sum / v.n })).sort((a, b) => a.avg - b.avg)
+  }, [priceHistory])
 
   const submit = async () => {
     const liters = parseFloat(String(form.liters).replace(',', '.'))
@@ -222,6 +257,71 @@ export function FuelView({ carList = [], historyList = [], onAddService, onDelet
           </div>
         )}
       </div>
+
+      {/* Fuel prices journal */}
+      {priceStats && (
+        <div className="al-card" style={{ padding: 24 }}>
+          <div className="mb-5">
+            <h2 className="text-base font-bold" style={{ color: 'var(--text)', letterSpacing: '-0.01em' }}>Ціни на пальне</h2>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-3)' }}>По всіх ваших заправках · ₴ за літр</p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            <div className="al-card stat-card" style={{ padding: 14 }}>
+              <div className="stat-label">Остання</div>
+              <div className="stat-val flex items-center gap-1" style={{ fontSize: 20 }}>
+                {fmtNum(priceStats.latest, 2)} ₴
+                {priceStats.trend < -0.01 ? <TrendingDown size={14} style={{ color: '#22C55E' }} /> : priceStats.trend > 0.01 ? <TrendingUp size={14} style={{ color: '#EF4444' }} /> : null}
+              </div>
+            </div>
+            <div className="al-card stat-card" style={{ padding: 14 }}>
+              <div className="stat-label">Середня</div>
+              <div className="stat-val" style={{ fontSize: 20 }}>{fmtNum(priceStats.avg, 2)} ₴</div>
+            </div>
+            <div className="al-card stat-card" style={{ padding: 14 }}>
+              <div className="stat-label">Мінімальна</div>
+              <div className="stat-val" style={{ fontSize: 20, color: '#22C55E' }}>{fmtNum(priceStats.min, 2)} ₴</div>
+            </div>
+          </div>
+
+          {priceChart.length >= 2 && (
+            <div style={{ height: 180 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={priceChart} margin={{ top: 5, right: 10, left: -18, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="0" stroke="var(--line-2)" horizontal vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-3)', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: 'var(--text-3)' }} axisLine={false} tickLine={false} width={44} />
+                  <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--line)', borderRadius: 16, color: 'var(--text)', fontSize: 13, fontWeight: 700, boxShadow: 'var(--shadow-md)' }} formatter={(val) => [`${val} ₴/л`, 'Ціна']} />
+                  <Line type="monotone" dataKey="price" stroke="#F59E0B" strokeWidth={2.5} dot={{ r: 3, fill: '#F59E0B', stroke: 'var(--bg-card)', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {byStation.length > 0 && (
+            <div className="mt-5">
+              <h3 className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-1.5" style={{ color: 'var(--text-3)' }}>
+                <MapPin size={13} /> Найдешевші АЗС
+              </h3>
+              <div className="flex flex-col gap-2">
+                {byStation.slice(0, 5).map((s, i) => (
+                  <div key={s.station} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'var(--bg-hover)' }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black shrink-0" style={{ background: i === 0 ? 'rgba(34,197,94,0.15)' : 'var(--bg-input)', color: i === 0 ? '#22C55E' : 'var(--text-3)' }}>{i + 1}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold truncate" style={{ color: 'var(--text)' }}>{s.station}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-3)' }}>{s.n} {s.n === 1 ? 'заправка' : 'заправок'} · остання {fmtNum(s.last, 2)} ₴</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-black" style={{ color: i === 0 ? '#22C55E' : 'var(--text)' }}>{fmtNum(s.avg, 2)} ₴</p>
+                      <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-3)' }}>середня</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* History */}
       <div className="al-card" style={{ padding: 24 }}>
