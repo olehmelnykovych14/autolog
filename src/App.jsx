@@ -46,7 +46,7 @@ import { doc, getDoc, getDocs, collection, query, where, addDoc, setDoc, updateD
 
 // Context & Constants
 import { ThemeCtx } from './context/ThemeContext'
-import { PLANS } from './constants'
+import { PLANS, ENFORCE_LIMITS } from './constants'
 import { monthKey } from './utils'
 
 // Layout
@@ -239,7 +239,7 @@ export default function App() {
   const [incomingInvites, setIncomingInvites] = useState([])
 
   const activePlan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
-  const TEAM_LIMIT = activePlan.teamLimit
+  const TEAM_LIMIT = ENFORCE_LIMITS ? activePlan.teamLimit : Infinity
   const [teamMembers, setTeamMembers] = useState([
     { id: 1, name: 'Олександр (Ви)', email: 'owner@autolog.ua', role: 'owner', status: 'active' }
   ])

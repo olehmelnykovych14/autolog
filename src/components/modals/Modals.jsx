@@ -85,7 +85,7 @@ export function InviteMemberModal({ limit, currentCount, onClose, onInvite }) {
               <div className="w-8 h-8 rounded-lg bg-[#5C3EFE] flex items-center justify-center text-white"><UserPlus size={16}/></div>
               <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Доступно місць</p>
             </div>
-            <span className="text-lg font-black" style={{ color: atLimit ? '#EF4444' : '#5C3EFE' }}>{Math.max(limit - currentCount, 0)} <span className="text-[10px] text-gray-400">з {limit === Infinity ? '∞' : limit}</span></span>
+            <span className="text-lg font-black" style={{ color: atLimit ? '#EF4444' : '#5C3EFE' }}>{limit === Infinity ? '∞' : Math.max(limit - currentCount, 0)} <span className="text-[10px] text-gray-400">з {limit === Infinity ? '∞' : limit}</span></span>
         </div>
         {atLimit && (
           <div className="px-4 py-3 -mt-3 rounded-2xl text-xs font-bold text-center" style={{ background: 'rgba(239,68,68,0.1)', color: '#EF4444' }}>

@@ -3,7 +3,7 @@ import { Plus, Camera, Search, User, Info, Smartphone, FileText, Send, Share2, M
 import { Modal, Field, inp_cls, PrimaryBtn, ConfirmModal } from '../common/Common'
 import { fmt, getBrandLogo, docStatus } from '../../utils'
 import { BRANDS_MODELS } from '../../data/cars'
-import { PLANS } from '../../constants'
+import { PLANS, ENFORCE_LIMITS } from '../../constants'
 import { DocumentsModal } from '../modals/DocumentsModal'
 
 const CV_REF = 'YOUR_REF_CODE'
@@ -70,7 +70,7 @@ export function GarageView({ carList, onAddCar, onUpdateCar, onDeleteCar, onSele
 
   const plan = PLANS.find(p => p.id === (userProfile?.plan || 'Free')) || PLANS[0]
   const carLimit = plan.carLimit
-  const atCarLimit = carList.length >= carLimit
+  const atCarLimit = ENFORCE_LIMITS && carList.length >= carLimit
   const openAdd = () => (atCarLimit ? setShowUpgrade(true) : setShowAdd(true))
 
   useEffect(() => {

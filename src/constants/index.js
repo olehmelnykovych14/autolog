@@ -89,11 +89,16 @@ export const AI_REPLIES = [
 // Преміум продається трьома способами (однакові переваги): місяць / рік / довічно.
 export const PREMIUM_PRICING = { month: 49, year: 399, lifetime: 499 }
 
+// Ростова фаза: жорсткі ліміти (авто/команда) вимкнені, щоб не гальмувати ріст.
+// Увімкнути монетизацію = виставити VITE_ENFORCE_LIMITS=true в env (Vercel).
+// AI-ліміт лишається завжди (захист спільного ключа Gemini), тому тут не залежить.
+export const ENFORCE_LIMITS = import.meta.env.VITE_ENFORCE_LIMITS === 'true'
+
 export const PLANS = [
   {
     id: 'Free', name: 'Free', price: 0,
-    features: ['1 авто', 'Журнал сервісу та пального', 'Сейф документів', 'AI-механік: 5 запитів/міс', 'Публічний звіт'],
-    carLimit: 1, teamLimit: 1, aiLimit: 5,
+    features: ['1 авто', 'Журнал сервісу та пального', 'Сейф документів', 'AI-механік: 20 запитів/міс', 'Публічний звіт'],
+    carLimit: 1, teamLimit: 1, aiLimit: 20,
   },
   {
     id: 'Premium', name: 'Premium', price: PREMIUM_PRICING.year,

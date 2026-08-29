@@ -285,6 +285,23 @@ export function PublicReportView({ carId }) {
           </div>
         </div>
       </div>
+
+      {/* Growth CTA — the buyer viewing this can start their own garage (viral loop) */}
+      <div className="max-w-3xl mx-auto mt-8 px-4 sm:px-6">
+        <div className="rounded-3xl p-8 text-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #5C3EFE 0%, #3B1E9E 100%)' }}>
+          <ShieldCheck size={36} className="mx-auto text-white/90 mb-3" />
+          <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Ведіть історію свого авто</h3>
+          <p className="text-sm font-medium text-indigo-100/90 max-w-md mx-auto mb-6 leading-relaxed">
+            Безкоштовний цифровий гараж: сервіс, пальне, документи й такий самий прозорий звіт для продажу. Прозора історія — вища ціна авто.
+          </p>
+          <a href="/register" className="inline-block px-8 py-3.5 bg-white text-[#5C3EFE] rounded-2xl text-sm font-black uppercase tracking-wider hover:opacity-90 transition shadow-xl active:scale-95">
+            Створити гараж безкоштовно
+          </a>
+        </div>
+        <p className="text-center text-[11px] text-gray-400 mt-4 mb-6">
+          Звіт згенеровано в <a href="/" className="font-bold text-[#5C3EFE]">AutoLog</a> — сервісна книжка онлайн
+        </p>
+      </div>
     </div>
   )
 }
