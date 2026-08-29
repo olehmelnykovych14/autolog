@@ -41,6 +41,9 @@ export default function ArticleView() {
   const canonicalUrl = `${BASE_URL}/blog/${article.slug}`;
 
   const getIsoDate = (s) => {
+    if (s === 'rozhid-palyva-yak-rahuvaty') return '2026-08-27';
+    if (s === 'osago-tehoglyad-terminy') return '2026-08-25';
+    if (s === 'yak-prodaty-avto-dorozhche') return '2026-08-22';
     if (s === 'serwisna-knyzhka-avtomobilya') return '2026-05-15';
     if (s === 'vytraty-na-avto-ukraina') return '2026-05-10';
     if (s === 'koly-minyaty-maslo') return '2026-05-05';

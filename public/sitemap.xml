@@ -46,6 +46,24 @@
 
   <!-- Blog articles -->
   <url>
+    <loc>https://www.autolog.com.ua/blog/rozhid-palyva-yak-rahuvaty</loc>
+    <lastmod>2026-08-27</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.autolog.com.ua/blog/osago-tehoglyad-terminy</loc>
+    <lastmod>2026-08-25</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://www.autolog.com.ua/blog/yak-prodaty-avto-dorozhche</loc>
+    <lastmod>2026-08-22</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://www.autolog.com.ua/blog/serwisna-knyzhka-avtomobilya</loc>
     <lastmod>2026-05-15</lastmod>
     <changefreq>monthly</changefreq>
